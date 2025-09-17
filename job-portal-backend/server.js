@@ -10,8 +10,29 @@ import {
   getUserById,
   updateUser,
   deleteUser,
-  getProfile
+  getProfile,
+  getUserProfile,
+  updateUserProfile,
+  getAllUserProfiles
 } from './controllers/userController.js';
+import {
+  getUserExperiences,
+  createExperience,
+  updateExperience,
+  deleteExperience
+} from './controllers/experienceController.js';
+import {
+  getUserProjects,
+  createProject,
+  updateProject,
+  deleteProject
+} from './controllers/projectController.js';
+import {
+  getUserEducations,
+  createEducation,
+  updateEducation,
+  deleteEducation
+} from './controllers/educationController.js';
 
 dotenv.config();
 
@@ -171,6 +192,29 @@ app.get('/api/users', authenticateToken, requireRole(['super_admin']), getAllUse
 app.get('/api/users/:id', authenticateToken, getUserById);
 app.put('/api/users/:id', authenticateToken, updateUser);
 app.delete('/api/users/:id', authenticateToken, requireRole(['super_admin']), deleteUser);
+
+// User Profile Routes
+app.get('/api/profiles', authenticateToken, requireRole(['super_admin']), getAllUserProfiles);
+app.get('/api/profiles/:id', authenticateToken, getUserProfile);
+app.put('/api/profiles', authenticateToken, updateUserProfile);
+
+// Experience Routes (Candidate only)
+app.get('/api/experiences', authenticateToken, getUserExperiences);
+app.post('/api/experiences', authenticateToken, createExperience);
+app.put('/api/experiences/:id', authenticateToken, updateExperience);
+app.delete('/api/experiences/:id', authenticateToken, deleteExperience);
+
+// Project Routes (Candidate only)
+app.get('/api/projects', authenticateToken, getUserProjects);
+app.post('/api/projects', authenticateToken, createProject);
+app.put('/api/projects/:id', authenticateToken, updateProject);
+app.delete('/api/projects/:id', authenticateToken, deleteProject);
+
+// Education Routes (Candidate only)
+app.get('/api/educations', authenticateToken, getUserEducations);
+app.post('/api/educations', authenticateToken, createEducation);
+app.put('/api/educations/:id', authenticateToken, updateEducation);
+app.delete('/api/educations/:id', authenticateToken, deleteEducation);
 
 // Start server
 app.listen(PORT, async () => {

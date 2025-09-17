@@ -12,11 +12,11 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useAuth } from "@/lib/auth"
-import { User, Settings, LogOut, Briefcase, Menu, X } from "lucide-react"
+import { User, Settings, LogOut, Briefcase, Menu, X, Edit } from "lucide-react"
 import { useState } from "react"
 
 export function Header() {
-  const { user, logout } = useAuth()
+  const { user, logout, setShowProfileModal } = useAuth()
   const router = useRouter()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
@@ -41,7 +41,7 @@ export function Header() {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
+          <Link href={user ? "/dashboard" : "/"} className="flex items-center space-x-2">
             <Briefcase className="h-7 w-7 text-primary" />
             <span className="text-2xl font-bold">JobPlatform</span>
           </Link>
@@ -105,8 +105,8 @@ export function Header() {
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href="/profile">
-                        <Settings className="mr-2 h-4 w-4" />
-                        Profile Settings
+                        <User className="mr-2 h-4 w-4" />
+                        Profile Page
                       </Link>
                     </DropdownMenuItem>
                     {user.role === "employer" && (

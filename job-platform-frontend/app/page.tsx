@@ -1,3 +1,4 @@
+"use client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -6,8 +7,38 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Briefcase, Users, Search, CheckCircle, MapPin, Clock, DollarSign, Building2, ArrowLeft, ArrowRight, Star, TrendingUp, Code, Settings } from "lucide-react"
 import Link from "next/link"
 import { getJobsWithCompany } from "@/lib/mock-data"
+import { useAuth } from "@/lib/auth"
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 
 export default function HomePage() {
+  const { user, loading } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    // If user is logged in, redirect to dashboard
+    if (!loading && user) {
+      router.push("/dashboard")
+    }
+  }, [user, loading, router])
+
+  // Show loading or nothing while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // If user is logged in, don't render the home page content
+  if (user) {
+    return null
+  }
+
   const jobs = getJobsWithCompany()
 
   const jobCategories = [
@@ -29,7 +60,7 @@ export default function HomePage() {
     <div className="bg-background relative overflow-hidden">
 
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-blue-100 via-blue-50 to-blue-100/50 py-20 lg:py-32 overflow-hidden relative">
+      <section className="bg-gradient-to-br from-blue-100 via-blue-50 to-blue-100/50 min-h-screen flex items-center overflow-hidden relative">
         {/* Background decoration */}
         <div className="absolute inset-0 bg-gradient-to-r from-blue-100/30 via-transparent to-blue-100/30 pointer-events-none"></div>
         <div className="absolute top-20 right-20 w-72 h-72 bg-blue-200/40 rounded-full blur-3xl"></div>
@@ -98,26 +129,14 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Right Side - Visual */}
-            <div className="relative animate-fade-in-right">
-              {/* Background decoration */}
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-accent/10 rounded-3xl transform rotate-2 animate-float-enhanced"></div>
-              <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-primary/5 rounded-3xl transform -rotate-1 animate-float-enhanced" style={{animationDelay: '1s'}}></div>
-              
-              {/* Main Content */}
-              <div className="relative bg-white/80 backdrop-blur-sm rounded-3xl p-8 h-96 flex items-end animate-fade-in-up shadow-2xl border border-white/20" style={{animationDelay: '0.5s'}}>
-                {/* Big dark circle behind image card */}
-                <div className="absolute bottom-4 left-4 w-56 h-96 bg-gray-800/30 rounded-3xl blur-2xl"></div>
-                
-                {/* Person illustration */}
-                <div className="absolute bottom-0 left-8 w-48 h-80 bg-gradient-to-br from-blue-200 to-blue-300 rounded-2xl flex items-center justify-center animate-bounce-in shadow-lg relative z-10" style={{animationDelay: '1.2s'}}>
-                  <div className="w-32 h-40 bg-white rounded-xl shadow-md flex items-center justify-center relative">
-                    <div className="absolute inset-0 bg-gray-800/10 rounded-xl blur-sm"></div>
-                    <Users className="h-12 w-12 text-primary relative z-10" />
-                  </div>
-                </div>
-                
-              </div>
+            {/* Right Side - Banner Image */}
+            <div className="relative animate-fade-in-right flex items-start justify-center h-full">
+              {/* Banner Image */}
+                <img 
+                  src="/banner.png" 
+                  alt="Job Portal Banner" 
+                  className="w-full h-auto max-h-full object-contain rounded-2xl"
+                />
             </div>
           </div>
         </div>

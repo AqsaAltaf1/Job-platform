@@ -13,6 +13,9 @@ interface AuthContextType {
   register: (userData: RegisterData) => Promise<{ success: boolean; error?: string }>
   logout: () => void
   loading: boolean
+  showProfileModal: boolean
+  setShowProfileModal: (show: boolean) => void
+  refreshUser: () => Promise<void>
 }
 
 interface RegisterData {
@@ -29,6 +32,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserWithProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showProfileModal, setShowProfileModal] = useState(false)
 
   useEffect(() => {
     // Check for stored JWT token on mount
@@ -64,6 +68,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         tokenManager.setToken(response.token)
         setUser(response.user as UserWithProfile)
         setLoading(false)
+        
+        // Don't automatically show profile modal on login - let user decide when to edit
+        
         return { success: true }
       } else {
         setLoading(false)
@@ -89,6 +96,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         tokenManager.setToken(response.token)
         setUser(response.user as UserWithProfile)
         setLoading(false)
+        
+        // Always show profile modal for new registrations
+        setShowProfileModal(true)
+        
         return { success: true }
       } else {
         setLoading(false)
@@ -108,7 +119,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     tokenManager.removeToken()
   }
 
-  return <AuthContext.Provider value={{ user, login, register, logout, loading }}>{children}</AuthContext.Provider>
+  const refreshUser = async () => {
+    const token = tokenManager.getToken()
+    if (token) {
+      try {
+        const response = await authAPI.getProfile(token)
+        if (response.success && response.user) {
+          setUser(response.user as UserWithProfile)
+        }
+      } catch (error) {
+        console.error('Failed to refresh user data:', error)
+      }
+    }
+  }
+
+  return <AuthContext.Provider value={{ user, login, register, logout, loading, showProfileModal, setShowProfileModal, refreshUser }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
