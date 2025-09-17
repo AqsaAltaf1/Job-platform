@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { AuthGuard } from "@/components/auth/auth-guard"
-import { Navbar } from "@/components/layout/navbar"
 import { DashboardStats } from "@/components/dashboard/dashboard-stats"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -34,8 +33,8 @@ export default function DashboardPage() {
         // Load recent published jobs for candidates
         jobs = await jobsApi.getJobs({ status: "published" })
         jobs = jobs.slice(0, 5) // Show only 5 recent jobs
-      } else if (user.role === "admin") {
-        // Load all jobs for admin
+      } else if (user.role === "super_admin") {
+        // Load all jobs for super admin
         jobs = await jobsApi.getJobs()
         jobs = jobs.slice(0, 10) // Show 10 most recent
       }
@@ -51,7 +50,7 @@ export default function DashboardPage() {
   const getMockStats = () => {
     // Mock statistics based on user role
     switch (user?.role) {
-      case "admin":
+      case "super_admin":
         return {
           totalJobs: 156,
           totalApplications: 1247,
@@ -79,7 +78,7 @@ export default function DashboardPage() {
 
   const getDashboardTitle = () => {
     switch (user?.role) {
-      case "admin":
+      case "super_admin":
         return "Admin Dashboard"
       case "employer":
         return "Employer Dashboard"
@@ -93,7 +92,7 @@ export default function DashboardPage() {
   const getWelcomeMessage = () => {
     const name = user ? `${user.first_name} ${user.last_name}` : "User"
     switch (user?.role) {
-      case "admin":
+      case "super_admin":
         return `Welcome back, ${name}. Here's your platform overview.`
       case "employer":
         return `Welcome back, ${name}. Manage your job postings and applications.`
@@ -136,7 +135,7 @@ export default function DashboardPage() {
             icon: User,
           },
         ]
-      case "admin":
+      case "super_admin":
         return [
           {
             title: "Manage Users",
@@ -159,8 +158,6 @@ export default function DashboardPage() {
   return (
     <AuthGuard>
       <div className="min-h-screen bg-muted/30">
-        <Navbar />
-
         <div className="container mx-auto px-4 py-8">
           {/* Header */}
           <div className="mb-8">

@@ -47,7 +47,7 @@ export function Navbar() {
                 Manage Jobs
               </Link>
             )}
-            {user?.role === "admin" && (
+            {user?.role === "super_admin" && (
               <Link href="/admin" className="text-sm font-medium hover:text-primary transition-colors">
                 Admin Panel
               </Link>

@@ -4,7 +4,6 @@ import type React from "react"
 
 import { useState } from "react"
 import { AuthGuard } from "@/components/auth/auth-guard"
-import { Navbar } from "@/components/layout/navbar"
 import { CandidateProfileForm } from "@/components/profile/candidate-profile-form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -50,8 +49,6 @@ export default function ProfilePage() {
   return (
     <AuthGuard>
       <div className="min-h-screen bg-muted/30">
-        <Navbar />
-
         <div className="container mx-auto px-4 py-8">
           {/* Header */}
           <div className="mb-8">

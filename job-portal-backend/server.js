@@ -1,6 +1,17 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { sequelize } from './models/index.js';
+import { authenticateToken, requireRole } from './middleware/auth.js';
+import {
+  register,
+  login,
+  getAllUsers,
+  getUserById,
+  updateUser,
+  deleteUser,
+  getProfile
+} from './controllers/userController.js';
 
 dotenv.config();
 
@@ -17,6 +28,22 @@ app.use(express.json());
 // Test route
 app.get('/', (req, res) => {
   res.json({ message: 'Job Portal Backend is running! 🚀' });
+});
+
+// Test database connection
+app.get('/health', async (req, res) => {
+  try {
+    await sequelize.authenticate();
+    res.json({ 
+      message: 'Database connected successfully! ✅',
+      status: 'healthy'
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      message: 'Database connection failed! ❌',
+      error: error.message
+    });
+  }
 });
 
 // API Routes
@@ -134,8 +161,29 @@ app.get('/api/companies', (req, res) => {
   res.json(companies);
 });
 
+// User Authentication Routes
+app.post('/api/auth/register', register);
+app.post('/api/auth/login', login);
+app.get('/api/auth/profile', authenticateToken, getProfile);
+
+// User CRUD Routes
+app.get('/api/users', authenticateToken, requireRole(['super_admin']), getAllUsers);
+app.get('/api/users/:id', authenticateToken, getUserById);
+app.put('/api/users/:id', authenticateToken, updateUser);
+app.delete('/api/users/:id', authenticateToken, requireRole(['super_admin']), deleteUser);
+
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
+  try {
+    // Test database connection
+    await sequelize.authenticate();
+    console.log('✅ Database connected successfully');
+  } catch (error) {
+    console.error('❌ Database connection failed:', error.message);
+  }
+  
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📡 API available at http://localhost:${PORT}/api`);
+  console.log(`🔐 Auth endpoints: /api/auth/register, /api/auth/login`);
+  console.log(`👥 User endpoints: /api/users`);
 });

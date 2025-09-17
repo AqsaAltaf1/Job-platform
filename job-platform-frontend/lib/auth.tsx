@@ -5,7 +5,7 @@ import type React from "react"
 
 import { createContext, useContext, useEffect, useState } from "react"
 import type { User, UserWithProfile } from "./types"
-import { mockUsers, mockCandidateProfiles, mockEmployerProfiles, mockCompanies } from "./mock-data"
+import { authAPI, tokenManager } from "./auth-api"
 
 interface AuthContextType {
   user: UserWithProfile | null
@@ -18,9 +18,9 @@ interface AuthContextType {
 interface RegisterData {
   email: string
   password: string
-  firstName: string
-  lastName: string
-  role: "employer" | "candidate"
+  first_name: string
+  last_name: string
+  role: "super_admin" | "employer" | "candidate"
   phone?: string
 }
 
@@ -31,108 +31,81 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check for stored auth on mount
-    const storedUser = localStorage.getItem("auth_user")
-    if (storedUser) {
-      try {
-        const userData = JSON.parse(storedUser)
-        setUser(getUserWithProfile(userData.id))
-      } catch (error) {
-        localStorage.removeItem("auth_user")
-      }
+    // Check for stored JWT token on mount
+    const token = tokenManager.getToken()
+    if (token) {
+      // Verify token by getting user profile
+      authAPI.getProfile(token).then((response) => {
+        if (response.success && response.user) {
+          setUser(response.user as UserWithProfile)
+        } else {
+          // Token is invalid, remove it
+          tokenManager.removeToken()
+        }
+        setLoading(false)
+      }).catch(() => {
+        tokenManager.removeToken()
+        setLoading(false)
+      })
+    } else {
+      setLoading(false)
     }
-    setLoading(false)
   }, [])
 
-  const getUserWithProfile = (userId: string): UserWithProfile | null => {
-    const baseUser = mockUsers.find((u) => u.id === userId)
-    if (!baseUser) return null
-
-    const userWithProfile: UserWithProfile = { ...baseUser }
-
-    if (baseUser.role === "candidate") {
-      userWithProfile.candidateProfile = mockCandidateProfiles.find((p) => p.user_id === userId)
-    } else if (baseUser.role === "employer") {
-      const employerProfile = mockEmployerProfiles.find((p) => p.user_id === userId)
-      if (employerProfile) {
-        const company = mockCompanies.find((c) => c.id === employerProfile.company_id)
-        userWithProfile.employerProfile = {
-          ...employerProfile,
-          company: company!,
-        }
-      }
-    }
-
-    return userWithProfile
-  }
 
   const login = async (email: string, password: string) => {
     setLoading(true)
 
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    const foundUser = mockUsers.find((u) => u.email === email)
-
-    if (!foundUser) {
+    try {
+      const response = await authAPI.login({ email, password })
+      
+      if (response.success && response.user && response.token) {
+        // Store token and user data
+        tokenManager.setToken(response.token)
+        setUser(response.user as UserWithProfile)
+        setLoading(false)
+        return { success: true }
+      } else {
+        setLoading(false)
+        return { success: false, error: response.error || "Login failed" }
+      }
+    } catch (error) {
       setLoading(false)
-      return { success: false, error: "User not found" }
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : "Login failed" 
+      }
     }
-
-    // In a real app, you'd verify the password hash
-    if (password.length < 6) {
-      setLoading(false)
-      return { success: false, error: "Invalid password" }
-    }
-
-    const userWithProfile = getUserWithProfile(foundUser.id)
-    setUser(userWithProfile)
-    localStorage.setItem("auth_user", JSON.stringify(foundUser))
-
-    setLoading(false)
-    return { success: true }
   }
 
   const register = async (userData: RegisterData) => {
     setLoading(true)
 
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    // Check if user already exists
-    const existingUser = mockUsers.find((u) => u.email === userData.email)
-    if (existingUser) {
+    try {
+      const response = await authAPI.register(userData)
+      
+      if (response.success && response.user && response.token) {
+        // Store token and user data
+        tokenManager.setToken(response.token)
+        setUser(response.user as UserWithProfile)
+        setLoading(false)
+        return { success: true }
+      } else {
+        setLoading(false)
+        return { success: false, error: response.error || "Registration failed" }
+      }
+    } catch (error) {
       setLoading(false)
-      return { success: false, error: "User already exists" }
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : "Registration failed" 
+      }
     }
-
-    // Create new user (in real app, this would be saved to database)
-    const newUser: User = {
-      id: Math.random().toString(36).substr(2, 9),
-      email: userData.email,
-      password_hash: "hashed_" + userData.password,
-      role: userData.role,
-      first_name: userData.firstName,
-      last_name: userData.lastName,
-      phone: userData.phone,
-      created_at: new Date(),
-      updated_at: new Date(),
-    }
-
-    // Add to mock data (in real app, this would be database operations)
-    mockUsers.push(newUser)
-
-    const userWithProfile = getUserWithProfile(newUser.id)
-    setUser(userWithProfile)
-    localStorage.setItem("auth_user", JSON.stringify(newUser))
-
-    setLoading(false)
-    return { success: true }
   }
 
   const logout = () => {
     setUser(null)
-    localStorage.removeItem("auth_user")
+    tokenManager.removeToken()
   }
 
   return <AuthContext.Provider value={{ user, login, register, logout, loading }}>{children}</AuthContext.Provider>
@@ -147,7 +120,7 @@ export function useAuth() {
 }
 
 // Auth guard hook
-export function useRequireAuth(allowedRoles?: Array<"admin" | "employer" | "candidate">) {
+export function useRequireAuth(allowedRoles?: Array<"super_admin" | "employer" | "candidate">) {
   const { user, loading } = useAuth()
 
   if (loading) return { user: null, loading: true, authorized: false }

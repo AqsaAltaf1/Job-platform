@@ -51,8 +51,8 @@ export function RegisterForm({ onRoleChange }: RegisterFormProps) {
     const result = await register({
       email: formData.email,
       password: formData.password,
-      firstName: formData.firstName,
-      lastName: formData.lastName,
+      first_name: formData.firstName,
+      last_name: formData.lastName,
       role: formData.role,
       phone: formData.phone || undefined,
     })

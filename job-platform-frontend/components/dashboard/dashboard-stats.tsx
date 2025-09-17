@@ -12,13 +12,13 @@ interface DashboardStatsProps {
     activeJobs?: number
     pendingApplications?: number
   }
-  userRole: "admin" | "employer" | "candidate"
+  userRole: "super_admin" | "employer" | "candidate"
 }
 
 export function DashboardStats({ stats, userRole }: DashboardStatsProps) {
   const getStatsForRole = () => {
     switch (userRole) {
-      case "admin":
+      case "super_admin":
         return [
           {
             title: "Total Jobs",

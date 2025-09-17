@@ -4,7 +4,7 @@ export interface User {
   id: string
   email: string
   password_hash: string
-  role: "admin" | "employer" | "candidate"
+  role: "super_admin" | "employer" | "candidate"
   first_name: string
   last_name: string
   phone?: string
