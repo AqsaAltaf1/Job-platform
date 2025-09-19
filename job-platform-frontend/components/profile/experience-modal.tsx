@@ -83,7 +83,7 @@ export function ExperienceModal({ isOpen, onClose, onSave, experience }: Experie
         setError(data.error || 'Failed to save experience')
       }
     } catch (error) {
-      setError('Failed to save experience')
+      setError(error instanceof Error ? error.message : 'Failed to save experience')
     } finally {
       setLoading(false)
     }

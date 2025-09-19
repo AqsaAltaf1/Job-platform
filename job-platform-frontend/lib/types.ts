@@ -116,6 +116,49 @@ export interface EmployerProfile {
   updated_at: Date
 }
 
+// Enhanced skill types
+export interface SkillEvidence {
+  id: string
+  type: "work_sample" | "github_repo" | "portfolio_link" | "certification" | "project"
+  title: string
+  description?: string
+  url?: string
+  file_url?: string
+  verified: boolean
+  verified_by?: string
+  verified_at?: Date
+}
+
+export interface PeerEndorsement {
+  id: string
+  endorser_name: string
+  endorser_email: string
+  endorser_position?: string
+  endorser_company?: string
+  relationship: "colleague" | "manager" | "client" | "peer" | "other"
+  endorsement_text: string
+  skill_level: "beginner" | "intermediate" | "advanced" | "expert"
+  created_at: Date
+  verified: boolean
+}
+
+export interface EnhancedSkill {
+  id: string
+  name: string
+  category: string
+  taxonomy_source: "ESCO" | "O*NET" | "custom"
+  taxonomy_id?: string
+  level: "beginner" | "intermediate" | "advanced" | "expert"
+  years_experience: number
+  last_used?: Date
+  evidence: SkillEvidence[]
+  endorsements: PeerEndorsement[]
+  self_rating: number // 1-5 scale
+  verified_rating?: number // Calibrated rating from assessments
+  created_at: Date
+  updated_at: Date
+}
+
 export interface CandidateProfile {
   id: string
   user_id: string
@@ -129,8 +172,9 @@ export interface CandidateProfile {
   linkedin_url?: string
   github_url?: string
   profile_picture_url?: string
-  // Candidate-specific fields
-  skills?: string[]
+  // Enhanced skills system
+  core_skills?: EnhancedSkill[]
+  additional_skills?: string[] // Legacy simple skills
   experience_years?: number
   education?: string
   resume_url?: string

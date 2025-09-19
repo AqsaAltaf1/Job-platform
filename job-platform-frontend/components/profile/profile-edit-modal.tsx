@@ -9,10 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { X, Upload, Camera } from "lucide-react"
+import { X, Upload, Camera, Image as ImageIcon } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import { profileAPI } from "@/lib/profile-api"
-import type { UserProfile } from "@/lib/types"
 
 interface ProfileEditModalProps {
   isOpen: boolean
@@ -52,12 +51,23 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState("")
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   useEffect(() => {
     if (isOpen && user) {
       loadUserProfile()
     }
   }, [isOpen, user])
+
+  // Cleanup object URL on unmount
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+      }
+    }
+  }, [previewUrl])
 
   const loadUserProfile = async () => {
     try {
@@ -103,7 +113,31 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
     setError("")
 
     try {
-      await profileAPI.updateProfile(formData)
+      // Prepare data for submission
+      const submitData = { ...formData }
+      
+      // If a file is selected, compress and convert it to base64 data URL
+      if (selectedFile) {
+        try {
+          const compressedDataUrl = await compressImage(selectedFile)
+          submitData.profile_picture_url = compressedDataUrl
+          
+          await profileAPI.updateProfile(submitData)
+          setSuccess(true)
+          setTimeout(() => {
+            onSave()
+            onClose()
+          }, 1500)
+        } catch (error) {
+          setError(error instanceof Error ? error.message : "Failed to process image")
+        } finally {
+          setLoading(false)
+        }
+        return // Exit early, the rest will be handled above
+      }
+      
+      // No file selected, proceed with normal update
+      await profileAPI.updateProfile(submitData)
       setSuccess(true)
       setTimeout(() => {
         onSave()
@@ -144,19 +178,77 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
     }
   }
 
+  const compressImage = (file: File, maxWidth: number = 800, quality: number = 0.7): Promise<string> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')!
+      const img = new Image()
+      
+      img.onload = () => {
+        // Calculate new dimensions
+        let { width, height } = img
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width
+          width = maxWidth
+        }
+        
+        canvas.width = width
+        canvas.height = height
+        
+        // Draw and compress
+        ctx.drawImage(img, 0, 0, width, height)
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality)
+        resolve(compressedDataUrl)
+      }
+      
+      img.src = URL.createObjectURL(file)
+    })
+  }
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        setError('Please select an image file')
+        return
+      }
+      
+      // Check file size (max 2MB - reduced from 5MB)
+      if (file.size > 2 * 1024 * 1024) {
+        setError('File size must be less than 2MB')
+        return
+      }
+      
+      setSelectedFile(file)
+      const url = URL.createObjectURL(file)
+      setPreviewUrl(url)
+      setError('')
+    }
+  }
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null)
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl)
+    }
+    setPreviewUrl(null)
+  }
+
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-2xl font-bold">Edit Profile</h2>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <X className="h-4 w-4" />
+    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between p-8 border-b border-gray-100 flex-shrink-0">
+          <h2 className="text-3xl font-bold text-gray-900">Edit Profile</h2>
+          <Button variant="ghost" size="sm" onClick={onClose} className="rounded-full p-2 hover:bg-blue-900 hover:text-white">
+            <X className="h-5 w-5" />
           </Button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto">
+          <form onSubmit={handleSubmit} className="p-8 space-y-8">
           {success && (
             <Alert>
               <AlertDescription>Profile updated successfully!</AlertDescription>
@@ -170,140 +262,175 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
           )}
 
           {/* Profile Picture */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Profile Picture</h3>
-            <div className="flex items-center gap-6">
-              <Avatar className="w-20 h-20">
+          <div className="space-y-6">
+            <h3 className="text-xl font-semibold text-gray-900">Profile Picture</h3>
+            <div className="flex items-center gap-8">
+              <Avatar className="w-24 h-24 border-4 border-gray-100">
                 <AvatarImage 
-                  src={formData.profile_picture_url || `https://ui-avatars.com/api/?name=${formData.first_name}+${formData.last_name}&background=3b82f6&color=fff&size=80`} 
-                  alt={`${formData.first_name} ${formData.last_name}`}
+                  src={previewUrl || formData.profile_picture_url || `https://ui-avatars.com/api/?name=${user?.first_name}+${user?.last_name}&background=3b82f6&color=fff&size=96`} 
+                  alt={`${user?.first_name} ${user?.last_name}` || "User"}
                 />
-                <AvatarFallback className="text-lg">
-                  {formData.first_name?.[0]}{formData.last_name?.[0]}
+                <AvatarFallback className="text-xl font-semibold">
+                  {user?.first_name?.[0]}{user?.last_name?.[0] || 'U'}
                 </AvatarFallback>
               </Avatar>
-              <div className="space-y-2">
-                <Label htmlFor="profile_picture_url">Profile Picture URL</Label>
-                <Input
-                  id="profile_picture_url"
-                  type="url"
-                  placeholder="https://example.com/your-photo.jpg"
-                  value={formData.profile_picture_url || ""}
-                  onChange={(e) => updateFormData("profile_picture_url", e.target.value)}
-                />
-                <p className="text-sm text-gray-500">
-                  Enter a URL to your profile picture or leave blank for auto-generated avatar
-                </p>
+              <div className="space-y-4 flex-1">
+                {/* File Upload Section */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium text-gray-700">Upload Profile Picture</Label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      id="profile-picture-upload"
+                    />
+                    <label
+                      htmlFor="profile-picture-upload"
+                      className="flex items-center gap-2 px-6 py-3 bg-blue-900 hover:bg-blue-800 text-white rounded-xl cursor-pointer transition-colors font-medium"
+                    >
+                      <Upload className="h-5 w-5" />
+                      Choose File
+                    </label>
+                    {selectedFile && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600 font-medium">{selectedFile.name}</span>
+                        <span className="text-xs text-gray-500">
+                          ({(selectedFile.size / 1024 / 1024).toFixed(1)}MB - will be compressed)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleRemoveFile}
+                          className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Supported formats: JPG, PNG, GIF. Maximum file size: 2MB (will be compressed automatically)
+                  </p>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Basic Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Basic Information</h3>
+          <div className="space-y-6">
+            <h3 className="text-xl font-semibold text-gray-900">Basic Information</h3>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <Label htmlFor="phone" className="text-sm font-medium text-gray-700">Phone</Label>
                 <Input
                   id="phone"
                   type="tel"
                   placeholder="+1 (555) 123-4567"
                   value={formData.phone}
                   onChange={(e) => updateFormData("phone", e.target.value)}
+                  className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="location">Location</Label>
+              <div className="space-y-3">
+                <Label htmlFor="location" className="text-sm font-medium text-gray-700">Location</Label>
                 <Input
                   id="location"
                   placeholder="e.g., San Francisco, CA"
                   value={formData.location}
                   onChange={(e) => updateFormData("location", e.target.value)}
+                  className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900"
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="bio">Bio</Label>
+            <div className="space-y-3">
+              <Label htmlFor="bio" className="text-sm font-medium text-gray-700">Bio</Label>
               <Textarea
                 id="bio"
                 placeholder="Tell us about yourself..."
                 value={formData.bio}
                 onChange={(e) => updateFormData("bio", e.target.value)}
-                rows={3}
+                rows={4}
+                className="rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900 resize-none"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="website">Website</Label>
+            <div className="space-y-3">
+              <Label htmlFor="website" className="text-sm font-medium text-gray-700">Website</Label>
               <Input
                 id="website"
                 type="url"
                 placeholder="https://yourwebsite.com"
                 value={formData.website}
                 onChange={(e) => updateFormData("website", e.target.value)}
+                className="h-12 rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="linkedin_url">LinkedIn</Label>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <Label htmlFor="linkedin_url" className="text-sm font-medium text-gray-700">LinkedIn</Label>
                 <Input
                   id="linkedin_url"
                   type="url"
                   placeholder="https://linkedin.com/in/yourprofile"
                   value={formData.linkedin_url}
                   onChange={(e) => updateFormData("linkedin_url", e.target.value)}
+                  className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="github_url">GitHub</Label>
+              <div className="space-y-3">
+                <Label htmlFor="github_url" className="text-sm font-medium text-gray-700">GitHub</Label>
                 <Input
                   id="github_url"
                   type="url"
                   placeholder="https://github.com/yourusername"
                   value={formData.github_url}
                   onChange={(e) => updateFormData("github_url", e.target.value)}
+                  className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900"
                 />
               </div>
             </div>
+
           </div>
 
           {/* Role-specific fields */}
           {user?.role === "candidate" && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Professional Information</h3>
+            <div className="space-y-6">
+              <h3 className="text-xl font-semibold text-gray-900">Professional Information</h3>
               
-              <div className="space-y-2">
-                <Label htmlFor="skills">Skills</Label>
-                <div className="flex gap-2">
+              <div className="space-y-3">
+                <Label htmlFor="skills" className="text-sm font-medium text-gray-700">Skills</Label>
+                <div className="flex gap-3">
                   <Input
                     id="skills"
                     placeholder="Add a skill (e.g., JavaScript, React)"
                     value={newSkill}
                     onChange={(e) => setNewSkill(e.target.value)}
                     onKeyPress={handleKeyPress}
+                    className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900"
                   />
-                  <Button type="button" onClick={addSkill} disabled={!newSkill.trim()}>
+                  <Button type="button" onClick={addSkill} disabled={!newSkill.trim()} className="h-12 px-6 rounded-xl bg-blue-900 hover:bg-blue-800 text-white">
                     Add
                   </Button>
                 </div>
-                <div className="flex flex-wrap gap-2 mt-2">
+                <div className="flex flex-wrap gap-2 mt-3">
                   {formData.skills.map((skill) => (
-                    <Badge key={skill} variant="secondary" className="flex items-center gap-1">
+                    <Badge key={skill} variant="secondary" className="flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
                       {skill}
-                      <X className="h-3 w-3 cursor-pointer" onClick={() => removeSkill(skill)} />
+                      <X className="h-3 w-3 cursor-pointer hover:text-blue-900" onClick={() => removeSkill(skill)} />
                     </Badge>
                   ))}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="experience_years">Years of Experience</Label>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <Label htmlFor="experience_years" className="text-sm font-medium text-gray-700">Years of Experience</Label>
                   <Input
                     id="experience_years"
                     type="number"
@@ -312,16 +439,17 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
                     onChange={(e) =>
                       updateFormData("experience_years", e.target.value ? Number.parseInt(e.target.value) : undefined)
                     }
+                    className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="availability">Availability</Label>
+                <div className="space-y-3">
+                  <Label htmlFor="availability" className="text-sm font-medium text-gray-700">Availability</Label>
                   <Select
                     value={formData.availability}
                     onValueChange={(value: any) => updateFormData("availability", value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -475,15 +603,16 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
             </div>
           )}
 
-          <div className="flex justify-end space-x-4 pt-6 border-t">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Saving..." : "Save Profile"}
-            </Button>
-          </div>
-        </form>
+            <div className="flex justify-end space-x-4 pt-8 border-t border-gray-100">
+              <Button type="button" variant="outline" onClick={onClose} className="h-12 px-8 rounded-xl border-gray-200 hover:bg-blue-900 hover:text-white hover:border-blue-900">
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading} className="h-12 px-8 rounded-xl bg-blue-900 hover:bg-blue-800 text-white">
+                {loading ? "Saving..." : "Save Profile"}
+              </Button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   )

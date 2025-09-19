@@ -98,7 +98,7 @@ export function EducationModal({ isOpen, onClose, onSave, education }: Education
         setError(data.error || 'Failed to save education')
       }
     } catch (error) {
-      setError('Failed to save education')
+      setError(error instanceof Error ? error.message : 'Failed to save education')
     } finally {
       setLoading(false)
     }

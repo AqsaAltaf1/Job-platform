@@ -22,7 +22,46 @@ async function authenticatedRequest(url: string, options: RequestInit = {}) {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}))
-    throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
+    const statusText = response.statusText || 'Unknown Error'
+    const statusCode = response.status
+    
+    // Create detailed error message
+    let errorMessage = `HTTP ${statusCode}: ${statusText}`
+    
+    if (errorData.error) {
+      errorMessage += ` - ${errorData.error}`
+    }
+    
+    if (errorData.message) {
+      errorMessage += ` - ${errorData.message}`
+    }
+    
+    // Add specific error details for common status codes
+    switch (statusCode) {
+      case 400:
+        errorMessage += ' (Bad Request - Check your input data)'
+        break
+      case 401:
+        errorMessage += ' (Unauthorized - Please login again)'
+        break
+      case 403:
+        errorMessage += ' (Forbidden - You do not have permission or file is too large)'
+        break
+      case 404:
+        errorMessage += ' (Not Found - Resource not found)'
+        break
+      case 413:
+        errorMessage += ' (Payload Too Large - File size exceeds limit)'
+        break
+      case 422:
+        errorMessage += ' (Unprocessable Entity - Invalid data format)'
+        break
+      case 500:
+        errorMessage += ' (Internal Server Error - Server issue)'
+        break
+    }
+    
+    throw new Error(errorMessage)
   }
 
   return response.json()

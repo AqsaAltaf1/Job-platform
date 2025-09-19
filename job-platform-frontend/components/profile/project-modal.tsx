@@ -87,7 +87,7 @@ export function ProjectModal({ isOpen, onClose, onSave, project }: ProjectModalP
         setError(data.error || 'Failed to save project')
       }
     } catch (error) {
-      setError('Failed to save project')
+      setError(error instanceof Error ? error.message : 'Failed to save project')
     } finally {
       setLoading(false)
     }

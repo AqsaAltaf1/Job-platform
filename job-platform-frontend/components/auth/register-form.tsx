@@ -301,7 +301,7 @@ export function RegisterForm({ onRoleChange }: RegisterFormProps) {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full h-12 rounded-xl" disabled={loading}>
+              <Button type="submit" className="w-full h-12 rounded-xl bg-blue-900 hover:bg-blue-800 text-white" disabled={loading}>
                 {loading ? "Sending verification..." : "Send Verification Code"}
               </Button>
             </>
@@ -334,7 +334,7 @@ export function RegisterForm({ onRoleChange }: RegisterFormProps) {
                 </div>
               )}
 
-              <Button type="submit" className="w-full h-12 rounded-xl" disabled={loading}>
+              <Button type="submit" className="w-full h-12 rounded-xl bg-blue-900 hover:bg-blue-800 text-white" disabled={loading}>
                 {loading ? "Verifying..." : "Verify & Create Account"}
               </Button>
 
@@ -343,7 +343,7 @@ export function RegisterForm({ onRoleChange }: RegisterFormProps) {
                   type="button"
                   onClick={handleResendOtp}
                   disabled={resendCooldown > 0}
-                  className="text-sm text-primary hover:underline disabled:text-muted-foreground"
+                  className="text-sm text-blue-900 hover:underline disabled:text-muted-foreground"
                 >
                   {resendCooldown > 0 
                     ? `Resend code in ${resendCooldown}s` 
@@ -356,7 +356,7 @@ export function RegisterForm({ onRoleChange }: RegisterFormProps) {
                   <button
                     type="button"
                     onClick={handleBackToForm}
-                    className="text-primary hover:underline"
+                    className="text-blue-900 hover:underline"
                   >
                     Go back
                   </button>
