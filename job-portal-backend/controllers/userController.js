@@ -1,10 +1,11 @@
-import { User, EmployerProfile, CandidateProfile } from '../models/index.js';
+import { User, EmployerProfile, CandidateProfile, Otp } from '../models/index.js';
 import { generateToken } from '../utils/jwt.js';
+import OtpService from '../services/otpService.js';
 
-// Register new user
+// Register new user with OTP verification
 export const register = async (req, res) => {
   try {
-    const { email, password, role, first_name, last_name, phone } = req.body;
+    const { email, password, role, first_name, last_name, phone, otp } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ where: { email } });
@@ -15,7 +16,34 @@ export const register = async (req, res) => {
       });
     }
 
-    // Create new user
+    // Verify OTP if provided
+    if (otp) {
+      const otpResult = await OtpService.verifyOtp(email, otp);
+      if (!otpResult.success) {
+        return res.status(400).json({
+          success: false,
+          error: otpResult.error
+        });
+      }
+    } else {
+      // If no OTP provided, send OTP instead of registering
+      const otpResult = await OtpService.createAndSendOtp(email);
+      if (otpResult.success) {
+        return res.status(200).json({
+          success: true,
+          message: 'OTP sent to your email. Please verify your email to complete registration.',
+          requiresOtp: true,
+          expiresAt: otpResult.expiresAt
+        });
+      } else {
+        return res.status(400).json({
+          success: false,
+          error: otpResult.error
+        });
+      }
+    }
+
+    // Create new user (only if OTP is verified)
     const user = await User.create({
       email,
       password_hash: password, // Will be hashed by the model hook
@@ -23,6 +51,7 @@ export const register = async (req, res) => {
       first_name,
       last_name,
       phone,
+      is_verified: true, // Mark as verified since OTP was confirmed
     });
 
     // Create appropriate profile based on user role
@@ -52,7 +81,7 @@ export const register = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'User registered successfully',
+      message: 'User registered and verified successfully',
       user: user.toJSON(),
       profile: profile ? profile.toJSON() : null,
       token

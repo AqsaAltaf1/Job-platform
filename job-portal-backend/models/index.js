@@ -5,6 +5,7 @@ import { CandidateProfile } from './CandidateProfile.js';
 import { Experience } from './Experience.js';
 import { Project } from './Project.js';
 import { Education } from './Education.js';
+import Otp from './Otp.js';
 
 // Define associations
 User.hasOne(EmployerProfile, { foreignKey: 'user_id', as: 'employerProfile' });
@@ -31,4 +32,5 @@ export {
   Experience,
   Project,
   Education,
+  Otp,
 };

@@ -91,20 +91,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await authAPI.register(userData)
       
-      if (response.success && response.user && response.token) {
-        // Store token and user data
-        tokenManager.setToken(response.token)
-        setUser(response.user as UserWithProfile)
-        setLoading(false)
-        
-        // Always show profile modal for new registrations
-        setShowProfileModal(true)
-        
-        return { success: true }
-      } else {
-        setLoading(false)
-        return { success: false, error: response.error || "Registration failed" }
+      if (response.success) {
+        if (response.requiresOtp) {
+          // OTP sent, return success with OTP flag
+          setLoading(false)
+          return { 
+            success: true, 
+            requiresOtp: true,
+            expiresAt: response.expiresAt
+          }
+        } else if (response.user && response.token) {
+          // Registration completed successfully
+          tokenManager.setToken(response.token)
+          setUser(response.user as UserWithProfile)
+          setLoading(false)
+          
+          // Always show profile modal for new registrations
+          setShowProfileModal(true)
+          
+          return { success: true }
+        }
       }
+      
+      setLoading(false)
+      return { success: false, error: response.error || "Registration failed" }
     } catch (error) {
       setLoading(false)
       return { 

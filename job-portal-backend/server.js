@@ -33,6 +33,12 @@ import {
   updateEducation,
   deleteEducation
 } from './controllers/educationController.js';
+import {
+  sendOtp,
+  verifyOtp,
+  resendOtp,
+  cleanupExpiredOtps
+} from './controllers/otpController.js';
 
 dotenv.config();
 
@@ -181,6 +187,12 @@ app.get('/api/companies', (req, res) => {
   ];
   res.json(companies);
 });
+
+// OTP Routes
+app.post('/api/otp/send', sendOtp);
+app.post('/api/otp/verify', verifyOtp);
+app.post('/api/otp/resend', resendOtp);
+app.post('/api/otp/cleanup', authenticateToken, requireRole(['super_admin']), cleanupExpiredOtps);
 
 // User Authentication Routes
 app.post('/api/auth/register', register);

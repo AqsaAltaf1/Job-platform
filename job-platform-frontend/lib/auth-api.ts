@@ -13,6 +13,7 @@ export interface RegisterData {
   first_name: string
   last_name: string
   phone?: string
+  otp?: string
 }
 
 export interface AuthResponse {
@@ -20,6 +21,8 @@ export interface AuthResponse {
   user?: any
   token?: string
   error?: string
+  requiresOtp?: boolean
+  expiresAt?: string
 }
 
 // Generic API request function
