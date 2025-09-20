@@ -1,10 +1,11 @@
-import { User } from '../models/index.js';
+import { User, EmployerProfile, CandidateProfile, Otp } from '../models/index.js';
 import { generateToken } from '../utils/jwt.js';
+import OtpService from '../services/otpService.js';
 
-// Register new user
+// Register new user with OTP verification
 export const register = async (req, res) => {
   try {
-    const { email, password, role, first_name, last_name, phone } = req.body;
+    const { email, password, role, first_name, last_name, phone, otp } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ where: { email } });
@@ -15,7 +16,34 @@ export const register = async (req, res) => {
       });
     }
 
-    // Create new user
+    // Verify OTP if provided
+    if (otp) {
+      const otpResult = await OtpService.verifyOtp(email, otp);
+      if (!otpResult.success) {
+        return res.status(400).json({
+          success: false,
+          error: otpResult.error
+        });
+      }
+    } else {
+      // If no OTP provided, send OTP instead of registering
+      const otpResult = await OtpService.createAndSendOtp(email);
+      if (otpResult.success) {
+        return res.status(200).json({
+          success: true,
+          message: 'OTP sent to your email. Please verify your email to complete registration.',
+          requiresOtp: true,
+          expiresAt: otpResult.expiresAt
+        });
+      } else {
+        return res.status(400).json({
+          success: false,
+          error: otpResult.error
+        });
+      }
+    }
+
+    // Create new user (only if OTP is verified)
     const user = await User.create({
       email,
       password_hash: password, // Will be hashed by the model hook
@@ -23,15 +51,39 @@ export const register = async (req, res) => {
       first_name,
       last_name,
       phone,
+      is_verified: true, // Mark as verified since OTP was confirmed
     });
+
+    // Create appropriate profile based on user role
+    let profile = null;
+    if (user.role === 'employer') {
+      profile = await EmployerProfile.create({
+        user_id: user.id,
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        phone: user.phone || null,
+        // All other fields will be null initially
+      });
+    } else if (user.role === 'candidate') {
+      profile = await CandidateProfile.create({
+        user_id: user.id,
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        phone: user.phone || null,
+        // All other fields will be null initially
+      });
+    }
 
     // Generate token
     const token = generateToken(user);
 
     res.status(201).json({
       success: true,
-      message: 'User registered successfully',
+      message: 'User registered and verified successfully',
       user: user.toJSON(),
+      profile: profile ? profile.toJSON() : null,
       token
     });
   } catch (error) {
@@ -221,15 +273,170 @@ export const deleteUser = async (req, res) => {
 // Get current user profile
 export const getProfile = async (req, res) => {
   try {
+    const user = await User.findByPk(req.user.id, {
+      include: [
+        {
+          model: EmployerProfile,
+          as: 'employerProfile',
+          required: false
+        },
+        {
+          model: CandidateProfile,
+          as: 'candidateProfile',
+          required: false
+        }
+      ]
+    });
+
     res.json({
       success: true,
-      user: req.user.toJSON()
+      user: user.toJSON()
     });
   } catch (error) {
     console.error('Get profile error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch profile'
+    });
+  }
+};
+
+// Get user profile by ID
+export const getUserProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const user = await User.findByPk(id, {
+      include: [
+        {
+          model: EmployerProfile,
+          as: 'employerProfile',
+          required: false
+        },
+        {
+          model: CandidateProfile,
+          as: 'candidateProfile',
+          required: false
+        }
+      ],
+      attributes: ['id', 'email', 'role', 'first_name', 'last_name']
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      user: user.toJSON()
+    });
+  } catch (error) {
+    console.error('Get user profile error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch user profile'
+    });
+  }
+};
+
+// Update user profile
+export const updateUserProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const updateData = req.body;
+
+    // Remove fields that shouldn't be updated directly
+    delete updateData.id;
+    delete updateData.user_id;
+    delete updateData.email; // Email should be updated through user table
+    delete updateData.created_at;
+    delete updateData.updated_at;
+
+    // Get user to determine role
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    let updatedProfile = null;
+    let updatedRowsCount = 0;
+
+    // Update appropriate profile based on user role
+    if (user.role === 'employer') {
+      [updatedRowsCount] = await EmployerProfile.update(updateData, {
+        where: { user_id: userId }
+      });
+      if (updatedRowsCount > 0) {
+        updatedProfile = await EmployerProfile.findOne({
+          where: { user_id: userId }
+        });
+      }
+    } else if (user.role === 'candidate') {
+      [updatedRowsCount] = await CandidateProfile.update(updateData, {
+        where: { user_id: userId }
+      });
+      if (updatedRowsCount > 0) {
+        updatedProfile = await CandidateProfile.findOne({
+          where: { user_id: userId }
+        });
+      }
+    }
+
+    if (updatedRowsCount === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Profile not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      profile: updatedProfile.toJSON()
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update profile'
+    });
+  }
+};
+
+// Get all user profiles (for admin)
+export const getAllUserProfiles = async (req, res) => {
+  try {
+    const users = await User.findAll({
+      include: [
+        {
+          model: EmployerProfile,
+          as: 'employerProfile',
+          required: false
+        },
+        {
+          model: CandidateProfile,
+          as: 'candidateProfile',
+          required: false
+        }
+      ],
+      order: [['created_at', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      users: users.map(user => user.toJSON())
+    });
+  } catch (error) {
+    console.error('Get all profiles error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch profiles'
     });
   }
 };

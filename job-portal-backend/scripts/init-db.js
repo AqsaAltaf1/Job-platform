@@ -1,4 +1,4 @@
-import { sequelize, User } from '../models/index.js';
+import { sequelize, User, EmployerProfile, CandidateProfile } from '../models/index.js';
 
 async function initializeDatabase() {
   try {
@@ -20,6 +20,7 @@ async function initializeDatabase() {
       phone: '+1234567890',
     });
 
+    // Super admin doesn't need a specific profile (can access everything)
     console.log('✅ Default super admin created:', superAdmin.email);
 
     // Create sample employer
@@ -32,6 +33,15 @@ async function initializeDatabase() {
       phone: '+1234567891',
     });
 
+    // Create employer profile
+    await EmployerProfile.create({
+      user_id: employer.id,
+      email: employer.email,
+      first_name: employer.first_name,
+      last_name: employer.last_name,
+      phone: employer.phone,
+    });
+
     console.log('✅ Sample employer created:', employer.email);
 
     // Create sample candidate
@@ -42,6 +52,15 @@ async function initializeDatabase() {
       first_name: 'Jane',
       last_name: 'Candidate',
       phone: '+1234567892',
+    });
+
+    // Create candidate profile
+    await CandidateProfile.create({
+      user_id: candidate.id,
+      email: candidate.email,
+      first_name: candidate.first_name,
+      last_name: candidate.last_name,
+      phone: candidate.phone,
     });
 
     console.log('✅ Sample candidate created:', candidate.email);

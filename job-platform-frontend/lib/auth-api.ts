@@ -13,6 +13,7 @@ export interface RegisterData {
   first_name: string
   last_name: string
   phone?: string
+  otp?: string
 }
 
 export interface AuthResponse {
@@ -20,6 +21,8 @@ export interface AuthResponse {
   user?: any
   token?: string
   error?: string
+  requiresOtp?: boolean
+  expiresAt?: string
 }
 
 // Generic API request function
@@ -42,7 +45,49 @@ async function apiRequest<T>(
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
+      const statusText = response.statusText || 'Unknown Error'
+      const statusCode = response.status
+      
+      // Create detailed error message
+      let errorMessage = `HTTP ${statusCode}: ${statusText}`
+      
+      if (errorData.error) {
+        errorMessage += ` - ${errorData.error}`
+      }
+      
+      if (errorData.message) {
+        errorMessage += ` - ${errorData.message}`
+      }
+      
+      // Add specific error details for common status codes
+      switch (statusCode) {
+        case 400:
+          errorMessage += ' (Bad Request - Check your input data)'
+          break
+        case 401:
+          errorMessage += ' (Unauthorized - Invalid credentials)'
+          break
+        case 403:
+          errorMessage += ' (Forbidden - Access denied)'
+          break
+        case 404:
+          errorMessage += ' (Not Found - Resource not found)'
+          break
+        case 409:
+          errorMessage += ' (Conflict - User already exists)'
+          break
+        case 413:
+          errorMessage += ' (Payload Too Large - File size exceeds limit)'
+          break
+        case 422:
+          errorMessage += ' (Unprocessable Entity - Invalid data format)'
+          break
+        case 500:
+          errorMessage += ' (Internal Server Error - Server issue)'
+          break
+      }
+      
+      throw new Error(errorMessage)
     }
 
     return await response.json()

@@ -10,8 +10,56 @@ import {
   getUserById,
   updateUser,
   deleteUser,
-  getProfile
+  getProfile,
+  getUserProfile,
+  updateUserProfile,
+  getAllUserProfiles
 } from './controllers/userController.js';
+import {
+  getUserExperiences,
+  createExperience,
+  updateExperience,
+  deleteExperience
+} from './controllers/experienceController.js';
+import {
+  getUserProjects,
+  createProject,
+  updateProject,
+  deleteProject
+} from './controllers/projectController.js';
+import {
+  getUserEducations,
+  createEducation,
+  updateEducation,
+  deleteEducation
+} from './controllers/educationController.js';
+import {
+  sendOtp,
+  verifyOtp,
+  resendOtp,
+  cleanupExpiredOtps
+} from './controllers/otpController.js';
+import {
+  getCandidateSkills,
+  getSkillDetails,
+  createEnhancedSkill,
+  updateEnhancedSkill,
+  deleteEnhancedSkill,
+  addSkillEvidence,
+  updateSkillEvidence,
+  deleteSkillEvidence,
+  addPeerEndorsement,
+  updatePeerEndorsement,
+  deletePeerEndorsement
+} from './controllers/enhancedSkillController.js';
+import {
+  getCandidateInvitations,
+  createReviewerInvitation,
+  getInvitationByToken,
+  submitReviewerFeedback,
+  updateInvitationStatus,
+  deleteReviewerInvitation
+} from './controllers/reviewerInvitationController.js';
 
 dotenv.config();
 
@@ -161,6 +209,12 @@ app.get('/api/companies', (req, res) => {
   res.json(companies);
 });
 
+// OTP Routes
+app.post('/api/otp/send', sendOtp);
+app.post('/api/otp/verify', verifyOtp);
+app.post('/api/otp/resend', resendOtp);
+app.post('/api/otp/cleanup', authenticateToken, requireRole(['super_admin']), cleanupExpiredOtps);
+
 // User Authentication Routes
 app.post('/api/auth/register', register);
 app.post('/api/auth/login', login);
@@ -171,6 +225,57 @@ app.get('/api/users', authenticateToken, requireRole(['super_admin']), getAllUse
 app.get('/api/users/:id', authenticateToken, getUserById);
 app.put('/api/users/:id', authenticateToken, updateUser);
 app.delete('/api/users/:id', authenticateToken, requireRole(['super_admin']), deleteUser);
+
+// User Profile Routes
+app.get('/api/profiles', authenticateToken, requireRole(['super_admin']), getAllUserProfiles);
+app.get('/api/profiles/:id', authenticateToken, getUserProfile);
+app.put('/api/profiles', authenticateToken, updateUserProfile);
+
+// Experience Routes (Candidate only)
+app.get('/api/experiences', authenticateToken, getUserExperiences);
+app.post('/api/experiences', authenticateToken, createExperience);
+app.put('/api/experiences/:id', authenticateToken, updateExperience);
+app.delete('/api/experiences/:id', authenticateToken, deleteExperience);
+
+// Project Routes (Candidate only)
+app.get('/api/projects', authenticateToken, getUserProjects);
+app.post('/api/projects', authenticateToken, createProject);
+app.put('/api/projects/:id', authenticateToken, updateProject);
+app.delete('/api/projects/:id', authenticateToken, deleteProject);
+
+// Education Routes (Candidate only)
+app.get('/api/educations', authenticateToken, getUserEducations);
+app.post('/api/educations', authenticateToken, createEducation);
+app.put('/api/educations/:id', authenticateToken, updateEducation);
+app.delete('/api/educations/:id', authenticateToken, deleteEducation);
+
+// Enhanced Skills Routes (Candidate only)
+app.get('/api/candidates/:candidateId/skills', authenticateToken, getCandidateSkills);
+app.get('/api/skills/:skillId', authenticateToken, getSkillDetails);
+app.post('/api/candidates/:candidateId/skills', authenticateToken, createEnhancedSkill);
+app.put('/api/skills/:skillId', authenticateToken, updateEnhancedSkill);
+app.delete('/api/skills/:skillId', authenticateToken, deleteEnhancedSkill);
+
+// Skill Evidence Routes
+app.post('/api/skills/:skillId/evidence', authenticateToken, addSkillEvidence);
+app.put('/api/evidence/:evidenceId', authenticateToken, updateSkillEvidence);
+app.delete('/api/evidence/:evidenceId', authenticateToken, deleteSkillEvidence);
+
+// Peer Endorsement Routes
+app.post('/api/skills/:skillId/endorsements', authenticateToken, addPeerEndorsement);
+app.put('/api/endorsements/:endorsementId', authenticateToken, updatePeerEndorsement);
+app.delete('/api/endorsements/:endorsementId', authenticateToken, deletePeerEndorsement);
+
+// Reviewer Invitation Routes
+app.get('/api/candidates/:candidateId/invitations', authenticateToken, getCandidateInvitations);
+app.post('/api/candidates/:candidateId/invitations', authenticateToken, createReviewerInvitation);
+app.get('/api/invitations/:token', getInvitationByToken);
+app.put('/api/invitations/:invitationId', authenticateToken, updateInvitationStatus);
+app.delete('/api/invitations/:invitationId', authenticateToken, deleteReviewerInvitation);
+
+// Public reviewer routes (no authentication required)
+app.get('/api/review/:token', getInvitationByToken);
+app.post('/api/review/:token/feedback', submitReviewerFeedback);
 
 // Start server
 app.listen(PORT, async () => {
