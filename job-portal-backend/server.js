@@ -39,6 +39,27 @@ import {
   resendOtp,
   cleanupExpiredOtps
 } from './controllers/otpController.js';
+import {
+  getCandidateSkills,
+  getSkillDetails,
+  createEnhancedSkill,
+  updateEnhancedSkill,
+  deleteEnhancedSkill,
+  addSkillEvidence,
+  updateSkillEvidence,
+  deleteSkillEvidence,
+  addPeerEndorsement,
+  updatePeerEndorsement,
+  deletePeerEndorsement
+} from './controllers/enhancedSkillController.js';
+import {
+  getCandidateInvitations,
+  createReviewerInvitation,
+  getInvitationByToken,
+  submitReviewerFeedback,
+  updateInvitationStatus,
+  deleteReviewerInvitation
+} from './controllers/reviewerInvitationController.js';
 
 dotenv.config();
 
@@ -227,6 +248,34 @@ app.get('/api/educations', authenticateToken, getUserEducations);
 app.post('/api/educations', authenticateToken, createEducation);
 app.put('/api/educations/:id', authenticateToken, updateEducation);
 app.delete('/api/educations/:id', authenticateToken, deleteEducation);
+
+// Enhanced Skills Routes (Candidate only)
+app.get('/api/candidates/:candidateId/skills', authenticateToken, getCandidateSkills);
+app.get('/api/skills/:skillId', authenticateToken, getSkillDetails);
+app.post('/api/candidates/:candidateId/skills', authenticateToken, createEnhancedSkill);
+app.put('/api/skills/:skillId', authenticateToken, updateEnhancedSkill);
+app.delete('/api/skills/:skillId', authenticateToken, deleteEnhancedSkill);
+
+// Skill Evidence Routes
+app.post('/api/skills/:skillId/evidence', authenticateToken, addSkillEvidence);
+app.put('/api/evidence/:evidenceId', authenticateToken, updateSkillEvidence);
+app.delete('/api/evidence/:evidenceId', authenticateToken, deleteSkillEvidence);
+
+// Peer Endorsement Routes
+app.post('/api/skills/:skillId/endorsements', authenticateToken, addPeerEndorsement);
+app.put('/api/endorsements/:endorsementId', authenticateToken, updatePeerEndorsement);
+app.delete('/api/endorsements/:endorsementId', authenticateToken, deletePeerEndorsement);
+
+// Reviewer Invitation Routes
+app.get('/api/candidates/:candidateId/invitations', authenticateToken, getCandidateInvitations);
+app.post('/api/candidates/:candidateId/invitations', authenticateToken, createReviewerInvitation);
+app.get('/api/invitations/:token', getInvitationByToken);
+app.put('/api/invitations/:invitationId', authenticateToken, updateInvitationStatus);
+app.delete('/api/invitations/:invitationId', authenticateToken, deleteReviewerInvitation);
+
+// Public reviewer routes (no authentication required)
+app.get('/api/review/:token', getInvitationByToken);
+app.post('/api/review/:token/feedback', submitReviewerFeedback);
 
 // Start server
 app.listen(PORT, async () => {

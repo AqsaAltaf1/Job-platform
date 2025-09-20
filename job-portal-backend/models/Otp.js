@@ -39,6 +39,8 @@ const Otp = sequelize.define('Otp', {
 }, {
   tableName: 'otps',
   timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
   indexes: [
     {
       fields: ['email']

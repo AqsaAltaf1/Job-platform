@@ -138,6 +138,7 @@ export interface PeerEndorsement {
   relationship: "colleague" | "manager" | "client" | "peer" | "other"
   endorsement_text: string
   skill_level: "beginner" | "intermediate" | "advanced" | "expert"
+  star_rating: number // 1-5 stars
   created_at: Date
   verified: boolean
 }
@@ -148,13 +149,13 @@ export interface EnhancedSkill {
   category: string
   taxonomy_source: "ESCO" | "O*NET" | "custom"
   taxonomy_id?: string
-  level: "beginner" | "intermediate" | "advanced" | "expert"
+  level: "beginner" | "intermediate" | "advanced" | "expert" // Set by candidate
   years_experience: number
   last_used?: Date
   evidence: SkillEvidence[]
   endorsements: PeerEndorsement[]
-  self_rating: number // 1-5 scale
   verified_rating?: number // Calibrated rating from assessments
+  skill_rating?: number // Average rating from all endorsements (1.0 to 5.0)
   created_at: Date
   updated_at: Date
 }
@@ -235,11 +236,28 @@ export interface Education {
   updated_at: Date
 }
 
+export interface ReviewerInvitation {
+  id: string
+  candidate_profile_id: string
+  reviewer_email: string
+  reviewer_name?: string
+  skills_to_review: string[]
+  invitation_token: string
+  status: "pending" | "accepted" | "completed" | "expired"
+  expires_at: Date
+  completed_at?: Date
+  is_active: boolean
+  created_at: Date
+  updated_at: Date
+}
+
 export interface UserWithProfile extends User {
   candidateProfile?: CandidateProfile & {
     experiences?: Experience[]
     projects?: Project[]
     educations?: Education[]
+    coreSkills?: EnhancedSkill[]
+    reviewerInvitations?: ReviewerInvitation[]
   }
   employerProfile?: EmployerProfile
 }

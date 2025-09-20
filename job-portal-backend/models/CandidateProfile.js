@@ -56,7 +56,7 @@ export const CandidateProfile = sequelize.define('CandidateProfile', {
     allowNull: true,
   },
   profile_picture_url: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true,
   },
   // Candidate-specific fields

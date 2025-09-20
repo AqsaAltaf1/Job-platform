@@ -52,7 +52,7 @@ export const EmployerProfile = sequelize.define('EmployerProfile', {
     allowNull: true,
   },
   profile_picture_url: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true,
   },
   // Employer-specific fields

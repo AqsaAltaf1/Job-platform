@@ -8,12 +8,16 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Edit, Plus, MapPin, Mail, Phone, Globe, Linkedin, Github, Calendar, Building, Briefcase, Code, ExternalLink, User, Star, CheckCircle, Clock, DollarSign } from "lucide-react"
+import { Edit, Plus, MapPin, Mail, Phone, Globe, Linkedin, Github, Calendar, Building, Briefcase, Code, ExternalLink, User, Star, CheckCircle, Clock, DollarSign, FileText } from "lucide-react"
 import { ProfileEditModal } from "@/components/profile/profile-edit-modal"
 import { ExperienceModal } from "@/components/profile/experience-modal"
 import { ProjectModal } from "@/components/profile/project-modal"
 import { EducationModal } from "@/components/profile/education-modal"
-import type { Experience, Project, Education } from "@/lib/types"
+import EnhancedSkillsModal from "@/components/profile/enhanced-skills-modal"
+import SkillEvidenceModal from "@/components/profile/skill-evidence-modal"
+import PeerEndorsementModal from "@/components/profile/peer-endorsement-modal"
+import ReviewerInvitationModal from "@/components/profile/reviewer-invitation-modal"
+import type { Experience, Project, Education, EnhancedSkill } from "@/lib/types"
 
 export default function ProfilePage() {
   const { user, loading, refreshUser } = useAuth()
@@ -21,18 +25,25 @@ export default function ProfilePage() {
   const [showExperienceModal, setShowExperienceModal] = useState(false)
   const [showProjectModal, setShowProjectModal] = useState(false)
   const [showEducationModal, setShowEducationModal] = useState(false)
+  const [showEnhancedSkillsModal, setShowEnhancedSkillsModal] = useState(false)
+  const [showSkillEvidenceModal, setShowSkillEvidenceModal] = useState(false)
+  const [showPeerEndorsementModal, setShowPeerEndorsementModal] = useState(false)
+  const [showReviewerInvitationModal, setShowReviewerInvitationModal] = useState(false)
   const [editingExperience, setEditingExperience] = useState<Experience | null>(null)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [editingEducation, setEditingEducation] = useState<Education | null>(null)
+  const [selectedSkill, setSelectedSkill] = useState<EnhancedSkill | null>(null)
   const [experiences, setExperiences] = useState<Experience[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [educations, setEducations] = useState<Education[]>([])
+  const [enhancedSkills, setEnhancedSkills] = useState<EnhancedSkill[]>([])
 
   useEffect(() => {
     if (user?.role === 'candidate') {
       loadExperiences()
       loadProjects()
       loadEducations()
+      loadEnhancedSkills()
     }
   }, [user])
 
@@ -84,6 +95,23 @@ export default function ProfilePage() {
     }
   }
 
+  const loadEnhancedSkills = async () => {
+    try {
+      if (!user?.candidateProfile?.id) return
+      const response = await fetch(`http://localhost:5000/api/candidates/${user.candidateProfile.id}/skills`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+        }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setEnhancedSkills(data)
+      }
+    } catch (error) {
+      console.error('Failed to load enhanced skills:', error)
+    }
+  }
+
   const handleEditExperience = (experience: Experience) => {
     setEditingExperience(experience)
     setShowExperienceModal(true)
@@ -104,9 +132,14 @@ export default function ProfilePage() {
     setShowExperienceModal(false)
     setShowProjectModal(false)
     setShowEducationModal(false)
+    setShowEnhancedSkillsModal(false)
+    setShowSkillEvidenceModal(false)
+    setShowPeerEndorsementModal(false)
+    setShowReviewerInvitationModal(false)
     setEditingExperience(null)
     setEditingProject(null)
     setEditingEducation(null)
+    setSelectedSkill(null)
   }
 
   const reloadUserData = async () => {
@@ -121,6 +154,7 @@ export default function ProfilePage() {
     loadExperiences()
     loadProjects()
     loadEducations()
+    loadEnhancedSkills()
     reloadUserData() // Reload user data after profile update
     handleCloseModals()
   }
@@ -330,10 +364,11 @@ export default function ProfilePage() {
             <Card>
               <CardContent className="p-0">
                 <Tabs defaultValue="experience" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3">
+                  <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="experience">Experience</TabsTrigger>
                     <TabsTrigger value="projects">Projects</TabsTrigger>
                     <TabsTrigger value="education">Education</TabsTrigger>
+                    <TabsTrigger value="skills">Skills & Competencies</TabsTrigger>
                   </TabsList>
                   
                   <TabsContent value="experience" className="p-6">
@@ -516,6 +551,149 @@ export default function ProfilePage() {
                   </div>
                     )}
                   </TabsContent>
+
+                  <TabsContent value="skills" className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold">Skills & Competencies</h3>
+                      {user.role === 'candidate' && (
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => setShowEnhancedSkillsModal(true)}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Manage Skills
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => setShowReviewerInvitationModal(true)}>
+                            <Mail className="h-4 w-4 mr-2" />
+                            Send Invitations
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    {user.role === 'candidate' ? (
+                      enhancedSkills.length > 0 ? (
+                        <div className="space-y-4">
+                          {enhancedSkills.map((skill) => (
+                            <div key={skill.id} className="border border-gray-200 rounded-lg p-4">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-3 mb-2">
+                                    <h4 className="font-semibold text-lg">{skill.name}</h4>
+                                    <Badge className={
+                                      skill.level === 'beginner' ? 'bg-gray-100 text-gray-800' :
+                                      skill.level === 'intermediate' ? 'bg-blue-100 text-blue-800' :
+                                      skill.level === 'advanced' ? 'bg-green-100 text-green-800' :
+                                      'bg-purple-100 text-purple-800'
+                                    }>
+                                      {skill.level}
+                                    </Badge>
+                                    <Badge variant="outline">{skill.taxonomy_source}</Badge>
+                                  </div>
+                                  <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
+                                    <span>{skill.category}</span>
+                                    <span>•</span>
+                                    <span>{skill.years_experience} years</span>
+                                    <span>•</span>
+                                    {skill.skill_rating && typeof skill.skill_rating === 'number' && (
+                                      <div className="flex items-center gap-1">
+                                        {[...Array(5)].map((_, i) => (
+                                          <Star
+                                            key={i}
+                                            className={`h-4 w-4 ${
+                                              i < Math.round(skill.skill_rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'
+                                            }`}
+                                          />
+                                        ))}
+                                        <span className="ml-1">({skill.skill_rating.toFixed(1)}/5)</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  
+                                  {skill.verified_rating && (
+                                    <div className="text-sm text-green-600">
+                                      Verified Rating: {skill.verified_rating}/5
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedSkill(skill);
+                                      setShowSkillEvidenceModal(true);
+                                    }}
+                                  >
+                                    Evidence
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedSkill(skill);
+                                      setShowPeerEndorsementModal(true);
+                                    }}
+                                  >
+                                    Endorsements
+                                  </Button>
+                                </div>
+                              </div>
+                              
+                              {/* Evidence Preview */}
+                              {skill.evidence && skill.evidence.length > 0 && (
+                                <div className="mb-3">
+                                  <h5 className="text-sm font-medium text-gray-700 mb-2">Evidence:</h5>
+                                  <div className="flex flex-wrap gap-2">
+                                    {skill.evidence.slice(0, 3).map((evidence) => (
+                                      <div key={evidence.id} className="flex items-center gap-1 text-xs bg-gray-50 px-2 py-1 rounded">
+                                        {evidence.type === 'work_sample' && <FileText className="h-3 w-3" />}
+                                        {evidence.type === 'github_repo' && <Github className="h-3 w-3" />}
+                                        {evidence.type === 'portfolio_link' && <ExternalLink className="h-3 w-3" />}
+                                        {evidence.type === 'certification' && <CheckCircle className="h-3 w-3" />}
+                                        {evidence.type === 'project' && <Briefcase className="h-3 w-3" />}
+                                        <span>{evidence.title}</span>
+                                      </div>
+                                    ))}
+                                    {skill.evidence.length > 3 && (
+                                      <span className="text-xs text-gray-500">+{skill.evidence.length - 3} more</span>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Endorsements Preview */}
+                              {skill.endorsements && skill.endorsements.length > 0 && (
+                                <div>
+                                  <h5 className="text-sm font-medium text-gray-700 mb-2">Endorsements:</h5>
+                                  <div className="text-xs text-gray-600">
+                                    {skill.endorsements.length} endorsement{skill.endorsements.length !== 1 ? 's' : ''}
+                                    {skill.endorsements.filter(e => e.verified).length > 0 && (
+                                      <span className="text-green-600 ml-2">
+                                        ({skill.endorsements.filter(e => e.verified).length} verified)
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <Briefcase className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                          <p className="text-gray-500 mb-4">No skills added yet</p>
+                          <Button onClick={() => setShowEnhancedSkillsModal(true)}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Your First Skill
+                          </Button>
+                        </div>
+                      )
+                    ) : (
+                      <div className="text-center py-8">
+                        <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-500">Employer profile - no skills to display</p>
+                      </div>
+                    )}
+                  </TabsContent>
                 </Tabs>
                 </CardContent>
               </Card>
@@ -550,6 +728,36 @@ export default function ProfilePage() {
               onClose={handleCloseModals}
               onSave={handleSave}
               education={editingEducation}
+            />
+
+            <EnhancedSkillsModal
+              isOpen={showEnhancedSkillsModal}
+              onClose={handleCloseModals}
+              candidateId={user.candidateProfile?.id || ''}
+              onSave={handleSave}
+            />
+
+            <SkillEvidenceModal
+              isOpen={showSkillEvidenceModal}
+              onClose={handleCloseModals}
+              skillId={selectedSkill?.id || ''}
+              skillName={selectedSkill?.name || ''}
+              onSave={handleSave}
+            />
+
+            <PeerEndorsementModal
+              isOpen={showPeerEndorsementModal}
+              onClose={handleCloseModals}
+              skillId={selectedSkill?.id || ''}
+              skillName={selectedSkill?.name || ''}
+              onSave={handleSave}
+            />
+
+            <ReviewerInvitationModal
+              isOpen={showReviewerInvitationModal}
+              onClose={handleCloseModals}
+              candidateId={user.candidateProfile?.id || ''}
+              onSave={handleSave}
             />
           </>
         )}
