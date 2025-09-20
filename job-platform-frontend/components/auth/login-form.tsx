@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/lib/auth"
 import { Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
+import { showToast, toastMessages } from "@/lib/toast"
 
 export function LoginForm() {
   const [email, setEmail] = useState("")
@@ -28,9 +29,12 @@ export function LoginForm() {
     const result = await login(email, password)
 
     if (result.success) {
+      showToast.success(toastMessages.loginSuccess);
       router.push("/dashboard")
     } else {
-      setError(result.error || "Login failed")
+      const errorMessage = result.error || toastMessages.loginError;
+      setError(errorMessage);
+      showToast.error(errorMessage);
     }
   }
 

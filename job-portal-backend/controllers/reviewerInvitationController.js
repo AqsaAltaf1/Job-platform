@@ -19,14 +19,6 @@ export const getCandidateInvitations = async (req, res) => {
         candidate_profile_id: candidateId,
         is_active: true 
       },
-      include: [
-        {
-          model: EnhancedSkill,
-          as: 'skills',
-          where: { is_active: true },
-          required: false,
-        }
-      ],
       order: [['created_at', 'DESC']]
     });
 
@@ -47,6 +39,57 @@ export const createReviewerInvitation = async (req, res) => {
     const candidateProfile = await CandidateProfile.findByPk(candidateId);
     if (!candidateProfile) {
       return res.status(404).json({ error: 'Candidate profile not found' });
+    }
+
+    // Check for existing pending invitations for this email and skill
+    const existingInvitation = await ReviewerInvitation.findOne({
+      where: {
+        candidate_profile_id: candidateId,
+        reviewer_email: reviewer_email,
+        status: 'pending',
+        is_active: true
+      }
+    });
+
+    if (existingInvitation) {
+      console.log('Found existing invitation:', existingInvitation);
+      console.log('Existing skills_to_review:', existingInvitation.skills_to_review);
+      console.log('Type of skills_to_review:', typeof existingInvitation.skills_to_review);
+      
+      // Check if this skill is already included in the existing invitation
+      try {
+        const existingSkills = existingInvitation.skills_to_review ? 
+          JSON.parse(existingInvitation.skills_to_review) : [];
+        console.log('Parsed existing skills:', existingSkills);
+        const hasSkill = skills_to_review.some(skillId => existingSkills.includes(skillId));
+        
+        if (hasSkill) {
+          return res.status(400).json({ 
+            error: `An invitation has already been sent to ${reviewer_email} for this skill and is still pending. Please wait for them to respond or choose a different email address.` 
+          });
+        }
+      } catch (parseError) {
+        console.error('Error parsing existing invitation skills:', parseError);
+        console.error('Raw skills_to_review value:', existingInvitation.skills_to_review);
+        // If we can't parse the existing skills, assume it's a different invitation
+        // and allow the new one to proceed
+      }
+    }
+
+    // Check for existing endorsements for this email and skill
+    const existingEndorsement = await PeerEndorsement.findOne({
+      where: {
+        endorser_email: reviewer_email,
+        enhanced_skill_id: {
+          [Op.in]: skills_to_review
+        }
+      }
+    });
+
+    if (existingEndorsement) {
+      return res.status(400).json({ 
+        error: `${reviewer_email} has already provided an endorsement for this skill. You cannot send another invitation to the same person.` 
+      });
     }
 
     // Generate unique invitation token

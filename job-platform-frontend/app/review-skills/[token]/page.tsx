@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Star, User, Mail, Building, CheckCircle, AlertCircle } from 'lucide-react';
+import { showToast, toastMessages } from '@/lib/toast';
 
 interface Skill {
   id: string;
@@ -111,13 +112,18 @@ export default function ReviewSkillsPage({ params }: { params: { token: string }
 
       if (response.ok) {
         setSuccess(true);
+        showToast.success(toastMessages.endorsementSubmittedSuccess);
       } else {
         const errorData = await response.json();
-        setError(errorData.error || 'Failed to submit feedback');
+        const errorMessage = errorData.error || toastMessages.endorsementSubmittedError;
+        setError(errorMessage);
+        showToast.error(errorMessage);
       }
     } catch (error) {
       console.error('Error submitting feedback:', error);
-      setError('Failed to submit feedback');
+      const errorMessage = toastMessages.endorsementSubmittedError;
+      setError(errorMessage);
+      showToast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }

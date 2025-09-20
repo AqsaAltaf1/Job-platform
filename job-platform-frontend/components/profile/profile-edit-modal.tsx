@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { X, Upload, Camera, Image as ImageIcon } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import { profileAPI } from "@/lib/profile-api"
+import { showToast, toastMessages } from "@/lib/toast"
 
 interface ProfileEditModalProps {
   isOpen: boolean
@@ -124,12 +125,15 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
           
           await profileAPI.updateProfile(submitData)
           setSuccess(true)
+          showToast.success('Profile updated successfully!')
           setTimeout(() => {
             onSave()
             onClose()
-          }, 1500)
+          }, 1000)
         } catch (error) {
-          setError(error instanceof Error ? error.message : "Failed to process image")
+          const errorMessage = error instanceof Error ? error.message : toastMessages.profileUpdateError
+          setError(errorMessage)
+          showToast.error(errorMessage)
         } finally {
           setLoading(false)
         }
@@ -139,12 +143,15 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
       // No file selected, proceed with normal update
       await profileAPI.updateProfile(submitData)
       setSuccess(true)
+      showToast.success('Profile updated successfully!')
       setTimeout(() => {
         onSave()
         onClose()
-      }, 1500)
+      }, 1000)
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Failed to update profile")
+      const errorMessage = error instanceof Error ? error.message : toastMessages.profileUpdateError
+      setError(errorMessage)
+      showToast.error(errorMessage)
     } finally {
       setLoading(false)
     }

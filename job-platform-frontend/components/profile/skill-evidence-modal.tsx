@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { X, Plus, ExternalLink, FileText, Github, Award, Briefcase, Upload } from 'lucide-react';
 import { SkillEvidence } from '@/lib/types';
+import { showToast, toastMessages } from '@/lib/toast';
 
 interface SkillEvidenceModalProps {
   isOpen: boolean;
@@ -82,6 +83,16 @@ export default function SkillEvidenceModal({ isOpen, onClose, skillId, skillName
       setSelectedFile(file);
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    // Reset the file input
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
     }
   };
 
@@ -175,13 +186,14 @@ export default function SkillEvidenceModal({ isOpen, onClose, skillId, skillName
         setPreviewUrl(null);
         loadEvidence();
         onSave();
+        showToast.success(editingEvidence ? toastMessages.evidenceUpdatedSuccess : toastMessages.evidenceAddedSuccess);
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error || 'Failed to save evidence'}`);
+        showToast.error(errorData.error || toastMessages.evidenceAddedError);
       }
     } catch (error) {
       console.error('Error saving evidence:', error);
-      alert('Failed to save evidence');
+      showToast.error(toastMessages.evidenceAddedError);
     } finally {
       setLoading(false);
     }
@@ -204,13 +216,14 @@ export default function SkillEvidenceModal({ isOpen, onClose, skillId, skillName
       if (response.ok) {
         loadEvidence();
         onSave();
+        showToast.success(toastMessages.evidenceDeletedSuccess);
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error || 'Failed to delete evidence'}`);
+        showToast.error(errorData.error || toastMessages.evidenceDeletedError);
       }
     } catch (error) {
       console.error('Error deleting evidence:', error);
-      alert('Failed to delete evidence');
+      showToast.error(toastMessages.evidenceDeletedError);
     } finally {
       setLoading(false);
     }
@@ -440,14 +453,36 @@ export default function SkillEvidenceModal({ isOpen, onClose, skillId, skillName
                     className="flex-1"
                   />
                   {selectedFile && (
-                    <div className="text-sm text-gray-600">
-                      Selected: {selectedFile.name}
+                    <div className="flex items-center gap-2">
+                      <div className="text-sm text-gray-600">
+                        Selected: {selectedFile.name}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRemoveFile}
+                        className="text-red-600 hover:text-red-700 hover:border-red-600"
+                        title="Remove file"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
                   )}
                 </div>
                 {previewUrl && selectedFile?.type.startsWith('image/') && (
-                  <div className="mt-2">
+                  <div className="mt-2 relative inline-block">
                     <img src={previewUrl} alt="Preview" className="h-20 w-20 object-cover rounded" />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRemoveFile}
+                      className="absolute -top-2 -right-2 h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:border-red-600 bg-white"
+                      title="Remove image"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
                   </div>
                 )}
               </div>

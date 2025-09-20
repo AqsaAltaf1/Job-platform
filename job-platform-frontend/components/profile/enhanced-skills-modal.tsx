@@ -11,15 +11,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { X, Plus, Star, ExternalLink, FileText, Github, Award, Briefcase, Eye } from 'lucide-react';
 import { EnhancedSkill, SkillEvidence, PeerEndorsement } from '@/lib/types';
+import { showToast, toastMessages } from '@/lib/toast';
 
 interface EnhancedSkillsModalProps {
   isOpen: boolean;
   onClose: () => void;
   candidateId: string;
   onSave: () => void;
+  editingSkill?: EnhancedSkill | null;
 }
 
-export default function EnhancedSkillsModal({ isOpen, onClose, candidateId, onSave }: EnhancedSkillsModalProps) {
+export default function EnhancedSkillsModal({ isOpen, onClose, candidateId, onSave, editingSkill: editingSkillProp }: EnhancedSkillsModalProps) {
   const router = useRouter();
   const [skills, setSkills] = useState<EnhancedSkill[]>([]);
   const [loading, setLoading] = useState(false);
@@ -43,6 +45,32 @@ export default function EnhancedSkillsModal({ isOpen, onClose, candidateId, onSa
       loadSkills();
     }
   }, [isOpen, candidateId]);
+
+  // Handle editing skill prop
+  useEffect(() => {
+    if (editingSkillProp) {
+      setEditingSkill(editingSkillProp);
+      setNewSkill({
+        name: editingSkillProp.name,
+        category: editingSkillProp.category,
+        taxonomy_source: editingSkillProp.taxonomy_source,
+        level: editingSkillProp.level,
+        years_experience: editingSkillProp.years_experience,
+        last_used: editingSkillProp.last_used ? new Date(editingSkillProp.last_used).toISOString().split('T')[0] : ''
+      });
+      setShowAddSkill(true);
+    } else {
+      setEditingSkill(null);
+      setNewSkill({
+        name: '',
+        category: '',
+        taxonomy_source: 'custom',
+        level: 'beginner',
+        years_experience: 0,
+        last_used: ''
+      });
+    }
+  }, [editingSkillProp]);
 
   const loadSkills = async () => {
     try {
@@ -104,13 +132,14 @@ export default function EnhancedSkillsModal({ isOpen, onClose, candidateId, onSa
         });
         loadSkills();
         onSave();
+        showToast.success(editingSkill ? toastMessages.skillUpdatedSuccess : toastMessages.skillAddedSuccess);
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error || 'Failed to save skill'}`);
+        showToast.error(errorData.error || toastMessages.skillAddedError);
       }
     } catch (error) {
       console.error('Error saving skill:', error);
-      alert('Failed to save skill');
+      showToast.error(toastMessages.skillAddedError);
     } finally {
       setLoading(false);
     }
