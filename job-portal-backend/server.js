@@ -61,6 +61,13 @@ import {
   updateInvitationStatus,
   deleteReviewerInvitation
 } from './controllers/reviewerInvitationController.js';
+import {
+  processEndorsementText,
+  analyzeReviewerConsistency,
+  getBiasReductionAnalytics,
+  batchProcessEndorsements,
+  getReviewerConsistencyReport
+} from './controllers/biasReductionController.js';
 
 dotenv.config();
 
@@ -278,6 +285,13 @@ app.delete('/api/invitations/:invitationId', authenticateToken, deleteReviewerIn
 // Public reviewer routes (no authentication required)
 app.get('/api/review/:token', getInvitationByToken);
 app.post('/api/review/:token/feedback', submitReviewerFeedback);
+
+// Bias Reduction Routes
+app.post('/api/bias-reduction/process-endorsement', authenticateToken, processEndorsementText);
+app.get('/api/bias-reduction/reviewer/:reviewerEmail/consistency', authenticateToken, analyzeReviewerConsistency);
+app.get('/api/bias-reduction/analytics', authenticateToken, getBiasReductionAnalytics);
+app.post('/api/bias-reduction/batch-process', authenticateToken, batchProcessEndorsements);
+app.get('/api/bias-reduction/consistency-report', authenticateToken, getReviewerConsistencyReport);
 
 // Start server
 app.listen(PORT, async () => {

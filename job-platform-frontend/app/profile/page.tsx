@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Edit, Plus, MapPin, Mail, Phone, Globe, Linkedin, Github, Calendar, Building, Briefcase, Code, ExternalLink, User, Star, CheckCircle, Clock, DollarSign, FileText, Eye, Trash2 } from "lucide-react"
+import { Edit, Plus, MapPin, Mail, Phone, Globe, Linkedin, Github, Calendar, Building, Briefcase, Code, ExternalLink, User, Star, CheckCircle, Clock, DollarSign, FileText, Eye, Trash2, Shield } from "lucide-react"
 import { ProfileEditModal } from "@/components/profile/profile-edit-modal"
 import { ExperienceModal } from "@/components/profile/experience-modal"
 import { ProjectModal } from "@/components/profile/project-modal"
@@ -385,7 +385,19 @@ export default function ProfilePage() {
                   >
                     <Edit className="h-4 w-4 mr-2" />
                     Edit Profile
-              </Button>
+                  </Button>
+
+                  {/* Admin Panel Link for Super Admin */}
+                  {user?.role === 'super_admin' && (
+                    <Button 
+                      variant="outline" 
+                      className="w-full mt-3"
+                      onClick={() => router.push('/admin')}
+                    >
+                      <Shield className="h-4 w-4 mr-2" />
+                      Admin Panel
+                    </Button>
+                  )}
             </div>
               </CardContent>
             </Card>
@@ -675,15 +687,18 @@ export default function ProfilePage() {
                                     <span>•</span>
                                     {skill.skill_rating && typeof skill.skill_rating === 'number' && (
                                       <div className="flex items-center gap-1">
-                                        {[...Array(5)].map((_, i) => (
-                                          <Star
-                                            key={i}
-                                            className={`h-4 w-4 ${
-                                              i < Math.round(skill.skill_rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                                            }`}
-                                          />
-                                        ))}
-                                        <span className="ml-1">({skill.skill_rating.toFixed(1)}/5)</span>
+                                        {[...Array(5)].map((_, i) => {
+                                          const rating = skill.skill_rating || 0;
+                                          return (
+                                            <Star
+                                              key={i}
+                                              className={`h-4 w-4 ${
+                                                i < Math.round(rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'
+                                              }`}
+                                            />
+                                          );
+                                        })}
+                                        <span className="ml-1">({(skill.skill_rating || 0).toFixed(1)}/5)</span>
                                       </div>
                                     )}
                                   </div>
