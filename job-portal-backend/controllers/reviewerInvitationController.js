@@ -1,5 +1,6 @@
 import { ReviewerInvitation, CandidateProfile, EnhancedSkill, PeerEndorsement } from '../models/index.js';
 import { updateSkillAverageRating } from './enhancedSkillController.js';
+import biasReductionService from '../services/biasReductionService.js';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import sgMail from '@sendgrid/mail';
@@ -245,13 +246,27 @@ export const submitReviewerFeedback = async (req, res) => {
       // Get the skill to use its level (set by candidate)
       const skill = await EnhancedSkill.findByPk(endorsement.skill_id);
       
+      // Apply bias reduction to endorsement text
+      let processedEndorsementText = endorsement.endorsement_text;
+      if (processedEndorsementText && processedEndorsementText.trim()) {
+        try {
+          const processedData = await biasReductionService.processEndorsement({
+            endorsement_text: processedEndorsementText
+          });
+          processedEndorsementText = processedData.endorsement_text;
+        } catch (biasError) {
+          console.error('Bias reduction failed, using original text:', biasError);
+          // Continue with original text if bias reduction fails
+        }
+      }
+      
       const newEndorsement = await PeerEndorsement.create({
         id: uuidv4(),
         enhanced_skill_id: endorsement.skill_id,
         endorser_name: invitation.reviewer_name || 'Anonymous',
         endorser_email: invitation.reviewer_email,
         relationship: endorsement.relationship || 'other',
-        endorsement_text: endorsement.endorsement_text,
+        endorsement_text: processedEndorsementText,
         skill_level: skill.level, // Use candidate's self-assessed level
         star_rating: endorsement.star_rating || 3,
         verified: true // Auto-verify endorsements from invited reviewers
