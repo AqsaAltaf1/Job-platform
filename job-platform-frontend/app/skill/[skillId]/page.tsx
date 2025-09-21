@@ -96,9 +96,9 @@ export default function SkillDetailPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error || 'Skill not found'}</p>
-          <Button onClick={() => router.back()}>
+          <Button onClick={() => router.push('/profile')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Go Back
+            Go Back to Profile
           </Button>
         </div>
       </div>
@@ -112,7 +112,7 @@ export default function SkillDetailPage() {
         <div className="mb-6">
           <Button 
             variant="ghost" 
-            onClick={() => router.back()}
+            onClick={() => router.push('/profile')}
             className="mb-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />

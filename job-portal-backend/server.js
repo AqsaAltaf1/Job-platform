@@ -50,7 +50,8 @@ import {
   deleteSkillEvidence,
   addPeerEndorsement,
   updatePeerEndorsement,
-  deletePeerEndorsement
+  deletePeerEndorsement,
+  getSkillEndorsements
 } from './controllers/enhancedSkillController.js';
 import {
   getCandidateInvitations,
@@ -262,6 +263,7 @@ app.put('/api/evidence/:evidenceId', authenticateToken, updateSkillEvidence);
 app.delete('/api/evidence/:evidenceId', authenticateToken, deleteSkillEvidence);
 
 // Peer Endorsement Routes
+app.get('/api/skills/:skillId/endorsements', authenticateToken, getSkillEndorsements);
 app.post('/api/skills/:skillId/endorsements', authenticateToken, addPeerEndorsement);
 app.put('/api/endorsements/:endorsementId', authenticateToken, updatePeerEndorsement);
 app.delete('/api/endorsements/:endorsementId', authenticateToken, deletePeerEndorsement);

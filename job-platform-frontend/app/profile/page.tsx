@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Edit, Plus, MapPin, Mail, Phone, Globe, Linkedin, Github, Calendar, Building, Briefcase, Code, ExternalLink, User, Star, CheckCircle, Clock, DollarSign, FileText } from "lucide-react"
+import { Edit, Plus, MapPin, Mail, Phone, Globe, Linkedin, Github, Calendar, Building, Briefcase, Code, ExternalLink, User, Star, CheckCircle, Clock, DollarSign, FileText, Eye, Trash2 } from "lucide-react"
 import { ProfileEditModal } from "@/components/profile/profile-edit-modal"
 import { ExperienceModal } from "@/components/profile/experience-modal"
 import { ProjectModal } from "@/components/profile/project-modal"
@@ -18,8 +19,10 @@ import SkillEvidenceModal from "@/components/profile/skill-evidence-modal"
 import PeerEndorsementModal from "@/components/profile/peer-endorsement-modal"
 import ReviewerInvitationModal from "@/components/profile/reviewer-invitation-modal"
 import type { Experience, Project, Education, EnhancedSkill } from "@/lib/types"
+import { showToast } from "@/lib/toast"
 
 export default function ProfilePage() {
+  const router = useRouter()
   const { user, loading, refreshUser } = useAuth()
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [showExperienceModal, setShowExperienceModal] = useState(false)
@@ -33,10 +36,13 @@ export default function ProfilePage() {
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [editingEducation, setEditingEducation] = useState<Education | null>(null)
   const [selectedSkill, setSelectedSkill] = useState<EnhancedSkill | null>(null)
+  const [editingSkill, setEditingSkill] = useState<EnhancedSkill | null>(null)
   const [experiences, setExperiences] = useState<Experience[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [educations, setEducations] = useState<Education[]>([])
   const [enhancedSkills, setEnhancedSkills] = useState<EnhancedSkill[]>([])
+  const [refreshing, setRefreshing] = useState(false)
+  const [activeTab, setActiveTab] = useState("experience")
 
   useEffect(() => {
     if (user?.role === 'candidate') {
@@ -46,6 +52,11 @@ export default function ProfilePage() {
       loadEnhancedSkills()
     }
   }, [user])
+
+  // Debug effect to track user data changes
+  useEffect(() => {
+    console.log('User data changed:', user?.candidateProfile)
+  }, [user?.candidateProfile])
 
   const loadExperiences = async () => {
     try {
@@ -140,23 +151,81 @@ export default function ProfilePage() {
     setEditingProject(null)
     setEditingEducation(null)
     setSelectedSkill(null)
+    setEditingSkill(null)
+  }
+
+  const handleDeleteSkill = async (skillId: string, skillName: string) => {
+    try {
+      const token = localStorage.getItem('jwt_token')
+      if (!token) return
+
+      const response = await fetch(`http://localhost:5000/api/skills/${skillId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (response.ok) {
+        // Remove skill from local state
+        setEnhancedSkills(prev => prev.filter(skill => skill.id !== skillId))
+        showToast.success(`Skill "${skillName}" deleted successfully!`)
+        // Ensure we stay on the skills tab
+        setActiveTab('skills')
+      } else {
+        const errorData = await response.json()
+        showToast.error(errorData.error || 'Failed to delete skill')
+      }
+    } catch (error) {
+      console.error('Error deleting skill:', error)
+      showToast.error('Failed to delete skill')
+    }
   }
 
   const reloadUserData = async () => {
     try {
-      await refreshUser() // Use the auth context method to refresh user data
+      setRefreshing(true)
+      console.log('Before refresh - user data:', user?.candidateProfile)
+      
+      // Force refresh the user data by calling the API directly
+      const token = localStorage.getItem('jwt_token')
+      if (token) {
+        const response = await fetch('http://localhost:5000/api/auth/profile', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        })
+        
+        if (response.ok) {
+          const userData = await response.json()
+          console.log('Fresh user data from API:', userData.user?.candidateProfile)
+          // Force a re-render by updating the auth context
+          await refreshUser()
+        }
+      }
+      
+      console.log('After refresh - user data:', user?.candidateProfile)
     } catch (error) {
       console.error('Failed to reload user data:', error)
+    } finally {
+      setRefreshing(false)
     }
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    // Reload user data first to get the latest profile information
+    await reloadUserData()
+    
+    // Then reload all the profile sections
     loadExperiences()
     loadProjects()
     loadEducations()
     loadEnhancedSkills()
-    reloadUserData() // Reload user data after profile update
+    
     handleCloseModals()
+    // Keep the current tab active
   }
 
   if (loading) {
@@ -165,6 +234,17 @@ export default function ProfilePage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading profile...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (refreshing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Updating profile...</p>
         </div>
       </div>
     )
@@ -363,7 +443,7 @@ export default function ProfilePage() {
             {/* Detailed Information Tabs */}
             <Card>
               <CardContent className="p-0">
-                <Tabs defaultValue="experience" className="w-full">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                   <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="experience">Experience</TabsTrigger>
                     <TabsTrigger value="projects">Projects</TabsTrigger>
@@ -559,7 +639,7 @@ export default function ProfilePage() {
                         <div className="flex gap-2">
                           <Button size="sm" onClick={() => setShowEnhancedSkillsModal(true)}>
                             <Plus className="h-4 w-4 mr-2" />
-                            Manage Skills
+                            Add Skill
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => setShowReviewerInvitationModal(true)}>
                             <Mail className="h-4 w-4 mr-2" />
@@ -614,7 +694,42 @@ export default function ProfilePage() {
                                     </div>
                                   )}
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      // Navigate to skill detail page in same tab
+                                      router.push(`/skill/${skill.id}`);
+                                    }}
+                                    title="View Details"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setEditingSkill(skill);
+                                      setShowEnhancedSkillsModal(true);
+                                    }}
+                                    title="Edit Skill"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      if (confirm(`Are you sure you want to delete "${skill.name}"?`)) {
+                                        handleDeleteSkill(skill.id, skill.name);
+                                      }
+                                    }}
+                                    title="Delete Skill"
+                                    className="text-red-600 hover:text-red-700"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -622,8 +737,9 @@ export default function ProfilePage() {
                                       setSelectedSkill(skill);
                                       setShowSkillEvidenceModal(true);
                                     }}
+                                    title="Manage Evidence"
                                   >
-                                    Evidence
+                                    <FileText className="h-4 w-4" />
                                   </Button>
                                   <Button
                                     variant="outline"
@@ -632,8 +748,9 @@ export default function ProfilePage() {
                                       setSelectedSkill(skill);
                                       setShowPeerEndorsementModal(true);
                                     }}
+                                    title="Manage Endorsements"
                                   >
-                                    Endorsements
+                                    <Star className="h-4 w-4" />
                                   </Button>
                                 </div>
                               </div>
@@ -735,6 +852,7 @@ export default function ProfilePage() {
               onClose={handleCloseModals}
               candidateId={user.candidateProfile?.id || ''}
               onSave={handleSave}
+              editingSkill={editingSkill}
             />
 
             <SkillEvidenceModal

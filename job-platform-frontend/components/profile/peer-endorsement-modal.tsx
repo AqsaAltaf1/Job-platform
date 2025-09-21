@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { X, Plus, Star, User, Mail, Building } from 'lucide-react';
 import { PeerEndorsement } from '@/lib/types';
+import { showToast, toastMessages } from '@/lib/toast';
 
 interface PeerEndorsementModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ interface PeerEndorsementModalProps {
 
 export default function PeerEndorsementModal({ isOpen, onClose, skillId, skillName, onSave }: PeerEndorsementModalProps) {
   const [endorsements, setEndorsements] = useState<PeerEndorsement[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [showAddEndorsement, setShowAddEndorsement] = useState(false);
 
@@ -29,10 +31,12 @@ export default function PeerEndorsementModal({ isOpen, onClose, skillId, skillNa
     reviewer_email: '',
     message: ''
   });
+  const [emailValidationMessage, setEmailValidationMessage] = useState('');
 
   useEffect(() => {
     if (isOpen && skillId) {
       loadEndorsements();
+      loadPendingInvitations();
     }
   }, [isOpen, skillId]);
 
@@ -49,6 +53,7 @@ export default function PeerEndorsementModal({ isOpen, onClose, skillId, skillNa
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Endorsements loaded:', data);
         setEndorsements(data);
       }
     } catch (error) {
@@ -58,9 +63,99 @@ export default function PeerEndorsementModal({ isOpen, onClose, skillId, skillNa
     }
   };
 
+  const loadPendingInvitations = async () => {
+    try {
+      const token = localStorage.getItem('jwt_token');
+      
+      // Get the current user's profile ID
+      const response = await fetch('http://localhost:5000/api/auth/profile', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const userProfile = await response.json();
+      const candidateId = userProfile.user?.candidateProfile?.id;
+
+      if (!candidateId) {
+        return;
+      }
+
+      // Get pending invitations for this candidate
+      const invitationsResponse = await fetch(`http://localhost:5000/api/candidates/${candidateId}/invitations`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (invitationsResponse.ok) {
+        const invitations = await invitationsResponse.json();
+        console.log('All invitations loaded:', invitations);
+        // Filter for pending invitations that include this skill
+        const pendingForThisSkill = invitations.filter((inv: any) => 
+          inv.status === 'pending' && 
+          inv.skills_to_review && 
+          JSON.parse(inv.skills_to_review).includes(skillId)
+        );
+        console.log('Pending invitations for this skill:', pendingForThisSkill);
+        setPendingInvitations(pendingForThisSkill);
+      }
+    } catch (error) {
+      console.error('Error loading pending invitations:', error);
+    }
+  };
+
+  const validateEmail = (email: string) => {
+    if (!email) {
+      setEmailValidationMessage('');
+      return;
+    }
+
+    // Check if invitation already exists for this email
+    const existingInvitation = pendingInvitations.find(inv => 
+      inv.reviewer_email.toLowerCase() === email.toLowerCase()
+    );
+    
+    if (existingInvitation) {
+      setEmailValidationMessage('You are already invited for this invitation to that email, use different');
+      return;
+    }
+    
+    // Check if endorsement already exists for this email
+    const existingEndorsement = endorsements.find(endorsement => 
+      endorsement.endorser_email.toLowerCase() === email.toLowerCase()
+    );
+    
+    if (existingEndorsement) {
+      setEmailValidationMessage('This email has already provided an endorsement for this skill, use different');
+      return;
+    }
+
+    setEmailValidationMessage('');
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const email = e.target.value;
+    setNewInvitation(prev => ({ ...prev, reviewer_email: email }));
+    validateEmail(email);
+  };
+
   const handleSendInvitation = async () => {
     try {
       setLoading(true);
+      
+      // Check if there's a validation error
+      if (emailValidationMessage) {
+        setLoading(false);
+        return;
+      }
+      
       const token = localStorage.getItem('jwt_token');
 
       // Get the current user's profile ID from the token or context
@@ -79,7 +174,7 @@ export default function PeerEndorsementModal({ isOpen, onClose, skillId, skillNa
       const candidateId = userProfile.user?.candidateProfile?.id;
 
       if (!candidateId) {
-        alert('Candidate profile not found. Please make sure you have a candidate profile set up.');
+        showToast.error('Candidate profile not found. Please make sure you have a candidate profile set up.');
         return;
       }
 
@@ -106,15 +201,18 @@ export default function PeerEndorsementModal({ isOpen, onClose, skillId, skillNa
           reviewer_email: '',
           message: ''
         });
-        alert(`Invitation sent successfully! The reviewer will receive an email with a link to provide their endorsement.`);
+        setEmailValidationMessage('');
+        showToast.success('Invitation sent successfully! The reviewer will receive an email with a link to provide their endorsement.');
+        loadPendingInvitations(); // Reload pending invitations
         onSave();
       } else {
         const errorData = await invitationResponse.json();
-        alert(`Error: ${errorData.error || 'Failed to send invitation'}`);
+        console.log('Backend error response:', errorData);
+        showToast.error(errorData.error || toastMessages.endorsementInvitationError);
       }
     } catch (error) {
       console.error('Error sending invitation:', error);
-      alert('Failed to send invitation');
+      showToast.error(toastMessages.endorsementInvitationError);
     } finally {
       setLoading(false);
     }
@@ -183,8 +281,42 @@ export default function PeerEndorsementModal({ isOpen, onClose, skillId, skillNa
                 </Button>
               </div>
 
+              {/* Pending Invitations */}
+              {pendingInvitations.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Pending Invitations</h3>
+                  <div className="space-y-3">
+                    {pendingInvitations.map((invitation) => (
+                      <Card key={invitation.id} className="border border-yellow-200 bg-yellow-50">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <Mail className="h-5 w-5 text-yellow-600" />
+                              <div>
+                                <p className="font-medium text-gray-900">{invitation.reviewer_name}</p>
+                                <p className="text-sm text-gray-600">{invitation.reviewer_email}</p>
+                              </div>
+                            </div>
+                            <Badge variant="outline" className="text-yellow-700 border-yellow-300">
+                              Pending
+                            </Badge>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Endorsements List */}
               <div className="space-y-4">
+                {endorsements.length > 0 && (
+                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      <strong>Note:</strong> You cannot send invitations to email addresses that have already provided endorsements for this skill.
+                    </p>
+                  </div>
+                )}
                 {endorsements.map((endorsement) => (
                   <Card key={endorsement.id} className="border border-gray-200">
                     <CardHeader className="pb-3">
@@ -264,9 +396,13 @@ export default function PeerEndorsementModal({ isOpen, onClose, skillId, skillNa
                     id="reviewer-email"
                     type="email"
                     value={newInvitation.reviewer_email}
-                    onChange={(e) => setNewInvitation({ ...newInvitation, reviewer_email: e.target.value })}
+                    onChange={handleEmailChange}
                     placeholder="john@example.com"
+                    className={emailValidationMessage ? 'border-red-500' : ''}
                   />
+                  {emailValidationMessage && (
+                    <p className="text-sm text-red-600 mt-1">{emailValidationMessage}</p>
+                  )}
                 </div>
               </div>
               
@@ -285,7 +421,7 @@ export default function PeerEndorsementModal({ isOpen, onClose, skillId, skillNa
             <div className="flex gap-3 mt-6">
               <Button
                 onClick={handleSendInvitation}
-                disabled={loading || !newInvitation.reviewer_name || !newInvitation.reviewer_email}
+                disabled={loading || !newInvitation.reviewer_name || !newInvitation.reviewer_email || !!emailValidationMessage}
                 className="bg-blue-900 hover:bg-blue-800 text-white"
               >
                 {loading ? 'Sending...' : 'Send Invitation'}
@@ -299,6 +435,7 @@ export default function PeerEndorsementModal({ isOpen, onClose, skillId, skillNa
                     reviewer_email: '',
                     message: ''
                   });
+                  setEmailValidationMessage('');
                 }}
                 className="hover:bg-blue-900 hover:text-white hover:border-blue-900"
               >

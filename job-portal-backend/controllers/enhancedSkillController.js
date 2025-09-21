@@ -322,3 +322,22 @@ export const updateSkillAverageRating = async (skillId) => {
     console.error('Error updating skill average rating:', error);
   }
 };
+
+// Get endorsements for a specific skill
+export const getSkillEndorsements = async (req, res) => {
+  try {
+    const { skillId } = req.params;
+    
+    const endorsements = await PeerEndorsement.findAll({
+      where: { 
+        enhanced_skill_id: skillId 
+      },
+      order: [['created_at', 'DESC']]
+    });
+
+    res.json(endorsements);
+  } catch (error) {
+    console.error('Error fetching skill endorsements:', error);
+    res.status(500).json({ error: 'Failed to fetch endorsements' });
+  }
+};
