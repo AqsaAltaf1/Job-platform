@@ -9,10 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { X, Upload, Camera, Image as ImageIcon } from "lucide-react"
+import { X, Upload, Camera, Image as ImageIcon, Plus } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import { profileAPI } from "@/lib/profile-api"
 import { showToast, toastMessages } from "@/lib/toast"
+import { SKILL_CATEGORIES } from "@/lib/skills-data"
 
 interface ProfileEditModalProps {
   isOpen: boolean
@@ -24,6 +25,7 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
   const { user } = useAuth()
   const [formData, setFormData] = useState({
     bio: "",
+    job_title: "",
     location: "",
     website: "",
     linkedin_url: "",
@@ -49,6 +51,9 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
   })
 
   const [newSkill, setNewSkill] = useState("")
+  const [selectedCategory, setSelectedCategory] = useState("")
+  const [customSkill, setCustomSkill] = useState("")
+  const [showCustomInput, setShowCustomInput] = useState(false)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState("")
@@ -78,6 +83,7 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
       if (profile) {
         setFormData({
           bio: profile.bio || "",
+          job_title: profile.job_title || "",
           location: profile.location || "",
           website: profile.website || "",
           linkedin_url: profile.linkedin_url || "",
@@ -168,6 +174,28 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
         skills: [...prev.skills, newSkill.trim()],
       }))
       setNewSkill("")
+    }
+  }
+
+  const addSkillFromDropdown = (skill: string) => {
+    if (skill && !formData.skills.includes(skill)) {
+      setFormData((prev) => ({
+        ...prev,
+        skills: [...prev.skills, skill],
+      }))
+      setNewSkill("")
+      setSelectedCategory("")
+    }
+  }
+
+  const addCustomSkill = () => {
+    if (customSkill.trim() && !formData.skills.includes(customSkill.trim())) {
+      setFormData((prev) => ({
+        ...prev,
+        skills: [...prev.skills, customSkill.trim()],
+      }))
+      setCustomSkill("")
+      setShowCustomInput(false)
     }
   }
 
@@ -366,6 +394,17 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
             </div>
 
             <div className="space-y-3">
+              <Label htmlFor="job_title" className="text-sm font-medium text-gray-700">Job Title</Label>
+              <Input
+                id="job_title"
+                placeholder="e.g., Software Engineer, Chef, Marketing Manager, Data Scientist"
+                value={formData.job_title}
+                onChange={(e) => updateFormData("job_title", e.target.value)}
+                className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900"
+              />
+            </div>
+
+            <div className="space-y-3">
               <Label htmlFor="website" className="text-sm font-medium text-gray-700">Website</Label>
               <Input
                 id="website"
@@ -410,28 +449,102 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
             <div className="space-y-6">
               <h3 className="text-xl font-semibold text-gray-900">Professional Information</h3>
               
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <Label htmlFor="skills" className="text-sm font-medium text-gray-700">Skills</Label>
-                <div className="flex gap-3">
-                  <Input
-                    id="skills"
-                    placeholder="Add a skill (e.g., JavaScript, React)"
-                    value={newSkill}
-                    onChange={(e) => setNewSkill(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900"
-                  />
-                  <Button type="button" onClick={addSkill} disabled={!newSkill.trim()} className="h-12 px-6 rounded-xl bg-blue-900 hover:bg-blue-800 text-white">
-                    Add
-                  </Button>
+                
+                {/* Category Selection - This is the main dropdown */}
+                <div className="space-y-2">
+                  <Label htmlFor="skill-category" className="text-sm font-medium text-gray-700">Select Your Field/Category</Label>
+                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                    <SelectTrigger className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900">
+                      <SelectValue placeholder="Choose your field (e.g., Software, Teaching, Chef, etc.)..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SKILL_CATEGORIES.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {formData.skills.map((skill) => (
-                    <Badge key={skill} variant="secondary" className="flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
-                      {skill}
-                      <X className="h-3 w-3 cursor-pointer hover:text-blue-900" onClick={() => removeSkill(skill)} />
-                    </Badge>
-                  ))}
+
+                {/* Skills from Selected Category - Auto-populate when category is selected */}
+                {selectedCategory && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-gray-700">Skills for {SKILL_CATEGORIES.find(c => c.id === selectedCategory)?.name}</Label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-40 overflow-y-auto border rounded-xl p-3">
+                      {SKILL_CATEGORIES.find(c => c.id === selectedCategory)?.skills.map((skill) => (
+                        <Button
+                          key={skill}
+                          type="button"
+                          variant={formData.skills.includes(skill) ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => addSkillFromDropdown(skill)}
+                          disabled={formData.skills.includes(skill)}
+                          className="text-xs h-8"
+                        >
+                          {skill}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Custom Skill Input - For skills not in any category */}
+                <div className="space-y-2">
+                  {!showCustomInput ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowCustomInput(true)}
+                      className="w-full h-12 rounded-xl border-gray-200"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Custom Skill (Not in any category)
+                    </Button>
+                  ) : (
+                    <div className="flex gap-3">
+                      <Input
+                        placeholder="Enter custom skill..."
+                        value={customSkill}
+                        onChange={(e) => setCustomSkill(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                            addCustomSkill()
+                          }
+                        }}
+                        className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900"
+                      />
+                      <Button type="button" onClick={addCustomSkill} disabled={!customSkill.trim()} className="h-12 px-6 rounded-xl bg-blue-900 hover:bg-blue-800 text-white">
+                        Add
+                      </Button>
+                      <Button type="button" variant="outline" onClick={() => {
+                        setShowCustomInput(false)
+                        setCustomSkill("")
+                      }} className="h-12 px-6 rounded-xl border-gray-200">
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Selected Skills Display */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">Your Skills ({formData.skills.length})</Label>
+                  <div className="flex flex-wrap gap-2 min-h-[2rem] p-3 border rounded-xl">
+                    {formData.skills.length > 0 ? (
+                      formData.skills.map((skill) => (
+                        <Badge key={skill} variant="secondary" className="flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
+                          {skill}
+                          <X className="h-3 w-3 cursor-pointer hover:text-blue-900" onClick={() => removeSkill(skill)} />
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-muted-foreground text-sm">No skills added yet</span>
+                    )}
+                  </div>
                 </div>
               </div>
 

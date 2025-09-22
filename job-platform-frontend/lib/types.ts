@@ -58,6 +58,7 @@ export interface CandidateProfile {
   id: string
   user_id: string
   bio?: string
+  job_title?: string
   skills: string[]
   experience_years?: number
   education?: string
@@ -67,7 +68,7 @@ export interface CandidateProfile {
   github_url?: string
   location?: string
   salary_expectation?: number
-  availability: "immediate" | "2-weeks" | "1-month" | "not-available"
+  availability?: "immediate" | "2-weeks" | "1-month" | "not-available"
   created_at: Date
   updated_at: Date
 }
@@ -168,6 +169,7 @@ export interface CandidateProfile {
   last_name: string
   phone?: string
   bio?: string
+  job_title?: string
   location?: string
   website?: string
   linkedin_url?: string

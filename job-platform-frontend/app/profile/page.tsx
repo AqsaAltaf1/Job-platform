@@ -10,7 +10,6 @@ import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Edit, Plus, MapPin, Mail, Phone, Globe, Linkedin, Github, Calendar, Building, Briefcase, Code, ExternalLink, User, Star, CheckCircle, Clock, DollarSign, FileText, Eye, Trash2, Shield } from "lucide-react"
-import { ProfileEditModal } from "@/components/profile/profile-edit-modal"
 import { ExperienceModal } from "@/components/profile/experience-modal"
 import { ProjectModal } from "@/components/profile/project-modal"
 import { EducationModal } from "@/components/profile/education-modal"
@@ -23,8 +22,7 @@ import { showToast } from "@/lib/toast"
 
 export default function ProfilePage() {
   const router = useRouter()
-  const { user, loading, refreshUser } = useAuth()
-  const [showProfileModal, setShowProfileModal] = useState(false)
+  const { user, loading, refreshUser, showProfileModal, setShowProfileModal } = useAuth()
   const [showExperienceModal, setShowExperienceModal] = useState(false)
   const [showProjectModal, setShowProjectModal] = useState(false)
   const [showEducationModal, setShowEducationModal] = useState(false)
@@ -833,12 +831,6 @@ export default function ProfilePage() {
         </div>
 
         {/* Modals */}
-        <ProfileEditModal
-          isOpen={showProfileModal}
-          onClose={handleCloseModals}
-          onSave={handleSave}
-        />
-
         {user.role === 'candidate' && (
           <>
             <ExperienceModal

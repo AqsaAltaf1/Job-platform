@@ -39,6 +39,10 @@ export const CandidateProfile = sequelize.define('CandidateProfile', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  job_title: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   location: {
     type: DataTypes.STRING,
     allowNull: true,

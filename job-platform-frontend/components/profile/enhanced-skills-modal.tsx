@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { X, Plus, Star, ExternalLink, FileText, Github, Award, Briefcase, Eye } from 'lucide-react';
 import { EnhancedSkill, SkillEvidence, PeerEndorsement } from '@/lib/types';
 import { showToast, toastMessages } from '@/lib/toast';
+import { SKILL_CATEGORIES } from '@/lib/skills-data';
 
 interface EnhancedSkillsModalProps {
   isOpen: boolean;
@@ -39,6 +40,11 @@ export default function EnhancedSkillsModal({ isOpen, onClose, candidateId, onSa
     years_experience: 0,
     last_used: ''
   });
+
+  // Category-based skills system state
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [customSkillName, setCustomSkillName] = useState('');
+  const [showCustomSkillInput, setShowCustomSkillInput] = useState(false);
 
   useEffect(() => {
     if (isOpen && candidateId) {
@@ -69,6 +75,9 @@ export default function EnhancedSkillsModal({ isOpen, onClose, candidateId, onSa
         years_experience: 0,
         last_used: ''
       });
+      setSelectedCategory('');
+      setCustomSkillName('');
+      setShowCustomSkillInput(false);
     }
   }, [editingSkillProp]);
 
@@ -91,6 +100,31 @@ export default function EnhancedSkillsModal({ isOpen, onClose, candidateId, onSa
       console.error('Error loading skills:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Category-based skill selection functions
+  const handleSkillFromCategory = (skillName: string) => {
+    const category = SKILL_CATEGORIES.find(c => c.id === selectedCategory);
+    setNewSkill({
+      ...newSkill,
+      name: skillName,
+      category: category?.name || selectedCategory,
+      taxonomy_source: 'custom' // Auto-set to custom
+    });
+    setSelectedCategory('');
+  };
+
+  const handleCustomSkillName = () => {
+    if (customSkillName.trim()) {
+      setNewSkill({
+        ...newSkill,
+        name: customSkillName.trim(),
+        category: 'Custom',
+        taxonomy_source: 'custom' // Auto-set to custom
+      });
+      setCustomSkillName('');
+      setShowCustomSkillInput(false);
     }
   };
 
@@ -130,6 +164,9 @@ export default function EnhancedSkillsModal({ isOpen, onClose, candidateId, onSa
           years_experience: 0,
           last_used: ''
         });
+        setSelectedCategory('');
+        setCustomSkillName('');
+        setShowCustomSkillInput(false);
         loadSkills();
         onSave();
         showToast.success(editingSkill ? toastMessages.skillUpdatedSuccess : toastMessages.skillAddedSuccess);
@@ -435,43 +472,104 @@ export default function EnhancedSkillsModal({ isOpen, onClose, candidateId, onSa
             <h3 className="text-lg font-semibold mb-4">
               {editingSkill ? 'Edit Skill' : 'Add New Skill'}
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="skill-name">Skill Name</Label>
-                <Input
-                  id="skill-name"
-                  value={newSkill.name}
-                  onChange={(e) => setNewSkill({ ...newSkill, name: e.target.value })}
-                  placeholder="e.g., React, Python, Project Management"
-                />
-              </div>
-              <div>
-                <Label htmlFor="skill-category">Category</Label>
-                <Input
-                  id="skill-category"
-                  value={newSkill.category}
-                  onChange={(e) => setNewSkill({ ...newSkill, category: e.target.value })}
-                  placeholder="e.g., Frontend Development, Data Science"
-                />
-              </div>
-              <div>
-                <Label htmlFor="taxonomy-source">Taxonomy Source</Label>
-                <Select
-                  value={newSkill.taxonomy_source}
-                  onValueChange={(value: 'ESCO' | 'O*NET' | 'custom') => 
-                    setNewSkill({ ...newSkill, taxonomy_source: value })
-                  }
-                >
+            {/* Category-based Skills Selection */}
+            <div className="space-y-4 mb-6">
+              <div className="space-y-2">
+                <Label htmlFor="skill-category-select">Select Your Field/Category</Label>
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Choose your field (e.g., Software, Teaching, Chef, etc.)..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="custom">Custom</SelectItem>
-                    <SelectItem value="ESCO">ESCO</SelectItem>
-                    <SelectItem value="O*NET">O*NET</SelectItem>
+                    {SKILL_CATEGORIES.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Skills from Selected Category */}
+              {selectedCategory && (
+                <div className="space-y-2">
+                  <Label>Select Skill from {SKILL_CATEGORIES.find(c => c.id === selectedCategory)?.name}</Label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-40 overflow-y-auto border rounded-md p-2">
+                    {SKILL_CATEGORIES.find(c => c.id === selectedCategory)?.skills.map((skill) => (
+                      <Button
+                        key={skill}
+                        type="button"
+                        variant={newSkill.name === skill ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleSkillFromCategory(skill)}
+                        className="text-xs"
+                      >
+                        {skill}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Custom Skill Input */}
+              <div className="space-y-2">
+                {!showCustomSkillInput ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowCustomSkillInput(true)}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Custom Skill (Not in any category)
+                  </Button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter custom skill name..."
+                      value={customSkillName}
+                      onChange={(e) => setCustomSkillName(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                          handleCustomSkillName()
+                        }
+                      }}
+                    />
+                    <Button type="button" onClick={handleCustomSkillName} disabled={!customSkillName.trim()}>
+                      Add
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => {
+                      setShowCustomSkillInput(false)
+                      setCustomSkillName("")
+                    }}>
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Selected Skill Display */}
+              {newSkill.name && (
+                <div className="p-3 border rounded-md bg-blue-50">
+                  <Label className="text-sm font-medium">Selected Skill:</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="secondary">{newSkill.name}</Badge>
+                    <Badge variant="outline">{newSkill.category}</Badge>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setNewSkill({ ...newSkill, name: '', category: '' })}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="skill-level">Your Skill Level</Label>
                 <Select
@@ -538,6 +636,9 @@ export default function EnhancedSkillsModal({ isOpen, onClose, candidateId, onSa
                     years_experience: 0,
                     last_used: ''
                   });
+                  setSelectedCategory('');
+                  setCustomSkillName('');
+                  setShowCustomSkillInput(false);
                 }}
                 className="hover:bg-blue-900 hover:text-white hover:border-blue-900"
               >
