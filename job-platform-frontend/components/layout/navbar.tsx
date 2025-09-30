@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useAuth } from "@/lib/auth"
-import { User, Settings, LogOut, Briefcase } from "lucide-react"
+import { User, Settings, LogOut, Briefcase, Shield } from "lucide-react"
 
 export function Navbar() {
   const { user, logout } = useAuth()
@@ -86,6 +86,12 @@ export function Navbar() {
                     <Link href="/profile">
                       <Settings className="mr-2 h-4 w-4" />
                       Profile Settings
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/verification">
+                      <Shield className="mr-2 h-4 w-4" />
+                      Identity Verification
                     </Link>
                   </DropdownMenuItem>
                   {user.role === "employer" && (

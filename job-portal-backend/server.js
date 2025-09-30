@@ -1,6 +1,8 @@
+import dotenv from 'dotenv';
+dotenv.config({ path: './config.env' });
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import { sequelize } from './models/index.js';
 import { authenticateToken, requireRole } from './middleware/auth.js';
 import {
@@ -54,6 +56,17 @@ import {
   getSkillEndorsements
 } from './controllers/enhancedSkillController.js';
 import {
+  exchangeCodeForToken,
+  fetchLinkedInProfile,
+  importLinkedInSkills
+} from './controllers/linkedinController.js';
+import {
+  createVerificationSession,
+  getVerificationStatus,
+  handleWebhook,
+  getUserVerificationStatus
+} from './controllers/veriffController.js';
+import {
   getCandidateInvitations,
   createReviewerInvitation,
   getInvitationByToken,
@@ -68,8 +81,6 @@ import {
   batchProcessEndorsements,
   getReviewerConsistencyReport
 } from './controllers/biasReductionController.js';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -222,6 +233,17 @@ app.post('/api/otp/send', sendOtp);
 app.post('/api/otp/verify', verifyOtp);
 app.post('/api/otp/resend', resendOtp);
 app.post('/api/otp/cleanup', authenticateToken, requireRole(['super_admin']), cleanupExpiredOtps);
+
+// LinkedIn Integration Routes
+app.post('/api/auth/linkedin/token', exchangeCodeForToken);
+app.post('/api/auth/linkedin/profile', fetchLinkedInProfile);
+app.post('/api/auth/linkedin/import-skills', authenticateToken, importLinkedInSkills);
+
+// Veriff Identity Verification Routes
+app.post('/api/verification/create-session', authenticateToken, createVerificationSession);
+app.get('/api/verification/status/:sessionId', authenticateToken, getVerificationStatus);
+app.get('/api/verification/user-status', authenticateToken, getUserVerificationStatus);
+app.post('/api/verification/webhook', handleWebhook);
 
 // User Authentication Routes
 app.post('/api/auth/register', register);

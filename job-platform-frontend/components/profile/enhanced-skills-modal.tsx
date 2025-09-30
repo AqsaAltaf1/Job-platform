@@ -95,6 +95,8 @@ export default function EnhancedSkillsModal({ isOpen, onClose, candidateId, onSa
       if (response.ok) {
         const data = await response.json();
         setSkills(data);
+      } else {
+        console.error('Failed to load skills:', response.status, response.statusText);
       }
     } catch (error) {
       console.error('Error loading skills:', error);

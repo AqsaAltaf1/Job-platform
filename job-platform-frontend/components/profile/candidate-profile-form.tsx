@@ -34,6 +34,8 @@ export function CandidateProfileForm({ profile, onSave }: CandidateProfileFormPr
     location: "",
     salary_expectation: undefined as number | undefined,
     availability: "immediate" as "immediate" | "2-weeks" | "1-month" | "not-available",
+    date_of_birth: "",
+    country: "",
   })
 
   const [newSkill, setNewSkill] = useState("")
@@ -58,6 +60,8 @@ export function CandidateProfileForm({ profile, onSave }: CandidateProfileFormPr
         location: profile.location || "",
         salary_expectation: profile.salary_expectation || undefined,
         availability: profile.availability || "immediate",
+        date_of_birth: profile.date_of_birth || "",
+        country: profile.country || "",
       })
     }
   }, [profile])
@@ -328,6 +332,48 @@ export function CandidateProfileForm({ profile, onSave }: CandidateProfileFormPr
                   updateFormData("salary_expectation", e.target.value ? Number.parseInt(e.target.value) : undefined)
                 }
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="date_of_birth">Date of Birth</Label>
+              <Input
+                id="date_of_birth"
+                type="date"
+                value={formData.date_of_birth}
+                onChange={(e) => updateFormData("date_of_birth", e.target.value)}
+              />
+              <p className="text-sm text-muted-foreground">Required for identity verification</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="country">Country</Label>
+              <Select value={formData.country} onValueChange={(value) => updateFormData("country", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your country" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="US">United States</SelectItem>
+                  <SelectItem value="CA">Canada</SelectItem>
+                  <SelectItem value="GB">United Kingdom</SelectItem>
+                  <SelectItem value="AU">Australia</SelectItem>
+                  <SelectItem value="DE">Germany</SelectItem>
+                  <SelectItem value="FR">France</SelectItem>
+                  <SelectItem value="ES">Spain</SelectItem>
+                  <SelectItem value="IT">Italy</SelectItem>
+                  <SelectItem value="NL">Netherlands</SelectItem>
+                  <SelectItem value="SE">Sweden</SelectItem>
+                  <SelectItem value="PK">Pakistan</SelectItem>
+                  <SelectItem value="IN">India</SelectItem>
+                  <SelectItem value="BD">Bangladesh</SelectItem>
+                  <SelectItem value="SG">Singapore</SelectItem>
+                  <SelectItem value="MY">Malaysia</SelectItem>
+                  <SelectItem value="AE">United Arab Emirates</SelectItem>
+                  <SelectItem value="SA">Saudi Arabia</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">Required for identity verification</p>
             </div>
           </div>
 

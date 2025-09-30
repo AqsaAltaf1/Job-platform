@@ -9,7 +9,7 @@ import { Banner } from "@/components/layout/banner"
 import { Footer } from "@/components/layout/footer"
 import { ProfileModalWrapper } from "@/components/profile/profile-modal-wrapper"
 import { Suspense } from "react"
-import { Toaster } from "react-hot-toast"
+import { HotToastToaster } from "@/components/ui/hot-toaster"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -25,6 +25,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script src="https://cdn.veriff.me/sdk/js/1.5/veriff.min.js"></script>
+        <script src="https://cdn.veriff.me/incontext/js/v1/veriff.js"></script>
+      </head>
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <Suspense fallback={<div>Loading...</div>}>
           <AuthProvider>
@@ -39,30 +43,7 @@ export default function RootLayout({
             </div>
           </AuthProvider>
         </Suspense>
-        <Toaster 
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: '#363636',
-              color: '#fff',
-            },
-            success: {
-              duration: 3000,
-              iconTheme: {
-                primary: '#4ade80',
-                secondary: '#fff',
-              },
-            },
-            error: {
-              duration: 5000,
-              iconTheme: {
-                primary: '#ef4444',
-                secondary: '#fff',
-              },
-            },
-          }}
-        />
+        <HotToastToaster />
         <Analytics />
       </body>
     </html>

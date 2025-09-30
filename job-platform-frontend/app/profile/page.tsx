@@ -17,11 +17,14 @@ import EnhancedSkillsModal from "@/components/profile/enhanced-skills-modal"
 import SkillEvidenceModal from "@/components/profile/skill-evidence-modal"
 import PeerEndorsementModal from "@/components/profile/peer-endorsement-modal"
 import ReviewerInvitationModal from "@/components/profile/reviewer-invitation-modal"
+import { LinkedInSkillsImport } from "@/components/profile/linkedin-skills-import"
 import type { Experience, Project, Education, EnhancedSkill } from "@/lib/types"
 import { showToast } from "@/lib/toast"
+import { useSearchParams } from "next/navigation"
 
 export default function ProfilePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, loading, refreshUser, showProfileModal, setShowProfileModal } = useAuth()
   const [showExperienceModal, setShowExperienceModal] = useState(false)
   const [showProjectModal, setShowProjectModal] = useState(false)
@@ -41,6 +44,7 @@ export default function ProfilePage() {
   const [enhancedSkills, setEnhancedSkills] = useState<EnhancedSkill[]>([])
   const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState("experience")
+  const [verificationStatus, setVerificationStatus] = useState<any>(null)
 
   useEffect(() => {
     if (user?.role === 'candidate') {
@@ -49,12 +53,23 @@ export default function ProfilePage() {
       loadEducations()
       loadEnhancedSkills()
     }
+    loadVerificationStatus()
   }, [user])
 
   // Debug effect to track user data changes
   useEffect(() => {
     console.log('User data changed:', user?.candidateProfile)
   }, [user?.candidateProfile])
+
+  // Check for verification notification
+  useEffect(() => {
+    const verificationParam = searchParams.get('verification')
+    if (verificationParam === 'submitted') {
+      showToast('Identity verification submitted successfully! Your profile is now under review.', 'success')
+      // Clean up the URL parameter
+      router.replace('/profile', { scroll: false })
+    }
+  }, [searchParams, router])
 
   const loadExperiences = async () => {
     try {
@@ -109,15 +124,39 @@ export default function ProfilePage() {
       if (!user?.candidateProfile?.id) return
       const response = await fetch(`http://localhost:5000/api/candidates/${user.candidateProfile.id}/skills`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`,
+          'Content-Type': 'application/json'
         }
       })
       if (response.ok) {
         const data = await response.json()
         setEnhancedSkills(data)
+      } else {
+        console.error('Failed to load enhanced skills:', response.status, response.statusText)
       }
     } catch (error) {
       console.error('Failed to load enhanced skills:', error)
+    }
+  }
+
+  const loadVerificationStatus = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/verification/user-status', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          setVerificationStatus(data.verification)
+        }
+      } else {
+        console.error('Failed to load verification status:', response.status, response.statusText)
+      }
+    } catch (error) {
+      console.error('Failed to load verification status:', error)
     }
   }
 
@@ -277,7 +316,10 @@ export default function ProfilePage() {
                   <div className="relative inline-block mb-4">
                     <Avatar className="w-32 h-32 mx-auto">
                       <AvatarImage 
-                        src={profile?.profile_picture_url || `https://ui-avatars.com/api/?name=${user.first_name}+${user.last_name}&background=3b82f6&color=fff&size=128`} 
+                        src={user.role === 'candidate' 
+                          ? user.candidateProfile?.profile_picture_url || `https://ui-avatars.com/api/?name=${user.first_name}+${user.last_name}&background=3b82f6&color=fff&size=128`
+                          : user.employerProfile?.profile_picture_url || `https://ui-avatars.com/api/?name=${user.first_name}+${user.last_name}&background=3b82f6&color=fff&size=128`
+                        } 
                         alt={`${user.first_name} ${user.last_name}`}
                       />
                       <AvatarFallback className="text-2xl">
@@ -295,15 +337,63 @@ export default function ProfilePage() {
                   </h1>
                   <p className="text-lg text-gray-600 mb-2">
                     {user.role === 'candidate' 
-                      ? 'Software Developer'
+                      ? user.candidateProfile?.job_title || 'Candidate'
                       : user.employerProfile?.position || 'Employer'
                     }
                   </p>
                   
+                  {/* Identity Verification Badge */}
+                  {verificationStatus?.isVerified ? (
+                    <div className="flex items-center justify-center gap-2 mb-4">
+                      <Badge variant="default" className="bg-green-500 hover:bg-green-600 text-white">
+                        <Shield className="h-3 w-3 mr-1" />
+                        Identity Verified
+                      </Badge>
+                    </div>
+                  ) : verificationStatus?.status === 'SUBMITTED' || verificationStatus?.code === 'UNDER_REVIEW' ? (
+                    <div className="flex items-center justify-center gap-2 mb-4">
+                      <Badge variant="outline" className="border-blue-300 text-blue-600 bg-blue-50">
+                        <Clock className="h-3 w-3 mr-1" />
+                        Under Review
+                      </Badge>
+                    </div>
+                  ) : verificationStatus?.status === 'DECLINED' ? (
+                    <div className="flex flex-col items-center gap-2 mb-4">
+                      <Badge variant="outline" className="border-red-300 text-red-600 bg-red-50">
+                        <ExternalLink className="h-3 w-3 mr-1" />
+                        Verification Declined
+                      </Badge>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => router.push('/verification')}
+                        className="text-xs"
+                      >
+                        <Shield className="h-3 w-3 mr-1" />
+                        Try Again
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 mb-4">
+                      <Badge variant="outline" className="border-orange-300 text-orange-600">
+                        <Clock className="h-3 w-3 mr-1" />
+                        Not Verified
+                      </Badge>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => router.push('/verification')}
+                        className="text-xs"
+                      >
+                        <Shield className="h-3 w-3 mr-1" />
+                        Verify Identity
+                      </Button>
+                    </div>
+                  )}
+                  
                   {/* Rate (for candidates) */}
                   {user.role === 'candidate' && user.candidateProfile?.salary_expectation && (
                     <div className="flex items-center justify-center gap-1 mb-4">
-                      <DollarSign className="h-4 w-4 text-green-600" />
                       <span className="text-lg font-semibold text-green-600">
                         ${user.candidateProfile.salary_expectation.toLocaleString()}/year
                       </span>
@@ -311,9 +401,14 @@ export default function ProfilePage() {
                   )}
 
                   {/* Bio */}
-                  {profile?.bio && (
+                  {user.role === 'candidate' && user.candidateProfile?.bio && (
                     <p className="text-gray-600 text-sm mb-6 leading-relaxed">
-                      {profile.bio}
+                      {user.candidateProfile.bio}
+                    </p>
+                  )}
+                  {user.role === 'employer' && user.employerProfile?.company_description && (
+                    <p className="text-gray-600 text-sm mb-6 leading-relaxed">
+                      {user.employerProfile.company_description}
                     </p>
                   )}
 
@@ -338,28 +433,56 @@ export default function ProfilePage() {
 
                   {/* Contact Info */}
                   <div className="space-y-2 text-sm">
-                    {profile?.location && (
+                    {user.role === 'candidate' && user.candidateProfile?.location && (
                       <div className="flex items-center justify-center gap-2 text-gray-600">
                         <MapPin className="h-4 w-4" />
-                        <span>{profile.location}</span>
+                        <span>{user.candidateProfile.location}</span>
+                      </div>
+                    )}
+                    {user.role === 'employer' && user.employerProfile?.company_location && (
+                      <div className="flex items-center justify-center gap-2 text-gray-600">
+                        <MapPin className="h-4 w-4" />
+                        <span>{user.employerProfile.company_location}</span>
+                      </div>
+                    )}
+                    {user.role === 'candidate' && user.candidateProfile?.availability && (
+                      <div className="flex items-center justify-center gap-2 text-gray-600">
+                        <Clock className="h-4 w-4" />
+                        <span>
+                          {user.candidateProfile.availability === 'immediate' && 'Available Immediately'}
+                          {user.candidateProfile.availability === '2-weeks' && 'Available in 2 weeks'}
+                          {user.candidateProfile.availability === '1-month' && 'Available in 1 month'}
+                          {user.candidateProfile.availability === 'not-available' && 'Not Currently Available'}
+                        </span>
                       </div>
                     )}
                     <div className="flex items-center justify-center gap-2 text-gray-600">
                       <Mail className="h-4 w-4" />
                       <span>{user.email}</span>
                     </div>
-                    {profile?.phone && (
+                    {user.role === 'candidate' && user.candidateProfile?.phone && (
                       <div className="flex items-center justify-center gap-2 text-gray-600">
                         <Phone className="h-4 w-4" />
-                        <span>{profile.phone}</span>
+                        <span>{user.candidateProfile.phone}</span>
+                      </div>
+                    )}
+                    {user.role === 'employer' && user.employerProfile?.phone && (
+                      <div className="flex items-center justify-center gap-2 text-gray-600">
+                        <Phone className="h-4 w-4" />
+                        <span>{user.employerProfile.phone}</span>
                       </div>
                     )}
                   </div>
 
                   {/* Social Links */}
                   <div className="flex justify-center gap-4 mt-4">
-                    {profile?.linkedin_url && (
-                      <a href={profile.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">
+                    {user.role === 'candidate' && user.candidateProfile?.linkedin_url && (
+                      <a href={user.candidateProfile.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">
+                        <Linkedin className="h-5 w-5" />
+                      </a>
+                    )}
+                    {user.role === 'employer' && user.employerProfile?.linkedin_url && (
+                      <a href={user.employerProfile.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">
                         <Linkedin className="h-5 w-5" />
                       </a>
                     )}
@@ -368,8 +491,13 @@ export default function ProfilePage() {
                         <Github className="h-5 w-5" />
                       </a>
                     )}
-                    {profile?.website && (
-                      <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">
+                    {user.role === 'candidate' && user.candidateProfile?.website && (
+                      <a href={user.candidateProfile.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">
+                        <Globe className="h-5 w-5" />
+                      </a>
+                    )}
+                    {user.role === 'employer' && user.employerProfile?.company_website && (
+                      <a href={user.employerProfile.company_website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">
                         <Globe className="h-5 w-5" />
                       </a>
                     )}
@@ -420,12 +548,20 @@ export default function ProfilePage() {
                       <div className="text-sm text-gray-600">Years Experience</div>
                     </div>
                   )}
-                  {profile?.location && (
+                  {user.role === 'candidate' && user.candidateProfile?.location && (
                     <div className="text-center">
                       <div className="text-2xl font-bold text-blue-600">
                         <MapPin className="h-6 w-6 mx-auto" />
                       </div>
-                      <div className="text-sm text-gray-600">Location</div>
+                      <div className="text-sm text-gray-600">{user.candidateProfile.location}</div>
+                    </div>
+                  )}
+                  {user.role === 'employer' && user.employerProfile?.company_location && (
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">
+                        <MapPin className="h-6 w-6 mx-auto" />
+                      </div>
+                      <div className="text-sm text-gray-600">{user.employerProfile.company_location}</div>
                     </div>
                   )}
                   {user.role === 'candidate' && user.candidateProfile?.availability && (
@@ -433,9 +569,38 @@ export default function ProfilePage() {
                       <div className="text-2xl font-bold text-blue-600">
                         <Clock className="h-6 w-6 mx-auto" />
                       </div>
-                      <div className="text-sm text-gray-600">Availability</div>
+                      <div className="text-sm text-gray-600">
+                        {user.candidateProfile.availability === 'immediate' && 'Available Immediately'}
+                        {user.candidateProfile.availability === '2-weeks' && 'Available in 2 weeks'}
+                        {user.candidateProfile.availability === '1-month' && 'Available in 1 month'}
+                        {user.candidateProfile.availability === 'not-available' && 'Not Currently Available'}
+                      </div>
                     </div>
                   )}
+                  {/* Verification Status */}
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-600">
+                      {verificationStatus?.isVerified ? (
+                        <Shield className="h-6 w-6 mx-auto text-green-500" />
+                      ) : verificationStatus?.status === 'SUBMITTED' || verificationStatus?.code === 'UNDER_REVIEW' ? (
+                        <Clock className="h-6 w-6 mx-auto text-blue-500" />
+                      ) : verificationStatus?.status === 'DECLINED' ? (
+                        <ExternalLink className="h-6 w-6 mx-auto text-red-500" />
+                      ) : (
+                        <Clock className="h-6 w-6 mx-auto text-orange-500" />
+                      )}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {verificationStatus?.isVerified 
+                        ? 'Identity Verified' 
+                        : verificationStatus?.status === 'SUBMITTED' || verificationStatus?.code === 'UNDER_REVIEW'
+                        ? 'Under Review'
+                        : verificationStatus?.status === 'DECLINED'
+                        ? 'Verification Declined'
+                        : 'Not Verified'
+                      }
+                    </div>
+                  </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-blue-600">100%</div>
                     <div className="text-sm text-gray-600 flex items-center justify-center gap-1">
@@ -658,6 +823,19 @@ export default function ProfilePage() {
                         </div>
                       )}
                     </div>
+
+                    {/* LinkedIn Skills Import */}
+                    {user.role === 'candidate' && (
+                      <div className="mb-6">
+                        <LinkedInSkillsImport 
+                          candidateId={user.candidateProfile?.id || ''}
+                          onSkillsImported={(count) => {
+                            showToast.success(`Imported ${count} skills from LinkedIn!`)
+                            loadEnhancedSkills()
+                          }}
+                        />
+                      </div>
+                    )}
 
                     {user.role === 'candidate' ? (
                       enhancedSkills.length > 0 ? (

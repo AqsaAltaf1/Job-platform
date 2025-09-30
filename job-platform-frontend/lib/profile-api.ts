@@ -1,7 +1,7 @@
 import { tokenManager } from './auth-api'
 import type { EmployerProfile, CandidateProfile } from './types'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
 
 // Helper function to make authenticated requests
 async function authenticatedRequest(url: string, options: RequestInit = {}) {
@@ -70,17 +70,17 @@ async function authenticatedRequest(url: string, options: RequestInit = {}) {
 export const profileAPI = {
   // Get current user's profile
   async getProfile(): Promise<{ success: boolean; user: any }> {
-    return authenticatedRequest(`${API_BASE_URL}/api/auth/profile`)
+    return authenticatedRequest(`${API_BASE_URL}/auth/profile`)
   },
 
   // Get user profile by ID
   async getUserProfile(userId: string): Promise<{ success: boolean; user: any }> {
-    return authenticatedRequest(`${API_BASE_URL}/api/profiles/${userId}`)
+    return authenticatedRequest(`${API_BASE_URL}/profiles/${userId}`)
   },
 
   // Update current user's profile
   async updateProfile(profileData: Partial<EmployerProfile | CandidateProfile>): Promise<{ success: boolean; profile: EmployerProfile | CandidateProfile; message: string }> {
-    return authenticatedRequest(`${API_BASE_URL}/api/profiles`, {
+    return authenticatedRequest(`${API_BASE_URL}/profiles`, {
       method: 'PUT',
       body: JSON.stringify(profileData),
     })
@@ -88,7 +88,7 @@ export const profileAPI = {
 
   // Get all user profiles (admin only)
   async getAllProfiles(): Promise<{ success: boolean; users: any[] }> {
-    return authenticatedRequest(`${API_BASE_URL}/api/profiles`)
+    return authenticatedRequest(`${API_BASE_URL}/profiles`)
   },
 }
 

@@ -113,6 +113,14 @@ export const CandidateProfile = sequelize.define('CandidateProfile', {
     allowNull: true,
     defaultValue: 'immediate',
   },
+  date_of_birth: {
+    type: DataTypes.DATEONLY, // YYYY-MM-DD format
+    allowNull: true,
+  },
+  country: {
+    type: DataTypes.STRING(2), // ISO country code (US, GB, etc.)
+    allowNull: true,
+  },
   is_active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true,

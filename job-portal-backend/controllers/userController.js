@@ -51,7 +51,7 @@ export const register = async (req, res) => {
       first_name,
       last_name,
       phone,
-      is_verified: true, // Mark as verified since OTP was confirmed
+      is_verified: true // User is verified after successful OTP verification
     });
 
     // Create appropriate profile based on user role
@@ -114,6 +114,14 @@ export const login = async (req, res) => {
       return res.status(401).json({
         success: false,
         error: 'Account is deactivated'
+      });
+    }
+
+    // Check if user is verified
+    if (!user.is_verified) {
+      return res.status(401).json({
+        success: false,
+        error: 'Please verify your email before logging in. Check your email for verification instructions.'
       });
     }
 
