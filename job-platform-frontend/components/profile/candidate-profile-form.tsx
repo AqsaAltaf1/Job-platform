@@ -11,8 +11,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { X } from "lucide-react"
+import { X, Plus, Search } from "lucide-react"
 import type { CandidateProfile } from "@/lib/types"
+import { SKILL_CATEGORIES, ALL_SKILLS, searchSkills } from "@/lib/skills-data"
 
 interface CandidateProfileFormProps {
   profile?: CandidateProfile
@@ -22,6 +23,7 @@ interface CandidateProfileFormProps {
 export function CandidateProfileForm({ profile, onSave }: CandidateProfileFormProps) {
   const [formData, setFormData] = useState({
     bio: "",
+    job_title: "",
     skills: [] as string[],
     experience_years: undefined as number | undefined,
     education: "",
@@ -32,9 +34,14 @@ export function CandidateProfileForm({ profile, onSave }: CandidateProfileFormPr
     location: "",
     salary_expectation: undefined as number | undefined,
     availability: "immediate" as "immediate" | "2-weeks" | "1-month" | "not-available",
+    date_of_birth: "",
+    country: "",
   })
 
   const [newSkill, setNewSkill] = useState("")
+  const [selectedCategory, setSelectedCategory] = useState("")
+  const [customSkill, setCustomSkill] = useState("")
+  const [showCustomInput, setShowCustomInput] = useState(false)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
 
@@ -42,6 +49,7 @@ export function CandidateProfileForm({ profile, onSave }: CandidateProfileFormPr
     if (profile) {
       setFormData({
         bio: profile.bio || "",
+        job_title: profile.job_title || "",
         skills: profile.skills || [],
         experience_years: profile.experience_years || undefined,
         education: profile.education || "",
@@ -52,6 +60,8 @@ export function CandidateProfileForm({ profile, onSave }: CandidateProfileFormPr
         location: profile.location || "",
         salary_expectation: profile.salary_expectation || undefined,
         availability: profile.availability || "immediate",
+        date_of_birth: profile.date_of_birth || "",
+        country: profile.country || "",
       })
     }
   }, [profile])
@@ -85,6 +95,28 @@ export function CandidateProfileForm({ profile, onSave }: CandidateProfileFormPr
         skills: [...prev.skills, newSkill.trim()],
       }))
       setNewSkill("")
+    }
+  }
+
+  const addSkillFromDropdown = (skill: string) => {
+    if (skill && !formData.skills.includes(skill)) {
+      setFormData((prev) => ({
+        ...prev,
+        skills: [...prev.skills, skill],
+      }))
+      setNewSkill("")
+      setSelectedCategory("")
+    }
+  }
+
+  const addCustomSkill = () => {
+    if (customSkill.trim() && !formData.skills.includes(customSkill.trim())) {
+      setFormData((prev) => ({
+        ...prev,
+        skills: [...prev.skills, customSkill.trim()],
+      }))
+      setCustomSkill("")
+      setShowCustomInput(false)
     }
   }
 
@@ -128,26 +160,110 @@ export function CandidateProfileForm({ profile, onSave }: CandidateProfileFormPr
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="job_title">Job Title</Label>
+            <Input
+              id="job_title"
+              placeholder="e.g., Software Engineer, Chef, Marketing Manager, Data Scientist"
+              value={formData.job_title}
+              onChange={(e) => updateFormData("job_title", e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-4">
             <Label htmlFor="skills">Skills</Label>
-            <div className="flex gap-2">
-              <Input
-                id="skills"
-                placeholder="Add a skill (e.g., JavaScript, React, Node.js)"
-                value={newSkill}
-                onChange={(e) => setNewSkill(e.target.value)}
-                onKeyPress={handleKeyPress}
-              />
-              <Button type="button" onClick={addSkill} disabled={!newSkill.trim()}>
-                Add
-              </Button>
+            
+            {/* Category Selection - This is the main dropdown */}
+            <div className="space-y-2">
+              <Label htmlFor="skill-category">Select Your Field/Category</Label>
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose your field (e.g., Software, Teaching, Chef, etc.)..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {SKILL_CATEGORIES.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {formData.skills.map((skill) => (
-                <Badge key={skill} variant="secondary" className="flex items-center gap-1">
-                  {skill}
-                  <X className="h-3 w-3 cursor-pointer" onClick={() => removeSkill(skill)} />
-                </Badge>
-              ))}
+
+            {/* Skills from Selected Category - Auto-populate when category is selected */}
+            {selectedCategory && (
+              <div className="space-y-2">
+                <Label>Skills for {SKILL_CATEGORIES.find(c => c.id === selectedCategory)?.name}</Label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-40 overflow-y-auto border rounded-md p-2">
+                  {SKILL_CATEGORIES.find(c => c.id === selectedCategory)?.skills.map((skill) => (
+                    <Button
+                      key={skill}
+                      type="button"
+                      variant={formData.skills.includes(skill) ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => addSkillFromDropdown(skill)}
+                      disabled={formData.skills.includes(skill)}
+                      className="text-xs"
+                    >
+                      {skill}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Custom Skill Input - For skills not in any category */}
+            <div className="space-y-2">
+              {!showCustomInput ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowCustomInput(true)}
+                  className="w-full"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Custom Skill (Not in any category)
+                </Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter custom skill..."
+                    value={customSkill}
+                    onChange={(e) => setCustomSkill(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault()
+                        addCustomSkill()
+                      }
+                    }}
+                  />
+                  <Button type="button" onClick={addCustomSkill} disabled={!customSkill.trim()}>
+                    Add
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => {
+                    setShowCustomInput(false)
+                    setCustomSkill("")
+                  }}>
+                    Cancel
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Selected Skills Display */}
+            <div className="space-y-2">
+              <Label>Your Skills ({formData.skills.length})</Label>
+              <div className="flex flex-wrap gap-2 min-h-[2rem] p-2 border rounded-md">
+                {formData.skills.length > 0 ? (
+                  formData.skills.map((skill) => (
+                    <Badge key={skill} variant="secondary" className="flex items-center gap-1">
+                      {skill}
+                      <X className="h-3 w-3 cursor-pointer" onClick={() => removeSkill(skill)} />
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-muted-foreground text-sm">No skills added yet</span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -216,6 +332,48 @@ export function CandidateProfileForm({ profile, onSave }: CandidateProfileFormPr
                   updateFormData("salary_expectation", e.target.value ? Number.parseInt(e.target.value) : undefined)
                 }
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="date_of_birth">Date of Birth</Label>
+              <Input
+                id="date_of_birth"
+                type="date"
+                value={formData.date_of_birth}
+                onChange={(e) => updateFormData("date_of_birth", e.target.value)}
+              />
+              <p className="text-sm text-muted-foreground">Required for identity verification</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="country">Country</Label>
+              <Select value={formData.country} onValueChange={(value) => updateFormData("country", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your country" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="US">United States</SelectItem>
+                  <SelectItem value="CA">Canada</SelectItem>
+                  <SelectItem value="GB">United Kingdom</SelectItem>
+                  <SelectItem value="AU">Australia</SelectItem>
+                  <SelectItem value="DE">Germany</SelectItem>
+                  <SelectItem value="FR">France</SelectItem>
+                  <SelectItem value="ES">Spain</SelectItem>
+                  <SelectItem value="IT">Italy</SelectItem>
+                  <SelectItem value="NL">Netherlands</SelectItem>
+                  <SelectItem value="SE">Sweden</SelectItem>
+                  <SelectItem value="PK">Pakistan</SelectItem>
+                  <SelectItem value="IN">India</SelectItem>
+                  <SelectItem value="BD">Bangladesh</SelectItem>
+                  <SelectItem value="SG">Singapore</SelectItem>
+                  <SelectItem value="MY">Malaysia</SelectItem>
+                  <SelectItem value="AE">United Arab Emirates</SelectItem>
+                  <SelectItem value="SA">Saudi Arabia</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">Required for identity verification</p>
             </div>
           </div>
 

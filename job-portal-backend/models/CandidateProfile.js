@@ -39,6 +39,10 @@ export const CandidateProfile = sequelize.define('CandidateProfile', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  job_title: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   location: {
     type: DataTypes.STRING,
     allowNull: true,
@@ -108,6 +112,14 @@ export const CandidateProfile = sequelize.define('CandidateProfile', {
     type: DataTypes.ENUM('immediate', '2-weeks', '1-month', 'not-available'),
     allowNull: true,
     defaultValue: 'immediate',
+  },
+  date_of_birth: {
+    type: DataTypes.DATEONLY, // YYYY-MM-DD format
+    allowNull: true,
+  },
+  country: {
+    type: DataTypes.STRING(2), // ISO country code (US, GB, etc.)
+    allowNull: true,
   },
   is_active: {
     type: DataTypes.BOOLEAN,

@@ -41,6 +41,22 @@ const User = sequelize.define('User', {
     type: DataTypes.BOOLEAN,
     defaultValue: true,
   },
+  is_verified: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  verification_status: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  verification_code: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  verification_date: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
 }, {
   tableName: 'users',
   timestamps: true,

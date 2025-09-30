@@ -1,20 +1,24 @@
-import toast from 'react-hot-toast';
+import { customToast } from '@/components/ui/custom-toast';
 
 export const showToast = {
   success: (message: string) => {
-    toast.success(message, {
-      duration: 3000,
-    });
+    customToast.success(message);
   },
   
   error: (message: string) => {
-    toast.error(message, {
-      duration: 5000,
-    });
+    customToast.error(message);
+  },
+  
+  warning: (message: string) => {
+    customToast.warning(message);
+  },
+  
+  info: (message: string) => {
+    customToast.info(message);
   },
   
   loading: (message: string) => {
-    return toast.loading(message);
+    return customToast.loading(message);
   },
   
   promise: <T>(
@@ -25,28 +29,28 @@ export const showToast = {
       error: string | ((error: any) => string);
     }
   ) => {
-    return toast.promise(promise, messages);
+    return customToast.promise(promise, messages);
   },
   
   dismiss: (toastId?: string) => {
-    toast.dismiss(toastId);
+    customToast.dismiss(toastId);
   },
   
-  custom: (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-    const config = {
-      duration: 4000,
-      style: {
-        background: type === 'success' ? '#4ade80' : type === 'error' ? '#ef4444' : '#3b82f6',
-        color: '#fff',
-      },
-    };
-    
-    if (type === 'success') {
-      toast.success(message, config);
-    } else if (type === 'error') {
-      toast.error(message, config);
-    } else {
-      toast(message, config);
+  custom: (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
+    switch (type) {
+      case 'success':
+        customToast.success(message);
+        break;
+      case 'error':
+        customToast.error(message);
+        break;
+      case 'warning':
+        customToast.warning(message);
+        break;
+      case 'info':
+      default:
+        customToast.info(message);
+        break;
     }
   }
 };
