@@ -52,8 +52,8 @@ export default function ProfilePage() {
       loadProjects()
       loadEducations()
       loadEnhancedSkills()
+      loadVerificationStatus()
     }
-    loadVerificationStatus()
   }, [user])
 
   // Debug effect to track user data changes
@@ -65,7 +65,7 @@ export default function ProfilePage() {
   useEffect(() => {
     const verificationParam = searchParams.get('verification')
     if (verificationParam === 'submitted') {
-      showToast('Identity verification submitted successfully! Your profile is now under review.', 'success')
+      showToast.success('Identity verification submitted successfully! Your profile is now under review.')
       // Clean up the URL parameter
       router.replace('/profile', { scroll: false })
     }
@@ -333,61 +333,82 @@ export default function ProfilePage() {
 
                   {/* Name and Role */}
                   <h1 className="text-2xl font-bold text-gray-900 mb-1">
-                    {user.first_name} {user.last_name}
-                  </h1>
-                  <p className="text-lg text-gray-600 mb-2">
-                    {user.role === 'candidate' 
-                      ? user.candidateProfile?.job_title || 'Candidate'
-                      : user.employerProfile?.position || 'Employer'
+                    {user.role === 'employer' && user.employerProfile?.first_name
+                      ? `${user.employerProfile.first_name} ${user.employerProfile.last_name || ''}`.trim()
+                      : `${user.first_name} ${user.last_name}`
                     }
-                  </p>
+                  </h1>
+                  {user.role === 'candidate' && (
+                  <p className="text-lg text-gray-600 mb-2">
+                      {user.candidateProfile?.job_title || 'Candidate'}
+                    </p>
+                  )}
+                  {user.role === 'employer' && user.employerProfile?.position && (
+                    <p className="text-lg text-gray-600 mb-2">
+                      {user.employerProfile.position}
+                    </p>
+                  )}
                   
-                  {/* Identity Verification Badge */}
-                  {verificationStatus?.isVerified ? (
-                    <div className="flex items-center justify-center gap-2 mb-4">
-                      <Badge variant="default" className="bg-green-500 hover:bg-green-600 text-white">
-                        <Shield className="h-3 w-3 mr-1" />
-                        Identity Verified
-                      </Badge>
-                    </div>
-                  ) : verificationStatus?.status === 'SUBMITTED' || verificationStatus?.code === 'UNDER_REVIEW' ? (
+                  {/* Identity Verification Badge - Only for Candidates */}
+                  {user.role === 'candidate' && (
+                    <>
+                      {verificationStatus?.isVerified ? (
+                        <div className="flex items-center justify-center gap-2 mb-4">
+                          <Badge variant="default" className="bg-green-500 hover:bg-green-600 text-white">
+                            <Shield className="h-3 w-3 mr-1" />
+                            Identity Verified
+                          </Badge>
+                        </div>
+                      ) : verificationStatus?.status === 'SUBMITTED' || verificationStatus?.code === 'UNDER_REVIEW' ? (
+                        <div className="flex items-center justify-center gap-2 mb-4">
+                          <Badge variant="outline" className="border-blue-300 text-blue-600 bg-blue-50">
+                            <Clock className="h-3 w-3 mr-1" />
+                            Under Review
+                          </Badge>
+                        </div>
+                      ) : verificationStatus?.status === 'DECLINED' ? (
+                        <div className="flex flex-col items-center gap-2 mb-4">
+                          <Badge variant="outline" className="border-red-300 text-red-600 bg-red-50">
+                            <ExternalLink className="h-3 w-3 mr-1" />
+                            Verification Declined
+                          </Badge>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => router.push('/verification')}
+                            className="text-xs"
+                          >
+                            <Shield className="h-3 w-3 mr-1" />
+                            Try Again
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-2 mb-4">
+                          <Badge variant="outline" className="border-orange-300 text-orange-600">
+                            <Clock className="h-3 w-3 mr-1" />
+                            Not Verified
+                          </Badge>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => router.push('/verification')}
+                            className="text-xs"
+                          >
+                            <Shield className="h-3 w-3 mr-1" />
+                            Verify Identity
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Admin Approval Status - Only for Employers */}
+                  {user.role === 'employer' && (
                     <div className="flex items-center justify-center gap-2 mb-4">
                       <Badge variant="outline" className="border-blue-300 text-blue-600 bg-blue-50">
-                        <Clock className="h-3 w-3 mr-1" />
-                        Under Review
+                        <Building className="h-3 w-3 mr-1" />
+                        Pending Admin Approval
                       </Badge>
-                    </div>
-                  ) : verificationStatus?.status === 'DECLINED' ? (
-                    <div className="flex flex-col items-center gap-2 mb-4">
-                      <Badge variant="outline" className="border-red-300 text-red-600 bg-red-50">
-                        <ExternalLink className="h-3 w-3 mr-1" />
-                        Verification Declined
-                      </Badge>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => router.push('/verification')}
-                        className="text-xs"
-                      >
-                        <Shield className="h-3 w-3 mr-1" />
-                        Try Again
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 mb-4">
-                      <Badge variant="outline" className="border-orange-300 text-orange-600">
-                        <Clock className="h-3 w-3 mr-1" />
-                        Not Verified
-                      </Badge>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => router.push('/verification')}
-                        className="text-xs"
-                      >
-                        <Shield className="h-3 w-3 mr-1" />
-                        Verify Identity
-                      </Button>
                     </div>
                   )}
                   
@@ -577,30 +598,44 @@ export default function ProfilePage() {
                       </div>
                     </div>
                   )}
-                  {/* Verification Status */}
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600">
-                      {verificationStatus?.isVerified ? (
-                        <Shield className="h-6 w-6 mx-auto text-green-500" />
-                      ) : verificationStatus?.status === 'SUBMITTED' || verificationStatus?.code === 'UNDER_REVIEW' ? (
-                        <Clock className="h-6 w-6 mx-auto text-blue-500" />
-                      ) : verificationStatus?.status === 'DECLINED' ? (
-                        <ExternalLink className="h-6 w-6 mx-auto text-red-500" />
-                      ) : (
-                        <Clock className="h-6 w-6 mx-auto text-orange-500" />
-                      )}
+                  {/* Verification Status - Only for Candidates */}
+                  {user.role === 'candidate' && (
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {verificationStatus?.isVerified ? (
+                          <Shield className="h-6 w-6 mx-auto text-green-500" />
+                        ) : verificationStatus?.status === 'SUBMITTED' || verificationStatus?.code === 'UNDER_REVIEW' ? (
+                          <Clock className="h-6 w-6 mx-auto text-blue-500" />
+                        ) : verificationStatus?.status === 'DECLINED' ? (
+                          <ExternalLink className="h-6 w-6 mx-auto text-red-500" />
+                        ) : (
+                          <Clock className="h-6 w-6 mx-auto text-orange-500" />
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {verificationStatus?.isVerified 
+                          ? 'Identity Verified' 
+                          : verificationStatus?.status === 'SUBMITTED' || verificationStatus?.code === 'UNDER_REVIEW'
+                          ? 'Under Review'
+                          : verificationStatus?.status === 'DECLINED'
+                          ? 'Verification Declined'
+                          : 'Not Verified'
+                        }
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-600">
-                      {verificationStatus?.isVerified 
-                        ? 'Identity Verified' 
-                        : verificationStatus?.status === 'SUBMITTED' || verificationStatus?.code === 'UNDER_REVIEW'
-                        ? 'Under Review'
-                        : verificationStatus?.status === 'DECLINED'
-                        ? 'Verification Declined'
-                        : 'Not Verified'
-                      }
+                  )}
+
+                  {/* Admin Approval Status - Only for Employers */}
+                  {user.role === 'employer' && (
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">
+                        <Building className="h-6 w-6 mx-auto text-blue-500" />
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        Pending Admin Approval
+                      </div>
                     </div>
-                  </div>
+                  )}
                   <div className="text-center">
                     <div className="text-2xl font-bold text-blue-600">100%</div>
                     <div className="text-sm text-gray-600 flex items-center justify-center gap-1">
@@ -615,7 +650,157 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
 
-            {/* Detailed Information Tabs */}
+            {/* Company Information Card (for employers) */}
+            {user?.role === 'employer' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="h-5 w-5" />
+                    Company Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    
+                    {/* Company Header */}
+                    <div className="flex items-start gap-4">
+                      {user.employerProfile?.company_logo_url && (
+                        <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
+                          <img 
+                            src={user.employerProfile.company_logo_url} 
+                            alt="Company Logo"
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <h3 className="text-xl font-semibold text-gray-900">
+                          {user.employerProfile?.company_display_name || user.employerProfile?.company_name || 'Company Name Not Set'}
+                        </h3>
+                        {user.employerProfile?.company_legal_name && user.employerProfile.company_legal_name !== user.employerProfile?.company_name && (
+                          <p className="text-sm text-gray-600">Legal Name: {user.employerProfile.company_legal_name}</p>
+                        )}
+                        {user.employerProfile?.position && (
+                          <p className="text-sm text-blue-600 font-medium">{user.employerProfile.position}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Company Description */}
+                    {user.employerProfile?.company_description && (
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2">About the Company</h4>
+                        <p className="text-gray-600 text-sm leading-relaxed">
+                          {user.employerProfile.company_description}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Company Details Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      
+                      {/* Industry & Sector */}
+                      {user.employerProfile?.company_industry && (
+                        <div className="flex items-center gap-2">
+                          <Briefcase className="h-4 w-4 text-gray-400" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{user.employerProfile.company_industry}</p>
+                            {user.employerProfile?.company_sector && (
+                              <p className="text-xs text-gray-500">{user.employerProfile.company_sector}</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Company Size */}
+                      {user.employerProfile?.company_size && (
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-gray-400" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{user.employerProfile.company_size} employees</p>
+                            <p className="text-xs text-gray-500">Company Size</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Remote Policy */}
+                      {user.employerProfile?.remote_policy && (
+                        <div className="flex items-center gap-2">
+                          <Globe className="h-4 w-4 text-gray-400" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              {user.employerProfile.remote_policy === 'on-site' && 'On-site Only'}
+                              {user.employerProfile.remote_policy === 'remote' && 'Fully Remote'}
+                              {user.employerProfile.remote_policy === 'hybrid' && 'Hybrid'}
+                              {user.employerProfile.remote_policy === 'flexible' && 'Flexible'}
+                            </p>
+                            <p className="text-xs text-gray-500">Work Policy</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Headquarters */}
+                      {user.employerProfile?.headquarters_location && (
+                        <div className="flex items-center gap-2">
+                          <Building className="h-4 w-4 text-gray-400" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{user.employerProfile.headquarters_location}</p>
+                            <p className="text-xs text-gray-500">Headquarters</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Primary Office */}
+                      {user.employerProfile?.company_location && user.employerProfile.company_location !== user.employerProfile?.headquarters_location && (
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-gray-400" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{user.employerProfile.company_location}</p>
+                            <p className="text-xs text-gray-500">Primary Office</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Company Links */}
+                    {(user.employerProfile?.company_website || user.employerProfile?.careers_page_url) && (
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-3">Company Links</h4>
+                        <div className="flex flex-wrap gap-3">
+                          {user.employerProfile?.company_website && (
+                            <a 
+                              href={user.employerProfile.company_website} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm"
+                            >
+                              <Globe className="h-4 w-4" />
+                              Company Website
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          )}
+                          {user.employerProfile?.careers_page_url && (
+                            <a 
+                              href={user.employerProfile.careers_page_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors text-sm"
+                            >
+                              <Briefcase className="h-4 w-4" />
+                              Careers Page
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Detailed Information Tabs - Only for Candidates */}
+            {user?.role === 'candidate' && (
             <Card>
               <CardContent className="p-0">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -1005,6 +1190,7 @@ export default function ProfilePage() {
                 </Tabs>
                 </CardContent>
               </Card>
+            )}
           </div>
         </div>
 

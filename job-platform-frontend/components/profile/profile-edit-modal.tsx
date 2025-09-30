@@ -24,6 +24,8 @@ interface ProfileEditModalProps {
 export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalProps) {
   const { user } = useAuth()
   const [formData, setFormData] = useState({
+    first_name: "",
+    last_name: "",
     bio: "",
     job_title: "",
     location: "",
@@ -42,12 +44,20 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
     availability: "immediate" as "immediate" | "2-weeks" | "1-month" | "not-available",
     // Employer fields
     position: "",
+    // Company Information
     company_name: "",
+    company_legal_name: "",
+    company_display_name: "",
     company_description: "",
+    company_logo_url: "",
     company_website: "",
-    company_size: "",
+    careers_page_url: "",
     company_industry: "",
+    company_sector: "",
+    company_size: "",
     company_location: "",
+    headquarters_location: "",
+    remote_policy: "",
   })
 
   const [newSkill, setNewSkill] = useState("")
@@ -82,6 +92,8 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
       
       if (profile) {
         setFormData({
+          first_name: profile.first_name || response.user.first_name || "",
+          last_name: profile.last_name || response.user.last_name || "",
           bio: profile.bio || "",
           job_title: profile.job_title || "",
           location: profile.location || "",
@@ -100,12 +112,20 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
           availability: profile.availability || "immediate",
           // Employer fields
           position: profile.position || "",
+          // Company Information
           company_name: profile.company_name || "",
+          company_legal_name: profile.company_legal_name || "",
+          company_display_name: profile.company_display_name || "",
           company_description: profile.company_description || "",
+          company_logo_url: profile.company_logo_url || "",
           company_website: profile.company_website || "",
-          company_size: profile.company_size || "",
+          careers_page_url: profile.careers_page_url || "",
           company_industry: profile.company_industry || "",
+          company_sector: profile.company_sector || "",
+          company_size: profile.company_size || "",
           company_location: profile.company_location || "",
+          headquarters_location: profile.headquarters_location || "",
+          remote_policy: profile.remote_policy || "",
         })
       }
     } catch (error) {
@@ -381,6 +401,9 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
               </div>
             </div>
 
+            {/* Bio and Job Title - Only for Candidates */}
+            {user?.role === "candidate" && (
+              <>
             <div className="space-y-3">
               <Label htmlFor="bio" className="text-sm font-medium text-gray-700">Bio</Label>
               <Textarea
@@ -393,16 +416,47 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
               />
             </div>
 
-            <div className="space-y-3">
-              <Label htmlFor="job_title" className="text-sm font-medium text-gray-700">Job Title</Label>
-              <Input
-                id="job_title"
-                placeholder="e.g., Software Engineer, Chef, Marketing Manager, Data Scientist"
-                value={formData.job_title}
-                onChange={(e) => updateFormData("job_title", e.target.value)}
-                className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900"
-              />
-            </div>
+                <div className="space-y-3">
+                  <Label htmlFor="job_title" className="text-sm font-medium text-gray-700">Job Title</Label>
+                  <Input
+                    id="job_title"
+                    placeholder="e.g., Software Engineer, Chef, Marketing Manager, Data Scientist"
+                    value={formData.job_title}
+                    onChange={(e) => updateFormData("job_title", e.target.value)}
+                    className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Name Fields - Only for Employers */}
+            {user?.role === "employer" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <Label htmlFor="first_name" className="text-sm font-medium text-gray-700">First Name</Label>
+                  <Input
+                    id="first_name"
+                    placeholder="e.g., John"
+                    value={formData.first_name}
+                    onChange={(e) => updateFormData("first_name", e.target.value)}
+                    className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <Label htmlFor="last_name" className="text-sm font-medium text-gray-700">Last Name</Label>
+                  <Input
+                    id="last_name"
+                    placeholder="e.g., Smith"
+                    value={formData.last_name}
+                    onChange={(e) => updateFormData("last_name", e.target.value)}
+                    className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900"
+                    required
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="space-y-3">
               <Label htmlFor="website" className="text-sm font-medium text-gray-700">Website</Label>
@@ -504,8 +558,8 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
                       Add Custom Skill (Not in any category)
                     </Button>
                   ) : (
-                    <div className="flex gap-3">
-                      <Input
+                <div className="flex gap-3">
+                  <Input
                         placeholder="Enter custom skill..."
                         value={customSkill}
                         onChange={(e) => setCustomSkill(e.target.value)}
@@ -515,11 +569,11 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
                             addCustomSkill()
                           }
                         }}
-                        className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900"
-                      />
+                    className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900"
+                  />
                       <Button type="button" onClick={addCustomSkill} disabled={!customSkill.trim()} className="h-12 px-6 rounded-xl bg-blue-900 hover:bg-blue-800 text-white">
-                        Add
-                      </Button>
+                    Add
+                  </Button>
                       <Button type="button" variant="outline" onClick={() => {
                         setShowCustomInput(false)
                         setCustomSkill("")
@@ -536,10 +590,10 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
                   <div className="flex flex-wrap gap-2 min-h-[2rem] p-3 border rounded-xl">
                     {formData.skills.length > 0 ? (
                       formData.skills.map((skill) => (
-                        <Badge key={skill} variant="secondary" className="flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
-                          {skill}
-                          <X className="h-3 w-3 cursor-pointer hover:text-blue-900" onClick={() => removeSkill(skill)} />
-                        </Badge>
+                    <Badge key={skill} variant="secondary" className="flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
+                      {skill}
+                      <X className="h-3 w-3 cursor-pointer hover:text-blue-900" onClick={() => removeSkill(skill)} />
+                    </Badge>
                       ))
                     ) : (
                       <span className="text-muted-foreground text-sm">No skills added yet</span>
@@ -632,7 +686,7 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
           )}
 
           {user?.role === "employer" && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               <h3 className="text-lg font-medium">Company Information</h3>
               
               <div className="space-y-2">
@@ -645,8 +699,13 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
                 />
               </div>
 
+              {/* Company Names Section */}
+              <div className="space-y-4">
+                <h4 className="text-md font-medium text-gray-700">Company Names</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="company_name">Company Name</Label>
+                    <Label htmlFor="company_name">Company Name (Primary)</Label>
                 <Input
                   id="company_name"
                   placeholder="e.g., TechCorp Inc."
@@ -655,29 +714,100 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
                 />
               </div>
 
+                  <div className="space-y-2">
+                    <Label htmlFor="company_legal_name">Legal Name (Optional)</Label>
+                    <Input
+                      id="company_legal_name"
+                      placeholder="e.g., TechCorp Incorporated"
+                      value={formData.company_legal_name}
+                      onChange={(e) => updateFormData("company_legal_name", e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="company_display_name">Display Name (Optional)</Label>
+                  <Input
+                    id="company_display_name"
+                    placeholder="e.g., TechCorp (how you want to appear to candidates)"
+                    value={formData.company_display_name}
+                    onChange={(e) => updateFormData("company_display_name", e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Company Description */}
               <div className="space-y-2">
                 <Label htmlFor="company_description">Company Description</Label>
                 <Textarea
                   id="company_description"
-                  placeholder="Tell us about your company..."
+                  placeholder="Tell us about your company, mission, and culture..."
                   value={formData.company_description}
                   onChange={(e) => updateFormData("company_description", e.target.value)}
-                  rows={3}
+                  rows={4}
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              {/* Branding Section */}
+              <div className="space-y-4">
+                <h4 className="text-md font-medium text-gray-700">Branding & Assets</h4>
+                
                 <div className="space-y-2">
-                  <Label htmlFor="company_website">Company Website</Label>
+                  <Label htmlFor="company_logo_url">Company Logo URL</Label>
                   <Input
-                    id="company_website"
+                    id="company_logo_url"
                     type="url"
-                    placeholder="https://yourcompany.com"
-                    value={formData.company_website}
-                    onChange={(e) => updateFormData("company_website", e.target.value)}
+                    placeholder="https://yourcompany.com/logo.png"
+                    value={formData.company_logo_url}
+                    onChange={(e) => updateFormData("company_logo_url", e.target.value)}
                   />
                 </div>
+              </div>
 
+              {/* Industry & Sector */}
+              <div className="space-y-4">
+                <h4 className="text-md font-medium text-gray-700">Industry & Sector</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="company_industry">Industry</Label>
+                    <Select
+                      value={formData.company_industry}
+                      onValueChange={(value) => updateFormData("company_industry", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select industry" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Technology">Technology</SelectItem>
+                        <SelectItem value="Healthcare">Healthcare</SelectItem>
+                        <SelectItem value="Finance">Finance</SelectItem>
+                        <SelectItem value="Education">Education</SelectItem>
+                        <SelectItem value="Manufacturing">Manufacturing</SelectItem>
+                        <SelectItem value="Retail">Retail</SelectItem>
+                        <SelectItem value="Consulting">Consulting</SelectItem>
+                        <SelectItem value="Marketing">Marketing & Advertising</SelectItem>
+                        <SelectItem value="Real Estate">Real Estate</SelectItem>
+                        <SelectItem value="Non-profit">Non-profit</SelectItem>
+                        <SelectItem value="Government">Government</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="company_sector">Sector (Optional)</Label>
+                    <Input
+                      id="company_sector"
+                      placeholder="e.g., B2B SaaS, Consumer Electronics"
+                      value={formData.company_sector}
+                      onChange={(e) => updateFormData("company_sector", e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Company Size */}
                 <div className="space-y-2">
                   <Label htmlFor="company_size">Company Size</Label>
                   <Select
@@ -693,31 +823,83 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
                       <SelectItem value="51-200">51-200 employees</SelectItem>
                       <SelectItem value="201-500">201-500 employees</SelectItem>
                       <SelectItem value="501-1000">501-1000 employees</SelectItem>
-                      <SelectItem value="1000+">1000+ employees</SelectItem>
+                    <SelectItem value="1001-5000">1001-5000 employees</SelectItem>
+                    <SelectItem value="5000+">5000+ employees</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Locations Section */}
+              <div className="space-y-4">
+                <h4 className="text-md font-medium text-gray-700">Locations</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="headquarters_location">Headquarters Location</Label>
+                    <Input
+                      id="headquarters_location"
+                      placeholder="e.g., San Francisco, CA, USA"
+                      value={formData.headquarters_location}
+                      onChange={(e) => updateFormData("headquarters_location", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="company_location">Primary Office Location</Label>
+                    <Input
+                      id="company_location"
+                      placeholder="e.g., New York, NY, USA"
+                      value={formData.company_location}
+                      onChange={(e) => updateFormData("company_location", e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="remote_policy">Remote Work Policy</Label>
+                  <Select
+                    value={formData.remote_policy}
+                    onValueChange={(value) => updateFormData("remote_policy", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select remote policy" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="on-site">On-site Only</SelectItem>
+                      <SelectItem value="remote">Fully Remote</SelectItem>
+                      <SelectItem value="hybrid">Hybrid (Office + Remote)</SelectItem>
+                      <SelectItem value="flexible">Flexible</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              {/* Website & Links */}
+              <div className="space-y-4">
+                <h4 className="text-md font-medium text-gray-700">Website & Links</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="company_industry">Industry</Label>
+                    <Label htmlFor="company_website">Company Website</Label>
                   <Input
-                    id="company_industry"
-                    placeholder="e.g., Technology, Healthcare, Finance"
-                    value={formData.company_industry}
-                    onChange={(e) => updateFormData("company_industry", e.target.value)}
+                      id="company_website"
+                      type="url"
+                      placeholder="https://yourcompany.com"
+                      value={formData.company_website}
+                      onChange={(e) => updateFormData("company_website", e.target.value)}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="company_location">Company Location</Label>
+                    <Label htmlFor="careers_page_url">Careers Page URL</Label>
                   <Input
-                    id="company_location"
-                    placeholder="e.g., San Francisco, CA"
-                    value={formData.company_location}
-                    onChange={(e) => updateFormData("company_location", e.target.value)}
-                  />
+                      id="careers_page_url"
+                      type="url"
+                      placeholder="https://yourcompany.com/careers"
+                      value={formData.careers_page_url}
+                      onChange={(e) => updateFormData("careers_page_url", e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
             </div>

@@ -60,7 +60,16 @@ export const EmployerProfile = sequelize.define('EmployerProfile', {
     type: DataTypes.STRING,
     allowNull: true,
   },
+  // Company Information
   company_name: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  company_legal_name: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  company_display_name: {
     type: DataTypes.STRING,
     allowNull: true,
   },
@@ -68,11 +77,15 @@ export const EmployerProfile = sequelize.define('EmployerProfile', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  company_logo_url: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
   company_website: {
     type: DataTypes.STRING,
     allowNull: true,
   },
-  company_size: {
+  careers_page_url: {
     type: DataTypes.STRING,
     allowNull: true,
   },
@@ -80,8 +93,26 @@ export const EmployerProfile = sequelize.define('EmployerProfile', {
     type: DataTypes.STRING,
     allowNull: true,
   },
+  company_sector: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  company_size: {
+    type: DataTypes.ENUM,
+    values: ['1-10', '11-50', '51-200', '201-500', '501-1000', '1001-5000', '5000+'],
+    allowNull: true,
+  },
   company_location: {
     type: DataTypes.STRING,
+    allowNull: true,
+  },
+  headquarters_location: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  remote_policy: {
+    type: DataTypes.ENUM,
+    values: ['on-site', 'remote', 'hybrid', 'flexible'],
     allowNull: true,
   },
   is_active: {

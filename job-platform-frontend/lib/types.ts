@@ -75,15 +75,6 @@ export interface CandidateProfile {
   updated_at: Date
 }
 
-export interface EmployerProfile {
-  id: string
-  user_id: string
-  company_id: string
-  position?: string
-  created_at: Date
-  updated_at: Date
-}
-
 // Extended types with relations
 export interface JobWithCompany extends Job {
   company: Company
@@ -108,12 +99,20 @@ export interface EmployerProfile {
   profile_picture_url?: string
   // Employer-specific fields
   position?: string
+  // Company Information
   company_name?: string
+  company_legal_name?: string
+  company_display_name?: string
   company_description?: string
+  company_logo_url?: string
   company_website?: string
-  company_size?: string
+  careers_page_url?: string
   company_industry?: string
+  company_sector?: string
+  company_size?: '1-10' | '11-50' | '51-200' | '201-500' | '501-1000' | '1001-5000' | '5000+'
   company_location?: string
+  headquarters_location?: string
+  remote_policy?: 'on-site' | 'remote' | 'hybrid' | 'flexible'
   is_active: boolean
   created_at: Date
   updated_at: Date

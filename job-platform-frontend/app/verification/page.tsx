@@ -11,6 +11,13 @@ export default function VerificationPage() {
   const { user } = useAuth();
   const router = useRouter();
 
+  // Redirect employers to profile page - they don't need Veriff verification
+  useEffect(() => {
+    if (user?.role === 'employer') {
+      router.push('/profile');
+    }
+  }, [user, router]);
+
   const addLog = (message: string) => {
     setLogs(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`]);
   };
@@ -59,8 +66,8 @@ export default function VerificationPage() {
       }
       
       const vendorData = user?.id ? user.id.toString() : 'test-user';
-      const userCountry = user?.candidateProfile?.country || user?.employerProfile?.country || 'US';
-      const userDateOfBirth = user?.candidateProfile?.date_of_birth || user?.employerProfile?.date_of_birth || '1990-01-01';
+      const userCountry = user?.candidateProfile?.country || 'US';
+      const userDateOfBirth = user?.candidateProfile?.date_of_birth || '1990-01-01';
       
       addLog(`🆔 Using vendor data: ${vendorData}`);
       addLog(`👤 Using user name: ${user?.first_name} ${user?.last_name}`);
@@ -132,6 +139,22 @@ export default function VerificationPage() {
   const clearLogs = () => {
     setLogs([]);
   };
+
+  // Show loading message for employers while redirecting
+  if (user?.role === 'employer') {
+    return (
+      <AuthGuard>
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
+          <div className="container mx-auto max-w-2xl">
+            <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+              <h1 className="text-3xl font-bold mb-4 text-gray-800">Redirecting...</h1>
+              <p className="text-gray-600">Employers don't need identity verification. Redirecting to your profile...</p>
+            </div>
+          </div>
+        </div>
+      </AuthGuard>
+    );
+  }
 
   return (
     <AuthGuard>
