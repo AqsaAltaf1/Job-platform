@@ -23,7 +23,7 @@ interface RegisterData {
   password: string
   first_name: string
   last_name: string
-  role: "super_admin" | "employer" | "candidate"
+  role: "super_admin" | "employer" | "candidate" | "team_member"
   phone?: string
 }
 

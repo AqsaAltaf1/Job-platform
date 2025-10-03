@@ -115,6 +115,28 @@ export const EmployerProfile = sequelize.define('EmployerProfile', {
     values: ['on-site', 'remote', 'hybrid', 'flexible'],
     allowNull: true,
   },
+  // Account ownership
+  is_primary_owner: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+  },
+  account_role: {
+    type: DataTypes.ENUM,
+    values: ['primary_owner', 'hr_manager', 'recruiter', 'interviewer', 'admin'],
+    defaultValue: 'primary_owner',
+  },
+  permissions: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: {
+      can_post_jobs: true,
+      can_view_applications: true,
+      can_interview_candidates: true,
+      can_manage_team: true,
+      can_access_analytics: true,
+      can_manage_company_profile: true,
+    },
+  },
   is_active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true,

@@ -85,6 +85,38 @@ export interface ApplicationWithDetails extends Application {
   candidate: User & { profile: CandidateProfile }
 }
 
+// Team management types
+export type TeamRole = 'primary_owner' | 'hr_manager' | 'recruiter' | 'interviewer' | 'admin'
+
+export interface TeamPermissions {
+  can_post_jobs: boolean
+  can_view_applications: boolean
+  can_interview_candidates: boolean
+  can_manage_team: boolean
+  can_access_analytics: boolean
+  can_manage_company_profile: boolean
+}
+
+export interface TeamMember {
+  id: string
+  employer_profile_id: string
+  first_name: string
+  last_name: string
+  email: string
+  role: TeamRole
+  permissions: TeamPermissions
+  phone?: string
+  department?: string
+  job_title?: string
+  is_active: boolean
+  invited_by?: string
+  invited_at?: Date
+  joined_at?: Date
+  last_active_at?: Date
+  created_at: Date
+  updated_at: Date
+}
+
 export interface EmployerProfile {
   id: string
   user_id: string
@@ -113,6 +145,10 @@ export interface EmployerProfile {
   company_location?: string
   headquarters_location?: string
   remote_policy?: 'on-site' | 'remote' | 'hybrid' | 'flexible'
+  // Team management
+  is_primary_owner?: boolean
+  account_role?: TeamRole
+  permissions?: TeamPermissions
   is_active: boolean
   created_at: Date
   updated_at: Date

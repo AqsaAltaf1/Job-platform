@@ -82,8 +82,18 @@ import {
   getReviewerConsistencyReport
 } from './controllers/biasReductionController.js';
 
+import {
+  getTeamMembers,
+  inviteTeamMember,
+  verifyInvitation,
+  acceptInvitation,
+  getTeamMemberProfile,
+  updateTeamMember,
+  deleteTeamMember
+} from './controllers/teamController.js';
+
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 // Middleware
 app.use(cors({
@@ -314,6 +324,15 @@ app.get('/api/bias-reduction/reviewer/:reviewerEmail/consistency', authenticateT
 app.get('/api/bias-reduction/analytics', authenticateToken, getBiasReductionAnalytics);
 app.post('/api/bias-reduction/batch-process', authenticateToken, batchProcessEndorsements);
 app.get('/api/bias-reduction/consistency-report', authenticateToken, getReviewerConsistencyReport);
+
+// Team Management Routes
+app.get('/api/team-members/:employerProfileId', authenticateToken, getTeamMembers);
+app.post('/api/team-members', authenticateToken, inviteTeamMember);
+app.put('/api/team-members/:id', authenticateToken, updateTeamMember);
+app.delete('/api/team-members/:id', authenticateToken, deleteTeamMember);
+app.get('/api/team/profile', authenticateToken, getTeamMemberProfile);
+app.get('/api/team/verify-invitation', verifyInvitation); // No auth needed for invitation verification
+app.post('/api/team/accept-invitation', acceptInvitation); // No auth needed for invitation acceptance
 
 // Start server
 app.listen(PORT, async () => {

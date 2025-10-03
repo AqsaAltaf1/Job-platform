@@ -18,6 +18,7 @@ import SkillEvidenceModal from "@/components/profile/skill-evidence-modal"
 import PeerEndorsementModal from "@/components/profile/peer-endorsement-modal"
 import ReviewerInvitationModal from "@/components/profile/reviewer-invitation-modal"
 import { LinkedInSkillsImport } from "@/components/profile/linkedin-skills-import"
+import { TeamManagement } from "@/components/team/team-management"
 import type { Experience, Project, Education, EnhancedSkill } from "@/lib/types"
 import { showToast } from "@/lib/toast"
 import { useSearchParams } from "next/navigation"
@@ -797,6 +798,11 @@ export default function ProfilePage() {
                   </div>
                 </CardContent>
               </Card>
+            )}
+
+            {/* Team Management - Only for Employers */}
+            {user?.role === 'employer' && user.employerProfile && (
+              <TeamManagement employerProfile={user.employerProfile} />
             )}
 
             {/* Detailed Information Tabs - Only for Candidates */}

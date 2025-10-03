@@ -9,6 +9,7 @@ import { EnhancedSkill } from './EnhancedSkill.js';
 import { SkillEvidence } from './SkillEvidence.js';
 import { PeerEndorsement } from './PeerEndorsement.js';
 import { ReviewerInvitation } from './ReviewerInvitation.js';
+import { TeamMember } from './TeamMember.js';
 import Otp from './Otp.js';
 
 // Define associations
@@ -39,6 +40,12 @@ SkillEvidence.belongsTo(EnhancedSkill, { foreignKey: 'enhanced_skill_id', as: 'e
 PeerEndorsement.belongsTo(EnhancedSkill, { foreignKey: 'enhanced_skill_id', as: 'enhancedSkill' });
 ReviewerInvitation.belongsTo(CandidateProfile, { foreignKey: 'candidate_profile_id', as: 'candidateProfile' });
 
+// Team Member associations
+EmployerProfile.hasMany(TeamMember, { foreignKey: 'employer_profile_id', as: 'teamMembers' });
+TeamMember.belongsTo(EmployerProfile, { foreignKey: 'employer_profile_id', as: 'employerProfile' });
+TeamMember.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+User.hasOne(TeamMember, { foreignKey: 'user_id', as: 'teamMember' });
+
 // Export models and sequelize
 export {
   sequelize,
@@ -52,5 +59,6 @@ export {
   SkillEvidence,
   PeerEndorsement,
   ReviewerInvitation,
+  TeamMember,
   Otp,
 };
