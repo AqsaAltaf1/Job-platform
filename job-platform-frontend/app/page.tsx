@@ -257,7 +257,7 @@ export default function HomePage() {
                         <div className="text-xs text-gray-400 mb-1">
                           {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                         </div>
-                        <div className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors duration-300">{job.company.name}</div>
+                        <div className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors duration-300">{job.employerProfile?.company_name || 'Company Name'}</div>
                       </div>
                       <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center group-hover:bg-primary/10 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
                         <Building2 className="h-6 w-6 text-gray-400 group-hover:text-primary transition-colors duration-300" />

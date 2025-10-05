@@ -59,7 +59,7 @@ export function JobCard({ job, showActions = false, onEdit, onDelete, onApply }:
             </CardTitle>
             <CardDescription className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
-              {job.company.name}
+              {job.employerProfile?.company_name || 'Company Name'}
             </CardDescription>
           </div>
           <Badge variant={getStatusColor(job.status)}>{job.status}</Badge>

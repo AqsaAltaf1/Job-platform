@@ -245,7 +245,7 @@ export default function DashboardPage() {
                         <div key={job.id} className="flex items-center justify-between p-4 border rounded-lg">
                           <div>
                             <h3 className="font-medium">{job.title}</h3>
-                            <p className="text-sm text-muted-foreground">{job.company.name}</p>
+                            <p className="text-sm text-muted-foreground">{job.employerProfile?.company_name || 'Company Name'}</p>
                             <p className="text-xs text-muted-foreground">{job.location}</p>
                           </div>
                           <div className="text-right">

@@ -108,7 +108,8 @@ import {
   getJobApplications,
   getApplicationById,
   updateApplicationStatus,
-  withdrawApplication
+  withdrawApplication,
+  getAllApplicationsForEmployer
 } from './controllers/applicationController.js';
 
 import {
@@ -118,6 +119,57 @@ import {
   checkJobSaved,
   updateSavedJobNotes
 } from './controllers/savedJobController.js';
+
+import {
+  getDashboardStats,
+  getRecentApplications,
+  getRecentJobs
+} from './controllers/dashboardController.js';
+
+import {
+  getEmployerAnalytics
+} from './controllers/analyticsController.js';
+
+import {
+  getEmployerInterviews,
+  getShortlistedApplications,
+  scheduleInterview,
+  updateInterviewStatus
+} from './controllers/interviewController.js';
+
+import {
+  createOrUpdateRating,
+  getApplicationRatings,
+  getRatingAnalytics,
+  deleteRating
+} from './controllers/ratingController.js';
+
+import {
+  bulkUpdateStatus,
+  bulkSendEmails,
+  bulkDeleteApplications,
+  exportApplications
+} from './controllers/bulkActionsController.js';
+
+import {
+  predictCandidateSuccess,
+  calculateCompatibility,
+  getTopCandidateMatches,
+  performNLPAnalysis,
+  predictRetention,
+  getModelMetrics,
+  batchProcessCandidates
+} from './controllers/mlController.js';
+
+import {
+  trainModel,
+  evaluateModel,
+  deployModel,
+  getModelHistory,
+  extractTrainingData,
+  getPipelineStatus,
+  triggerRetraining
+} from './controllers/mlPipelineController.js';
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -291,6 +343,7 @@ app.get('/api/jobs/:job_id/applications', authenticateToken, getJobApplications)
 app.get('/api/applications/:id', authenticateToken, getApplicationById); // Single application
 app.put('/api/applications/:id/status', authenticateToken, updateApplicationStatus); // Update application status
 app.put('/api/applications/:id/withdraw', authenticateToken, withdrawApplication); // Withdraw application
+app.get('/api/employer/all-applications', authenticateToken, getAllApplicationsForEmployer); // All applications for pipeline
 
 // Saved Job Routes
 app.post('/api/jobs/:job_id/save', authenticateToken, saveJob); // Save a job
@@ -298,6 +351,50 @@ app.delete('/api/jobs/:job_id/save', authenticateToken, unsaveJob); // Unsave a 
 app.get('/api/candidate/saved-jobs', authenticateToken, getSavedJobs); // Get saved jobs
 app.get('/api/jobs/:job_id/saved', authenticateToken, checkJobSaved); // Check if job is saved
 app.put('/api/jobs/:job_id/save/notes', authenticateToken, updateSavedJobNotes); // Update saved job notes
+
+// Dashboard Routes
+app.get('/api/employer/dashboard-stats', authenticateToken, getDashboardStats); // Get dashboard statistics
+app.get('/api/employer/recent-applications', authenticateToken, getRecentApplications); // Get recent applications
+app.get('/api/employer/recent-jobs', authenticateToken, getRecentJobs); // Get recent jobs
+
+// Analytics Routes
+app.get('/api/employer/analytics', authenticateToken, getEmployerAnalytics); // Get comprehensive analytics
+
+// Interview Routes
+app.get('/api/employer/interviews', authenticateToken, getEmployerInterviews); // Get all interviews
+app.get('/api/employer/shortlisted-applications', authenticateToken, getShortlistedApplications); // Get shortlisted applications
+app.post('/api/employer/schedule-interview', authenticateToken, scheduleInterview); // Schedule interview
+app.put('/api/employer/interviews/:id/status', authenticateToken, updateInterviewStatus); // Update interview status
+
+// Candidate Rating Routes
+app.post('/api/applications/:application_id/rating', authenticateToken, createOrUpdateRating); // Create or update rating
+app.get('/api/applications/:application_id/ratings', authenticateToken, getApplicationRatings); // Get application ratings
+app.get('/api/employer/rating-analytics', authenticateToken, getRatingAnalytics); // Get rating analytics
+app.delete('/api/ratings/:rating_id', authenticateToken, deleteRating); // Delete rating
+
+// Bulk Actions Routes
+app.post('/api/employer/bulk/update-status', authenticateToken, bulkUpdateStatus); // Bulk update application status
+app.post('/api/employer/bulk/send-emails', authenticateToken, bulkSendEmails); // Bulk send emails
+app.post('/api/employer/bulk/delete-applications', authenticateToken, bulkDeleteApplications); // Bulk delete applications
+app.post('/api/employer/bulk/export-applications', authenticateToken, exportApplications); // Export applications
+
+// ML Prediction Routes
+app.get('/api/ml/predict-success/:candidate_id/:job_id', authenticateToken, predictCandidateSuccess); // Predict candidate success
+app.get('/api/ml/compatibility/:candidate_id/:job_id', authenticateToken, calculateCompatibility); // Calculate compatibility score
+app.get('/api/ml/top-matches/:job_id', authenticateToken, getTopCandidateMatches); // Get top candidate matches
+app.post('/api/ml/nlp-analysis', authenticateToken, performNLPAnalysis); // Advanced NLP analysis
+app.get('/api/ml/predict-retention/:candidate_id/:job_id', authenticateToken, predictRetention); // Predict retention
+app.get('/api/ml/model-metrics', authenticateToken, getModelMetrics); // Get model performance metrics
+app.post('/api/ml/batch-process', authenticateToken, batchProcessCandidates); // Batch process candidates
+
+// ML Pipeline Management Routes (Admin only)
+app.post('/api/ml/pipeline/train/:model_name', authenticateToken, trainModel); // Train ML model
+app.get('/api/ml/pipeline/evaluate/:model_name', authenticateToken, evaluateModel); // Evaluate model
+app.post('/api/ml/pipeline/deploy/:model_name', authenticateToken, deployModel); // Deploy model
+app.get('/api/ml/pipeline/history/:model_name', authenticateToken, getModelHistory); // Get model history
+app.post('/api/ml/pipeline/extract-data/:model_name', authenticateToken, extractTrainingData); // Extract training data
+app.get('/api/ml/pipeline/status', authenticateToken, getPipelineStatus); // Get pipeline status
+app.post('/api/ml/pipeline/retrain', authenticateToken, triggerRetraining); // Trigger retraining
 
 // Start server
 app.listen(PORT, async () => {

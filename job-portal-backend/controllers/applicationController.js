@@ -84,7 +84,12 @@ export const applyForJob = async (req, res) => {
       include: [{
         model: Job,
         as: 'job',
-        attributes: ['id', 'title', 'company_name']
+        attributes: ['id', 'title'],
+        include: [{
+          model: EmployerProfile,
+          as: 'employerProfile',
+          attributes: ['company_name']
+        }]
       }]
     });
 
@@ -446,6 +451,99 @@ export const withdrawApplication = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to withdraw application'
+    });
+  }
+};
+
+// Get all applications for employer (for pipeline management)
+export const getAllApplicationsForEmployer = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    let employerProfileId;
+
+    // Get employer profile ID
+    if (req.user.role === 'employer') {
+      const employerProfile = await EmployerProfile.findOne({
+        where: { user_id: userId }
+      });
+      if (!employerProfile) {
+        return res.status(404).json({
+          success: false,
+          message: 'Employer profile not found'
+        });
+      }
+      employerProfileId = employerProfile.id;
+    } else if (req.user.role === 'team_member') {
+      const teamMember = await TeamMember.findOne({
+        where: { user_id: userId }
+      });
+      if (!teamMember) {
+        return res.status(404).json({
+          success: false,
+          message: 'Team member profile not found'
+        });
+      }
+      employerProfileId = teamMember.employer_profile_id;
+    } else {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+
+    const applications = await JobApplication.findAll({
+      include: [
+        {
+          model: Job,
+          as: 'job',
+          where: { employer_profile_id: employerProfileId },
+          attributes: ['id', 'title']
+        },
+        {
+          model: User,
+          as: 'candidate',
+          attributes: ['id', 'email', 'first_name', 'last_name'],
+          include: [{
+            model: CandidateProfile,
+            as: 'candidateProfile',
+            attributes: ['phone', 'location', 'experience_years']
+          }]
+        }
+      ],
+      order: [['created_at', 'DESC']]
+    });
+
+    const formattedApplications = applications.map(app => ({
+      id: app.id,
+      candidate_id: app.candidate_id,
+      candidate_name: `${app.candidate.first_name} ${app.candidate.last_name}`,
+      candidate_email: app.candidate.email,
+      candidate_phone: app.candidate.candidateProfile?.phone,
+      candidate_location: app.candidate.candidateProfile?.location,
+      job_id: app.job.id,
+      job_title: app.job.title,
+      status: app.status,
+      applied_at: app.created_at,
+      cover_letter: app.cover_letter,
+      expected_salary: app.expected_salary,
+      rating: app.rating,
+      employer_notes: app.employer_notes,
+      interview_scheduled_at: app.interview_scheduled_at,
+      resume_url: app.resume_url,
+      experience_years: app.candidate.candidateProfile?.experience_years
+    }));
+
+    res.json({
+      success: true,
+      applications: formattedApplications
+    });
+
+  } catch (error) {
+    console.error('Error fetching all applications:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch applications',
+      error: error.message
     });
   }
 };

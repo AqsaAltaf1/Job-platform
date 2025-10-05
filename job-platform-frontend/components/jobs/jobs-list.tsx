@@ -60,7 +60,7 @@ export function JobsList({
     const matchesSearch =
       searchTerm === "" ||
       job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      job.company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (job.employerProfile?.company_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.location.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesStatus = statusFilter === "all" || job.status === statusFilter

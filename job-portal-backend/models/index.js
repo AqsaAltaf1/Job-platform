@@ -13,6 +13,8 @@ import { TeamMember } from './TeamMember.js';
 import Job from './Job.js';
 import JobApplication from './JobApplication.js';
 import SavedJob from './SavedJob.js';
+import Interview from './Interview.js';
+import CandidateRating from './CandidateRating.js';
 import Otp from './Otp.js';
 
 // Define associations
@@ -70,6 +72,22 @@ Job.hasMany(SavedJob, { foreignKey: 'job_id', as: 'savedByUsers' });
 SavedJob.belongsTo(User, { foreignKey: 'candidate_id', as: 'candidate' });
 SavedJob.belongsTo(Job, { foreignKey: 'job_id', as: 'job' });
 
+// Interview associations
+JobApplication.hasMany(Interview, { foreignKey: 'application_id', as: 'interviews' });
+Interview.belongsTo(JobApplication, { foreignKey: 'application_id', as: 'application' });
+Interview.belongsTo(User, { foreignKey: 'interviewer_id', as: 'interviewer' });
+Interview.belongsTo(Job, { foreignKey: 'job_id', as: 'job' });
+User.hasMany(Interview, { foreignKey: 'interviewer_id', as: 'conductedInterviews' });
+Job.hasMany(Interview, { foreignKey: 'job_id', as: 'jobInterviews' });
+
+// Candidate Rating associations
+JobApplication.hasMany(CandidateRating, { foreignKey: 'application_id', as: 'ratings' });
+CandidateRating.belongsTo(JobApplication, { foreignKey: 'application_id', as: 'application' });
+CandidateRating.belongsTo(User, { foreignKey: 'rater_id', as: 'rater' });
+CandidateRating.belongsTo(Interview, { foreignKey: 'interview_id', as: 'interview' });
+User.hasMany(CandidateRating, { foreignKey: 'rater_id', as: 'givenRatings' });
+Interview.hasMany(CandidateRating, { foreignKey: 'interview_id', as: 'ratings' });
+
 // Export models and sequelize
 export {
   sequelize,
@@ -87,5 +105,7 @@ export {
   Job,
   JobApplication,
   SavedJob,
+  Interview,
+  CandidateRating,
   Otp,
 };
