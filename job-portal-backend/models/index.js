@@ -10,6 +10,9 @@ import { SkillEvidence } from './SkillEvidence.js';
 import { PeerEndorsement } from './PeerEndorsement.js';
 import { ReviewerInvitation } from './ReviewerInvitation.js';
 import { TeamMember } from './TeamMember.js';
+import Job from './Job.js';
+import JobApplication from './JobApplication.js';
+import SavedJob from './SavedJob.js';
 import Otp from './Otp.js';
 
 // Define associations
@@ -46,6 +49,27 @@ TeamMember.belongsTo(EmployerProfile, { foreignKey: 'employer_profile_id', as: '
 TeamMember.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 User.hasOne(TeamMember, { foreignKey: 'user_id', as: 'teamMember' });
 
+// Job associations
+EmployerProfile.hasMany(Job, { foreignKey: 'employer_profile_id', as: 'jobs' });
+Job.belongsTo(EmployerProfile, { foreignKey: 'employer_profile_id', as: 'employerProfile' });
+Job.belongsTo(User, { foreignKey: 'posted_by', as: 'postedBy' });
+User.hasMany(Job, { foreignKey: 'posted_by', as: 'postedJobs' });
+
+// Job Application associations
+Job.hasMany(JobApplication, { foreignKey: 'job_id', as: 'applications' });
+JobApplication.belongsTo(Job, { foreignKey: 'job_id', as: 'job' });
+JobApplication.belongsTo(User, { foreignKey: 'candidate_id', as: 'candidate' });
+JobApplication.belongsTo(CandidateProfile, { foreignKey: 'candidate_profile_id', as: 'candidateProfile' });
+JobApplication.belongsTo(User, { foreignKey: 'reviewed_by', as: 'reviewer' });
+User.hasMany(JobApplication, { foreignKey: 'candidate_id', as: 'applications' });
+CandidateProfile.hasMany(JobApplication, { foreignKey: 'candidate_profile_id', as: 'applications' });
+
+// Saved Job associations
+User.hasMany(SavedJob, { foreignKey: 'candidate_id', as: 'savedJobs' });
+Job.hasMany(SavedJob, { foreignKey: 'job_id', as: 'savedByUsers' });
+SavedJob.belongsTo(User, { foreignKey: 'candidate_id', as: 'candidate' });
+SavedJob.belongsTo(Job, { foreignKey: 'job_id', as: 'job' });
+
 // Export models and sequelize
 export {
   sequelize,
@@ -60,5 +84,8 @@ export {
   PeerEndorsement,
   ReviewerInvitation,
   TeamMember,
+  Job,
+  JobApplication,
+  SavedJob,
   Otp,
 };

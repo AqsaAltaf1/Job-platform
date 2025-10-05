@@ -28,9 +28,10 @@ export const jobsApi = {
     posted_by?: string
   }): Promise<JobWithCompany[]> => {
     try {
-      const jobs = await api.jobs.getJobs() as JobWithCompany[]
+      const response = await api.jobs.getJobs() as { success: boolean; jobs: JobWithCompany[] }
       
-      let filteredJobs = jobs
+      // Extract jobs array from API response
+      let filteredJobs = response.jobs || []
 
       if (filters?.status) {
         filteredJobs = filteredJobs.filter((job) => job.status === filters.status)
@@ -54,7 +55,8 @@ export const jobsApi = {
   // Get single job by ID
   getJob: async (id: string): Promise<JobWithCompany | null> => {
     try {
-      return await api.jobs.getJob(id) as JobWithCompany
+      const response = await api.jobs.getJob(id) as { success: boolean; job: JobWithCompany }
+      return response.job || null
     } catch (error) {
       console.error('Failed to fetch job:', error)
       return null
@@ -85,7 +87,8 @@ export const jobsApi = {
   // Get companies (now using real API)
   getCompanies: async (): Promise<Company[]> => {
     try {
-      return await api.companies.getCompanies() as Company[]
+      const response = await api.companies.getCompanies() as { success: boolean; companies: Company[] }
+      return response.companies || []
     } catch (error) {
       console.error('Failed to fetch companies:', error)
       return []

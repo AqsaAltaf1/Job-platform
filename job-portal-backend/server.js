@@ -92,6 +92,33 @@ import {
   deleteTeamMember
 } from './controllers/teamController.js';
 
+import {
+  getAllJobs,
+  getJobById,
+  getEmployerJobs,
+  createJob,
+  updateJob,
+  deleteJob,
+  getJobStatistics
+} from './controllers/jobController.js';
+
+import {
+  applyForJob,
+  getCandidateApplications,
+  getJobApplications,
+  getApplicationById,
+  updateApplicationStatus,
+  withdrawApplication
+} from './controllers/applicationController.js';
+
+import {
+  saveJob,
+  unsaveJob,
+  getSavedJobs,
+  checkJobSaved,
+  updateSavedJobNotes
+} from './controllers/savedJobController.js';
+
 const app = express();
 const PORT = process.env.PORT || 5001;
 
@@ -124,92 +151,6 @@ app.get('/health', async (req, res) => {
 });
 
 // API Routes
-app.get('/api/jobs', (req, res) => {
-  const jobs = [
-    {
-      id: '1',
-      title: 'Senior Frontend Developer',
-      description: 'We are looking for a senior frontend developer...',
-      requirements: '5+ years experience with React, TypeScript',
-      salary_min: 80000,
-      salary_max: 120000,
-      location: 'San Francisco, CA',
-      job_type: 'full-time',
-      experience_level: 'senior',
-      company_id: '1',
-      posted_by: '1',
-      status: 'published',
-      created_at: new Date(),
-      updated_at: new Date(),
-      company: {
-        id: '1',
-        name: 'TechCorp',
-        description: 'Leading technology company',
-        website: 'https://techcorp.com',
-        industry: 'Technology',
-        size: '100-500',
-        location: 'San Francisco, CA'
-      }
-    },
-    {
-      id: '2',
-      title: 'Backend Developer',
-      description: 'Join our backend team...',
-      requirements: '3+ years with Node.js, PostgreSQL',
-      salary_min: 70000,
-      salary_max: 100000,
-      location: 'Remote',
-      job_type: 'full-time',
-      experience_level: 'mid',
-      company_id: '2',
-      posted_by: '2',
-      status: 'published',
-      created_at: new Date(),
-      updated_at: new Date(),
-      company: {
-        id: '2',
-        name: 'StartupXYZ',
-        description: 'Innovative startup',
-        website: 'https://startupxyz.com',
-        industry: 'Technology',
-        size: '10-50',
-        location: 'New York, NY'
-      }
-    }
-  ];
-  res.json(jobs);
-});
-
-app.get('/api/jobs/:id', (req, res) => {
-  const { id } = req.params;
-  const job = {
-    id: id,
-    title: 'Senior Frontend Developer',
-    description: 'We are looking for a senior frontend developer...',
-    requirements: '5+ years experience with React, TypeScript',
-    salary_min: 80000,
-    salary_max: 120000,
-    location: 'San Francisco, CA',
-    job_type: 'full-time',
-    experience_level: 'senior',
-    company_id: '1',
-    posted_by: '1',
-    status: 'published',
-    created_at: new Date(),
-    updated_at: new Date(),
-    company: {
-      id: '1',
-      name: 'TechCorp',
-      description: 'Leading technology company',
-      website: 'https://techcorp.com',
-      industry: 'Technology',
-      size: '100-500',
-      location: 'San Francisco, CA'
-    }
-  };
-  res.json(job);
-});
-
 app.get('/api/companies', (req, res) => {
   const companies = [
     {
@@ -333,6 +274,30 @@ app.delete('/api/team-members/:id', authenticateToken, deleteTeamMember);
 app.get('/api/team/profile', authenticateToken, getTeamMemberProfile);
 app.get('/api/team/verify-invitation', verifyInvitation); // No auth needed for invitation verification
 app.post('/api/team/accept-invitation', acceptInvitation); // No auth needed for invitation acceptance
+
+// Job Management Routes
+app.get('/api/jobs', getAllJobs); // Public endpoint for job listings
+app.get('/api/jobs/:id', getJobById); // Public endpoint for single job
+app.get('/api/employer/jobs', authenticateToken, getEmployerJobs); // Employer's jobs
+app.post('/api/jobs', authenticateToken, createJob); // Create job
+app.put('/api/jobs/:id', authenticateToken, updateJob); // Update job
+app.delete('/api/jobs/:id', authenticateToken, deleteJob); // Delete job
+app.get('/api/employer/job-statistics', authenticateToken, getJobStatistics); // Job statistics
+
+// Job Application Routes
+app.post('/api/jobs/:job_id/apply', authenticateToken, applyForJob); // Apply for job
+app.get('/api/candidate/applications', authenticateToken, getCandidateApplications); // Candidate's applications
+app.get('/api/jobs/:job_id/applications', authenticateToken, getJobApplications); // Job applications for employers
+app.get('/api/applications/:id', authenticateToken, getApplicationById); // Single application
+app.put('/api/applications/:id/status', authenticateToken, updateApplicationStatus); // Update application status
+app.put('/api/applications/:id/withdraw', authenticateToken, withdrawApplication); // Withdraw application
+
+// Saved Job Routes
+app.post('/api/jobs/:job_id/save', authenticateToken, saveJob); // Save a job
+app.delete('/api/jobs/:job_id/save', authenticateToken, unsaveJob); // Unsave a job
+app.get('/api/candidate/saved-jobs', authenticateToken, getSavedJobs); // Get saved jobs
+app.get('/api/jobs/:job_id/saved', authenticateToken, checkJobSaved); // Check if job is saved
+app.put('/api/jobs/:job_id/save/notes', authenticateToken, updateSavedJobNotes); // Update saved job notes
 
 // Start server
 app.listen(PORT, async () => {

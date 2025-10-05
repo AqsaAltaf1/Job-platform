@@ -40,7 +40,7 @@ export default function TeamDashboard() {
 
   const loadTeamMemberProfile = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/team/profile', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/team/profile`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
         }
@@ -357,7 +357,7 @@ export default function TeamDashboard() {
 
   const loadTeamMemberProfile = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/team/profile', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/team/profile`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
         }

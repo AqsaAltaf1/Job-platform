@@ -30,6 +30,7 @@ import {
 import { TeamMemberModal } from "./team-member-modal"
 import type { TeamMember, TeamRole, EmployerProfile } from "@/lib/types"
 import { showToast } from "@/lib/toast"
+import { getApiUrl } from "@/lib/config"
 
 interface TeamManagementProps {
   employerProfile: EmployerProfile
@@ -63,7 +64,7 @@ export function TeamManagement({ employerProfile }: TeamManagementProps) {
 
   const loadTeamMembers = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/team-members/${employerProfile.id}`, {
+      const response = await fetch(getApiUrl(`/team-members/${employerProfile.id}`), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
         }
@@ -83,8 +84,8 @@ export function TeamManagement({ employerProfile }: TeamManagementProps) {
   const handleSaveMember = async (memberData: Partial<TeamMember>) => {
     try {
       const url = memberData.id 
-        ? `http://localhost:5000/api/team-members/${memberData.id}`
-        : `http://localhost:5000/api/team-members`
+        ? getApiUrl(`/team-members/${memberData.id}`)
+        : getApiUrl(`/team-members`)
       
       const response = await fetch(url, {
         method: memberData.id ? 'PUT' : 'POST',
@@ -116,7 +117,7 @@ export function TeamManagement({ employerProfile }: TeamManagementProps) {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/team-members/${memberId}`, {
+      const response = await fetch(getApiUrl(`/team-members/${memberId}`), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`

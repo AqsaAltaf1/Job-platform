@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Eye, EyeOff, Building, Users, Mail, User } from 'lucide-react';
 import { showToast } from '@/lib/toast';
+import { getApiUrl } from '@/lib/config';
 
 export default function AcceptInvitationPage() {
   const router = useRouter();
@@ -35,7 +36,7 @@ export default function AcceptInvitationPage() {
 
   const verifyInvitation = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/team/verify-invitation?token=${token}`);
+      const response = await fetch(getApiUrl(`/team/verify-invitation?token=${token}`));
       const data = await response.json();
       
       if (data.success) {
@@ -68,7 +69,7 @@ export default function AcceptInvitationPage() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/team/accept-invitation', {
+      const response = await fetch(getApiUrl('/team/accept-invitation'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

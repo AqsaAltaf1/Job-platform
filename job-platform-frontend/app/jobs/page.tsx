@@ -1,18 +1,46 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { MapPin, Clock, DollarSign, Building2, Search, Filter, Star, TrendingUp, Code, Settings, Users, Briefcase, CheckCircle } from "lucide-react"
+import { MapPin, Clock, DollarSign, Building2, Search, Filter, Star, TrendingUp, Code, Settings, Users, Briefcase, CheckCircle, Plus } from "lucide-react"
 import Link from "next/link"
-import { getJobsWithCompany } from "@/lib/mock-data"
+import { showToast } from '@/lib/toast'
+import { getApiUrl } from '@/lib/config'
+import { useAuth } from '@/lib/auth'
+
+interface Job {
+  id: string;
+  title: string;
+  description: string;
+  job_type: string;
+  work_arrangement: string;
+  experience_level: string;
+  location: string;
+  department: string;
+  salary_min: string; // API returns as string
+  salary_max: string; // API returns as string
+  salary_currency: string;
+  status: string;
+  views_count: number;
+  applications_count: number;
+  created_at: string;
+  employerProfile: {
+    id: string;
+    company_name: string;
+    company_logo_url: string | null; // Can be null
+    company_size: string;
+    headquarters_location: string | null; // Can be null
+  };
+}
 
 export default function JobsPage() {
-  const allJobs = getJobsWithCompany()
-  const [jobs, setJobs] = useState(allJobs)
+  const { user } = useAuth()
+  const [jobs, setJobs] = useState<Job[]>([])
+  const [loading, setLoading] = useState(true)
   const [filterTerm, setFilterTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("")
   const [selectedType, setSelectedType] = useState("")
@@ -20,7 +48,48 @@ export default function JobsPage() {
   const [location, setLocation] = useState("")
   const [radius, setRadius] = useState("")
   const [remoteOnly, setRemoteOnly] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalJobs, setTotalJobs] = useState(0)
   const [sortBy, setSortBy] = useState("")
+
+  useEffect(() => {
+    loadJobs()
+  }, [currentPage])
+
+  const loadJobs = async () => {
+    try {
+      setLoading(true)
+      const params = new URLSearchParams()
+      
+      // Add pagination
+      params.append('page', currentPage.toString())
+      params.append('limit', '9')
+      
+      if (filterTerm) params.append('search', filterTerm)
+      if (selectedType && selectedType !== "All job types") {
+        params.append('job_type', selectedType.toLowerCase().replace(' ', '_').replace('-', '_'))
+      }
+      if (location) params.append('location', location)
+      if (remoteOnly) params.append('work_arrangement', 'remote')
+
+      const response = await fetch(getApiUrl(`/jobs?${params}`))
+      const data = await response.json()
+      
+      if (data.success) {
+        setJobs(data.jobs)
+        setTotalPages(data.pagination?.totalPages || 1)
+        setTotalJobs(data.pagination?.totalItems || data.jobs.length)
+      } else {
+        showToast.error('Failed to load jobs')
+      }
+    } catch (error) {
+      console.error('Load jobs error:', error)
+      showToast.error('Failed to load jobs')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const categories = ["All categories", "Technology", "Marketing & Advertising", "Finance", "Healthcare", "Education", "Design", "Sales", "Operations"]
   const jobTypes = ["All job types", "Full-time", "Part-time", "Contract", "Internship", "Remote"]
@@ -29,41 +98,8 @@ export default function JobsPage() {
   const sortOptions = ["Relevance", "Date Posted", "Salary", "Company", "Location"]
 
   const handleSearch = () => {
-    let filteredJobs = allJobs
-
-    if (filterTerm) {
-      filteredJobs = filteredJobs.filter(job =>
-        job.title.toLowerCase().includes(filterTerm.toLowerCase()) ||
-        job.company.name.toLowerCase().includes(filterTerm.toLowerCase()) ||
-        job.description.toLowerCase().includes(filterTerm.toLowerCase())
-      )
-    }
-
-    if (selectedCategory && selectedCategory !== "All categories") {
-      filteredJobs = filteredJobs.filter(job =>
-        job.company.industry?.toLowerCase().includes(selectedCategory.toLowerCase())
-      )
-    }
-
-    if (selectedType && selectedType !== "All job types") {
-      filteredJobs = filteredJobs.filter(job =>
-        job.job_type === selectedType.toLowerCase().replace("-", "")
-      )
-    }
-
-    if (location) {
-      filteredJobs = filteredJobs.filter(job =>
-        job.location.toLowerCase().includes(location.toLowerCase())
-      )
-    }
-
-    if (remoteOnly) {
-      filteredJobs = filteredJobs.filter(job =>
-        job.location.toLowerCase().includes("remote")
-      )
-    }
-
-    setJobs(filteredJobs)
+    setCurrentPage(1)
+    loadJobs()
   }
 
   const clearFilters = () => {
@@ -75,7 +111,7 @@ export default function JobsPage() {
     setRadius("")
     setRemoteOnly(false)
     setSortBy("")
-    setJobs(allJobs)
+    loadJobs()
   }
 
   return (
@@ -261,60 +297,101 @@ export default function JobsPage() {
 
           {/* Main Content */}
           <div className="lg:col-span-3">
-                <div className="mb-8">
+                <div className="mb-8 flex justify-between items-center">
                   <h2 className="text-2xl font-bold text-gray-900">
                     Showing {jobs.length} jobs
                   </h2>
+                  
+                  {/* Employer Actions */}
+                  {user && (user.role === 'employer' || user.role === 'team_member') && (
+                    <div className="flex gap-3">
+                      <Link href="/jobs/post">
+                        <Button className="bg-primary hover:bg-primary/90">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Post Job
+                        </Button>
+                      </Link>
+                      <Link href="/jobs/manage">
+                        <Button variant="outline">
+                          <Settings className="h-4 w-4 mr-2" />
+                          Manage Jobs
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
                 </div>
 
                 {/* Job Listings */}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {jobs.map((job, index) => {
-                    const categoryIcons = [TrendingUp, Code, Building2, Settings, Users, Briefcase, Search, CheckCircle]
-                    const CategoryIcon = categoryIcons[index % categoryIcons.length]
-                    const categoryNames = ["Finance", "Software Engineering", "Human Resources", "Business Development", "Marketing", "Sales", "Design", "Operations"]
-                    const categoryName = categoryNames[index % categoryNames.length]
-                    
-                    return (
-                      <Card key={job.id} className="group hover:shadow-lg transition-all duration-300 cursor-pointer border-0 bg-white hover:-translate-y-1 animate-fade-in-up" style={{animationDelay: `${0.1 + index * 0.1}s`}}>
-                        <CardContent className="p-6">
-                          {/* Category */}
-                          <div className="flex items-center mb-4 group-hover:scale-105 transition-transform duration-300">
-                            <CategoryIcon className="h-4 w-4 text-gray-400 mr-2 group-hover:text-primary transition-colors duration-300" />
-                            <span className="text-sm text-gray-500 group-hover:text-gray-700 transition-colors duration-300">{categoryName}</span>
-                          </div>
-                          
-                          {/* Job Title */}
-                          <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-primary transition-colors duration-300 group-hover:scale-105 transition-transform duration-300">
-                            <Link href={`/jobs/${job.id}`} className="hover:text-primary transition-colors">
-                              {job.title}
-                            </Link>
-                          </h3>
-                          
-                          {/* Location & Type */}
-                          <div className="flex items-center text-gray-500 mb-4 group-hover:text-gray-700 transition-colors duration-300">
-                            <MapPin className="h-4 w-4 mr-1 group-hover:text-primary transition-colors duration-300" />
-                            <span className="text-sm mr-4">{job.location}</span>
-                            <span className="text-sm">{job.job_type.replace('-', ' ')}</span>
-                          </div>
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {jobs.map((job, index) => {
+                      const categoryIcons = [TrendingUp, Code, Building2, Settings, Users, Briefcase, Search, CheckCircle]
+                      const CategoryIcon = categoryIcons[index % categoryIcons.length]
+                      
+                      return (
+                        <Card key={job.id} className="group hover:shadow-lg transition-all duration-300 cursor-pointer border-0 bg-white hover:-translate-y-1 animate-fade-in-up" style={{animationDelay: `${0.1 + index * 0.1}s`}}>
+                          <CardContent className="p-6">
+                            {/* Category */}
+                            <div className="flex items-center mb-4 group-hover:scale-105 transition-transform duration-300">
+                              <CategoryIcon className="h-4 w-4 text-gray-400 mr-2 group-hover:text-primary transition-colors duration-300" />
+                              <span className="text-sm text-gray-500 group-hover:text-gray-700 transition-colors duration-300">{job.department || 'General'}</span>
+                            </div>
+                            
+                            {/* Job Title */}
+                            <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-primary transition-colors duration-300 group-hover:scale-105 transition-transform duration-300">
+                              <Link href={`/jobs/${job.id}`} className="hover:text-primary transition-colors">
+                                {job.title}
+                              </Link>
+                            </h3>
+                            
+                            {/* Location & Type */}
+                            <div className="flex items-center text-gray-500 mb-4 group-hover:text-gray-700 transition-colors duration-300">
+                              <MapPin className="h-4 w-4 mr-1 group-hover:text-primary transition-colors duration-300" />
+                              <span className="text-sm mr-4">{job.location || 'Remote'}</span>
+                              <span className="text-sm">{job.job_type.replace('_', ' ')}</span>
+                            </div>
 
-                          {/* Bottom Section */}
-                          <div className="flex items-center justify-between">
-                            <div className="group-hover:scale-105 transition-transform duration-300">
-                              <div className="text-xs text-gray-400 mb-1">
-                                {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                            {/* Salary */}
+                            {(job.salary_min || job.salary_max) && (
+                              <div className="flex items-center text-gray-500 mb-4">
+                                <DollarSign className="h-4 w-4 mr-1" />
+                                <span className="text-sm">
+                                  {job.salary_min && job.salary_max 
+                                    ? `${job.salary_currency} ${parseFloat(job.salary_min).toLocaleString()} - ${parseFloat(job.salary_max).toLocaleString()}`
+                                    : job.salary_min 
+                                    ? `${job.salary_currency} ${parseFloat(job.salary_min).toLocaleString()}+`
+                                    : `Up to ${job.salary_currency} ${parseFloat(job.salary_max || '0').toLocaleString()}`
+                                  }
+                                </span>
                               </div>
-                              <div className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors duration-300">by {job.company.name}</div>
+                            )}
+
+                            {/* Bottom Section */}
+                            <div className="flex items-center justify-between">
+                              <div className="group-hover:scale-105 transition-transform duration-300">
+                                <div className="text-xs text-gray-400 mb-1">
+                                  {new Date(job.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                                </div>
+                                <div className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors duration-300">by {job.employerProfile.company_name}</div>
+                              </div>
+                              <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center group-hover:bg-primary/10 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
+                                {job.employerProfile.company_logo_url ? (
+                                  <img src={job.employerProfile.company_logo_url} alt={job.employerProfile.company_name} className="w-8 h-8 object-contain" />
+                                ) : (
+                                  <Building2 className="h-6 w-6 text-gray-400 group-hover:text-primary transition-colors duration-300" />
+                                )}
+                              </div>
                             </div>
-                            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center group-hover:bg-primary/10 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
-                              <Building2 className="h-6 w-6 text-gray-400 group-hover:text-primary transition-colors duration-300" />
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )
-                  })}
-                </div>
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
+                  </div>
+                )}
                 {jobs.length === 0 && (
                   <div className="text-center py-12">
                     <h3 className="text-xl font-semibold mb-2">No jobs found</h3>
@@ -326,14 +403,41 @@ export default function JobsPage() {
                 )}
 
                 {/* Pagination */}
-                {jobs.length > 0 && (
+                {totalPages > 1 && (
                   <div className="flex justify-center mt-12">
                     <div className="flex items-center space-x-2">
-                      <Button variant="outline" disabled className="rounded-lg border-gray-200 hover:bg-gray-50">Previous</Button>
-                      <Button variant="outline" className="rounded-lg border-gray-200 hover:bg-gray-50">1</Button>
-                      <Button variant="outline" className="rounded-lg border-gray-200 hover:bg-gray-50">2</Button>
-                      <Button variant="outline" className="rounded-lg border-gray-200 hover:bg-gray-50">3</Button>
-                      <Button variant="outline" className="rounded-lg border-gray-200 hover:bg-gray-50">Next</Button>
+                      <Button 
+                        variant="outline" 
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        className="rounded-lg border-gray-200 hover:bg-gray-50"
+                      >
+                        Previous
+                      </Button>
+                      
+                      {/* Page Numbers */}
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                        <Button
+                          key={pageNum}
+                          variant={currentPage === pageNum ? "default" : "outline"}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className="rounded-lg border-gray-200 hover:bg-gray-50"
+                        >
+                          {pageNum}
+                        </Button>
+                      ))}
+                      
+                      <Button 
+                        variant="outline" 
+                        disabled={currentPage === totalPages}
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        className="rounded-lg border-gray-200 hover:bg-gray-50"
+                      >
+                        Next
+                      </Button>
+                    </div>
+                    <div className="ml-4 flex items-center text-sm text-gray-600">
+                      Showing {((currentPage - 1) * 9) + 1}-{Math.min(currentPage * 9, totalJobs)} of {totalJobs} jobs
                     </div>
                   </div>
                 )}

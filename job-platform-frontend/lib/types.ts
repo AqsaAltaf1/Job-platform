@@ -27,20 +27,33 @@ export interface Company {
 
 export interface Job {
   id: string
+  employer_profile_id: string
+  posted_by: string
   title: string
   description: string
-  requirements: string
+  requirements?: string
+  responsibilities?: string
+  job_type: "full_time" | "part_time" | "contract" | "internship" | "temporary"
+  work_arrangement: "remote" | "on_site" | "hybrid"
+  experience_level: "entry_level" | "mid_level" | "senior_level" | "executive"
   salary_min?: number
   salary_max?: number
-  location: string
-  job_type: "full-time" | "part-time" | "contract" | "internship"
-  experience_level: "entry" | "mid" | "senior" | "executive"
-  company_id: string
-  posted_by: string // user_id
-  status: "draft" | "published" | "closed"
+  salary_currency?: string
+  salary_period?: "hourly" | "monthly" | "yearly"
+  location?: string
+  department?: string
+  skills_required?: string[]
+  benefits?: string
+  application_deadline?: Date
+  status: "draft" | "active" | "paused" | "closed" | "filled"
+  is_featured?: boolean
+  views_count?: number
+  applications_count?: number
   created_at: Date
   updated_at: Date
-  expires_at?: Date
+  // Relations
+  employerProfile?: EmployerProfile
+  postedBy?: User
 }
 
 export interface Application {
