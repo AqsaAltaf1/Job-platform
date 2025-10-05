@@ -15,6 +15,10 @@ import JobApplication from './JobApplication.js';
 import SavedJob from './SavedJob.js';
 import Interview from './Interview.js';
 import CandidateRating from './CandidateRating.js';
+import SubscriptionPlan from './SubscriptionPlan.js';
+import Subscription from './Subscription.js';
+import SubscriptionHistory from './SubscriptionHistory.js';
+import Admin from './Admin.js';
 import Otp from './Otp.js';
 
 // Define associations
@@ -89,6 +93,32 @@ User.hasMany(CandidateRating, { foreignKey: 'rater_id', as: 'givenRatings' });
 Interview.hasMany(CandidateRating, { foreignKey: 'interview_id', as: 'ratings' });
 
 // Export models and sequelize
+// Subscription associations
+User.hasMany(Subscription, { foreignKey: 'user_id', as: 'subscriptions' });
+Subscription.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+EmployerProfile.hasMany(Subscription, { foreignKey: 'employer_profile_id', as: 'subscriptions' });
+Subscription.belongsTo(EmployerProfile, { foreignKey: 'employer_profile_id', as: 'employerProfile' });
+
+SubscriptionPlan.hasMany(Subscription, { foreignKey: 'subscription_plan_id', as: 'subscriptions' });
+Subscription.belongsTo(SubscriptionPlan, { foreignKey: 'subscription_plan_id', as: 'subscriptionPlan' });
+
+Subscription.hasMany(SubscriptionHistory, { foreignKey: 'subscription_id', as: 'history' });
+SubscriptionHistory.belongsTo(Subscription, { foreignKey: 'subscription_id', as: 'subscription' });
+
+User.hasMany(SubscriptionHistory, { foreignKey: 'user_id', as: 'subscriptionHistory' });
+SubscriptionHistory.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+SubscriptionPlan.hasMany(SubscriptionHistory, { foreignKey: 'old_plan_id', as: 'oldPlanHistory' });
+SubscriptionPlan.hasMany(SubscriptionHistory, { foreignKey: 'new_plan_id', as: 'newPlanHistory' });
+SubscriptionHistory.belongsTo(SubscriptionPlan, { foreignKey: 'old_plan_id', as: 'oldPlan' });
+SubscriptionHistory.belongsTo(SubscriptionPlan, { foreignKey: 'new_plan_id', as: 'newPlan' });
+
+// Admin associations
+User.hasOne(Admin, { foreignKey: 'user_id', as: 'adminProfile' });
+Admin.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+Admin.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+
 export {
   sequelize,
   User,
@@ -107,5 +137,9 @@ export {
   SavedJob,
   Interview,
   CandidateRating,
+  SubscriptionPlan,
+  Subscription,
+  SubscriptionHistory,
+  Admin,
   Otp,
 };

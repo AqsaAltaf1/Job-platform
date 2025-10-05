@@ -171,6 +171,41 @@ import {
   triggerRetraining
 } from './controllers/mlPipelineController.js';
 
+import {
+  getSubscriptionPlans,
+  createCheckoutSession,
+  createSubscriptionChangeSession,
+  getCurrentSubscription,
+  cancelSubscription,
+  resumeSubscription,
+  getSubscriptionHistory,
+  handleStripeWebhook,
+  createSubscription,
+  handleCheckoutSuccess,
+  getSubscriptionAnalytics
+} from './controllers/subscriptionController.js';
+
+import {
+  getAdminSubscriptionPlans,
+  createSubscriptionPlan,
+  updateSubscriptionPlan,
+  deleteSubscriptionPlan,
+  getAdminUsers,
+  createAdminUser,
+  updateAdminUser
+} from './controllers/adminController.js';
+
+import {
+  testWebhook,
+  getWebhookLogs
+} from './controllers/webhookTestController.js';
+
+import {
+  getCompanies,
+  getCompanyById,
+  getCompanyStats
+} from './controllers/companyController.js';
+
 const app = express();
 const PORT = process.env.PORT || 5001;
 
@@ -179,6 +214,11 @@ app.use(cors({
   origin: 'http://localhost:3000',
   credentials: true
 }));
+
+// Raw body parser for Stripe webhooks
+app.use('/api/subscription/webhook', express.raw({ type: 'application/json' }));
+
+// JSON parser for all other routes
 app.use(express.json());
 
 // Test route
@@ -203,33 +243,6 @@ app.get('/health', async (req, res) => {
 });
 
 // API Routes
-app.get('/api/companies', (req, res) => {
-  const companies = [
-    {
-      id: '1',
-      name: 'TechCorp',
-      description: 'Leading technology company',
-      website: 'https://techcorp.com',
-      industry: 'Technology',
-      size: '100-500',
-      location: 'San Francisco, CA',
-      created_at: new Date(),
-      updated_at: new Date()
-    },
-    {
-      id: '2',
-      name: 'StartupXYZ',
-      description: 'Innovative startup',
-      website: 'https://startupxyz.com',
-      industry: 'Technology',
-      size: '10-50',
-      location: 'New York, NY',
-      created_at: new Date(),
-      updated_at: new Date()
-    }
-  ];
-  res.json(companies);
-});
 
 // OTP Routes
 app.post('/api/otp/send', sendOtp);
@@ -395,6 +408,37 @@ app.get('/api/ml/pipeline/history/:model_name', authenticateToken, getModelHisto
 app.post('/api/ml/pipeline/extract-data/:model_name', authenticateToken, extractTrainingData); // Extract training data
 app.get('/api/ml/pipeline/status', authenticateToken, getPipelineStatus); // Get pipeline status
 app.post('/api/ml/pipeline/retrain', authenticateToken, triggerRetraining); // Trigger retraining
+
+// Subscription Routes
+app.get('/api/subscription/plans', getSubscriptionPlans); // Get all subscription plans (public)
+app.post('/api/subscription/checkout', authenticateToken, createCheckoutSession); // Create checkout session
+app.post('/api/subscription/create', authenticateToken, createSubscription); // Create subscription with payment method
+app.post('/api/subscription/change', authenticateToken, createSubscriptionChangeSession); // Change subscription plan
+app.get('/api/subscription/current', authenticateToken, getCurrentSubscription); // Get current subscription
+app.post('/api/subscription/:subscription_id/cancel', authenticateToken, cancelSubscription); // Cancel subscription
+app.post('/api/subscription/:subscription_id/resume', authenticateToken, resumeSubscription); // Resume subscription
+app.get('/api/subscription/history', authenticateToken, getSubscriptionHistory); // Get subscription history
+app.post('/api/subscription/webhook', handleStripeWebhook); // Stripe webhook (no auth)
+app.get('/api/subscription/success', handleCheckoutSuccess); // Handle checkout success
+app.get('/api/admin/subscription-analytics', authenticateToken, getSubscriptionAnalytics); // Admin analytics
+
+// Admin Management Routes
+app.get('/api/admin/subscription-plans', authenticateToken, getAdminSubscriptionPlans); // Get all plans (admin view)
+app.post('/api/admin/subscription-plans', authenticateToken, createSubscriptionPlan); // Create new plan
+app.put('/api/admin/subscription-plans/:plan_id', authenticateToken, updateSubscriptionPlan); // Update plan
+app.delete('/api/admin/subscription-plans/:plan_id', authenticateToken, deleteSubscriptionPlan); // Delete plan
+app.get('/api/admin/users', authenticateToken, getAdminUsers); // Get admin users
+app.post('/api/admin/users', authenticateToken, createAdminUser); // Create admin user
+app.put('/api/admin/users/:admin_id', authenticateToken, updateAdminUser); // Update admin user
+
+// Webhook Testing Routes (Development only)
+app.post('/api/test/webhook', testWebhook); // Test webhook functionality
+app.get('/api/test/webhook-logs', getWebhookLogs); // Get webhook logs
+
+// Company Routes
+app.get('/api/companies', getCompanies); // Get all companies with filters
+app.get('/api/companies/stats', getCompanyStats); // Get company statistics
+app.get('/api/companies/:id', getCompanyById); // Get company by ID
 
 // Start server
 app.listen(PORT, async () => {

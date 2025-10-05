@@ -24,6 +24,7 @@
     "openai": "^5.22.0",
     "pg": "^8.16.3",
     "sequelize": "^6.37.7",
+    "stripe": "^19.1.0",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

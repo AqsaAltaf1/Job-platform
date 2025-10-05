@@ -5,6 +5,7 @@ import { EmployerProfile } from '../models/EmployerProfile.js';
 import { TeamMember } from '../models/TeamMember.js';
 import User from '../models/User.js';
 import { Op } from 'sequelize';
+import { hasActiveSubscription } from '../utils/subscriptionUtils.js';
 
 // Apply for a job (protected endpoint - candidates only)
 export const applyForJob = async (req, res) => {
@@ -13,6 +14,16 @@ export const applyForJob = async (req, res) => {
       return res.status(403).json({
         success: false,
         error: 'Only candidates can apply for jobs'
+      });
+    }
+
+    // Check if user has active subscription
+    const hasSubscription = await hasActiveSubscription(req.user.id);
+    if (!hasSubscription) {
+      return res.status(403).json({
+        success: false,
+        error: 'Active subscription required to apply for jobs. Please subscribe to continue.',
+        requires_subscription: true
       });
     }
 
@@ -166,6 +177,16 @@ export const getJobApplications = async (req, res) => {
     const { job_id } = req.params;
     const { page = 1, limit = 10, status } = req.query;
     const offset = (page - 1) * limit;
+
+    // Check if user has active subscription
+    const hasSubscription = await hasActiveSubscription(req.user.id);
+    if (!hasSubscription) {
+      return res.status(403).json({
+        success: false,
+        error: 'Active subscription required to view application profiles. Please subscribe to continue.',
+        requires_subscription: true
+      });
+    }
 
     // Check if user has permission to view applications for this job
     const job = await Job.findByPk(job_id);

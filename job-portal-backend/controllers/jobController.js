@@ -5,6 +5,7 @@ import { TeamMember } from '../models/TeamMember.js';
 import User from '../models/User.js';
 import { Op } from 'sequelize';
 import { sequelize } from '../models/index.js';
+import { hasActiveSubscription, canPostJobsAsTeamMember } from '../utils/subscriptionUtils.js';
 
 // Helper function to check if user has permission to manage jobs
 const hasJobManagementPermission = async (user, jobEmployerProfileId, requiredPermission = 'can_post_jobs') => {
@@ -237,6 +238,7 @@ export const createJob = async (req, res) => {
     }
 
     let employerProfile;
+    let isTeamMember = false;
     
     if (req.user.role === 'employer') {
       employerProfile = await EmployerProfile.findOne({
@@ -271,6 +273,7 @@ export const createJob = async (req, res) => {
       }
       
       employerProfile = teamMember.employerProfile;
+      isTeamMember = true;
     }
 
     if (!employerProfile) {
@@ -278,6 +281,19 @@ export const createJob = async (req, res) => {
         success: false,
         error: 'Employer profile not found'
       });
+    }
+
+    // Check subscription requirements
+    // Team members can post jobs if they have permission, but employers need subscription
+    if (!isTeamMember) {
+      const hasSubscription = await hasActiveSubscription(req.user.id);
+      if (!hasSubscription) {
+        return res.status(403).json({
+          success: false,
+          error: 'Active subscription required to post jobs. Please subscribe to continue.',
+          requires_subscription: true
+        });
+      }
     }
 
     const jobData = {
