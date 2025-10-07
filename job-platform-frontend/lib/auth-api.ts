@@ -9,7 +9,7 @@ export interface LoginData {
 export interface RegisterData {
   email: string
   password: string
-  role: "super_admin" | "employer" | "candidate"
+  role: "super_admin" | "employer" | "candidate" | "team_member"
   first_name: string
   last_name: string
   phone?: string

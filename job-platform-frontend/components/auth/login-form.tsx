@@ -30,7 +30,9 @@ export function LoginForm() {
 
     if (result.success) {
       showToast.success(toastMessages.loginSuccess);
-      router.push("/dashboard")
+      // Redirect super_admin to /admin, others to /dashboard
+      const redirectPath = result.user?.role === "super_admin" ? "/admin" : "/dashboard";
+      router.push(redirectPath)
     } else {
       const errorMessage = result.error || toastMessages.loginError;
       setError(errorMessage);

@@ -21,6 +21,8 @@ import SubscriptionHistory from './SubscriptionHistory.js';
 import Admin from './Admin.js';
 import Otp from './Otp.js';
 import { WebhookEvent } from './WebhookEvent.js';
+import { Achievement } from './Achievement.js';
+import { NarrativeSection } from './NarrativeSection.js';
 
 // Define associations
 User.hasOne(EmployerProfile, { foreignKey: 'user_id', as: 'employerProfile' });
@@ -120,6 +122,13 @@ User.hasOne(Admin, { foreignKey: 'user_id', as: 'adminProfile' });
 Admin.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 Admin.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
 
+// Narrative associations
+User.hasMany(Achievement, { foreignKey: 'user_id', as: 'achievements' });
+Achievement.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+User.hasMany(NarrativeSection, { foreignKey: 'user_id', as: 'narrativeSections' });
+NarrativeSection.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
 export {
   sequelize,
   User,
@@ -143,4 +152,6 @@ export {
   SubscriptionHistory,
   Admin,
   Otp,
+  Achievement,
+  NarrativeSection,
 };

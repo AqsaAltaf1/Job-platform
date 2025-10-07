@@ -4,9 +4,6 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -22,7 +19,6 @@ import {
   Target,
   Lightbulb,
   Users,
-  Save,
   Eye,
   EyeOff,
   CheckCircle,
@@ -30,21 +26,23 @@ import {
 } from 'lucide-react'
 import { showToast } from '@/lib/toast'
 import { getApiUrl } from '@/lib/config'
+import AchievementModal from './achievement-modal'
+import NarrativeSectionModal from './narrative-section-modal'
 
 interface Achievement {
-  id: string
+  id?: string
   title: string
   description: string
   category: 'professional' | 'academic' | 'personal' | 'award' | 'project'
   impact: string
   metrics?: string
-  date: string
+  date?: string
   isVisible: boolean
   priority: number
 }
 
 interface NarrativeSection {
-  id: string
+  id?: string
   title: string
   content: string
   isVisible: boolean
@@ -62,23 +60,6 @@ export default function NarrativeControl() {
   const [editingAchievement, setEditingAchievement] = useState<Achievement | null>(null)
   const [editingSection, setEditingSection] = useState<NarrativeSection | null>(null)
 
-  const [newAchievement, setNewAchievement] = useState({
-    title: '',
-    description: '',
-    category: 'professional' as const,
-    impact: '',
-    metrics: '',
-    date: '',
-    isVisible: true,
-    priority: 1
-  })
-
-  const [newSection, setNewSection] = useState({
-    title: '',
-    content: '',
-    isVisible: true,
-    order: 1
-  })
 
   useEffect(() => {
     if (user) {
@@ -89,7 +70,7 @@ export default function NarrativeControl() {
   const fetchNarrativeData = async () => {
     try {
       setLoading(true)
-      const token = localStorage.getItem('token')
+      const token = localStorage.getItem('jwt_token')
       const response = await fetch(getApiUrl('/candidate/narrative-data'), {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -102,47 +83,10 @@ export default function NarrativeControl() {
         setAchievements(data.data.achievements || [])
         setNarrativeSections(data.data.sections || [])
       } else {
-        // Mock data for now
-        setAchievements([
-          {
-            id: '1',
-            title: 'Led Development of E-commerce Platform',
-            description: 'Successfully led a team of 5 developers to build a scalable e-commerce platform serving 10,000+ users',
-            category: 'professional',
-            impact: 'Increased company revenue by 40% and improved user satisfaction scores',
-            metrics: '40% revenue increase, 10,000+ users, 5 team members',
-            date: '2023-06-01',
-            isVisible: true,
-            priority: 1
-          },
-          {
-            id: '2',
-            title: 'Best Innovation Award 2023',
-            description: 'Received company-wide recognition for innovative solution to customer onboarding process',
-            category: 'award',
-            impact: 'Reduced customer onboarding time by 60% and improved conversion rates',
-            metrics: '60% time reduction, 25% conversion improvement',
-            date: '2023-12-15',
-            isVisible: true,
-            priority: 2
-          }
-        ])
-        setNarrativeSections([
-          {
-            id: '1',
-            title: 'Professional Philosophy',
-            content: 'I believe in building technology that solves real-world problems and creates meaningful impact. My approach combines technical excellence with user-centered design, always keeping the end user in mind.',
-            isVisible: true,
-            order: 1
-          },
-          {
-            id: '2',
-            title: 'Leadership Style',
-            content: 'I lead by example and believe in empowering team members to reach their full potential. My leadership philosophy centers around clear communication, setting ambitious but achievable goals, and fostering a collaborative environment.',
-            isVisible: true,
-            order: 2
-          }
-        ])
+        console.error('Failed to fetch narrative data:', response.status)
+        showToast.error('Failed to load narrative data')
+        setAchievements([])
+        setNarrativeSections([])
       }
     } catch (error) {
       console.error('Error fetching narrative data:', error)
@@ -155,8 +99,12 @@ export default function NarrativeControl() {
   const saveAchievement = async (achievement: Achievement) => {
     try {
       setSaving(true)
-      const token = localStorage.getItem('token')
-      const response = await fetch(getApiUrl('/candidate/achievement'), {
+      console.log('Saving achievement:', achievement)
+      const token = localStorage.getItem('jwt_token')
+      const url = achievement.id 
+        ? getApiUrl(`/candidate/achievement/${achievement.id}`)
+        : getApiUrl('/candidate/achievement')
+      const response = await fetch(url, {
         method: achievement.id ? 'PUT' : 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -165,22 +113,17 @@ export default function NarrativeControl() {
         body: JSON.stringify(achievement)
       })
 
+      console.log('Save achievement response status:', response.status)
       if (response.ok) {
+        const result = await response.json()
+        console.log('Save achievement result:', result)
         showToast.success(`Achievement ${achievement.id ? 'updated' : 'added'} successfully`)
         fetchNarrativeData()
         setShowAddAchievement(false)
         setEditingAchievement(null)
-        setNewAchievement({
-          title: '',
-          description: '',
-          category: 'professional',
-          impact: '',
-          metrics: '',
-          date: '',
-          isVisible: true,
-          priority: 1
-        })
       } else {
+        const errorText = await response.text()
+        console.error('Save achievement error response:', errorText)
         showToast.error('Failed to save achievement')
       }
     } catch (error) {
@@ -194,8 +137,12 @@ export default function NarrativeControl() {
   const saveSection = async (section: NarrativeSection) => {
     try {
       setSaving(true)
-      const token = localStorage.getItem('token')
-      const response = await fetch(getApiUrl('/candidate/narrative-section'), {
+      console.log('Saving section:', section)
+      const token = localStorage.getItem('jwt_token')
+      const url = section.id 
+        ? getApiUrl(`/candidate/narrative-section/${section.id}`)
+        : getApiUrl('/candidate/narrative-section')
+      const response = await fetch(url, {
         method: section.id ? 'PUT' : 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -204,18 +151,17 @@ export default function NarrativeControl() {
         body: JSON.stringify(section)
       })
 
+      console.log('Save section response status:', response.status)
       if (response.ok) {
+        const result = await response.json()
+        console.log('Save section result:', result)
         showToast.success(`Section ${section.id ? 'updated' : 'added'} successfully`)
         fetchNarrativeData()
         setShowAddSection(false)
         setEditingSection(null)
-        setNewSection({
-          title: '',
-          content: '',
-          isVisible: true,
-          order: 1
-        })
       } else {
+        const errorText = await response.text()
+        console.error('Save section error response:', errorText)
         showToast.error('Failed to save section')
       }
     } catch (error) {
@@ -228,7 +174,7 @@ export default function NarrativeControl() {
 
   const deleteAchievement = async (id: string) => {
     try {
-      const token = localStorage.getItem('token')
+      const token = localStorage.getItem('jwt_token')
       const response = await fetch(getApiUrl(`/candidate/achievement/${id}`), {
         method: 'DELETE',
         headers: {
@@ -251,7 +197,7 @@ export default function NarrativeControl() {
 
   const deleteSection = async (id: string) => {
     try {
-      const token = localStorage.getItem('token')
+      const token = localStorage.getItem('jwt_token')
       const response = await fetch(getApiUrl(`/candidate/narrative-section/${id}`), {
         method: 'DELETE',
         headers: {
@@ -273,16 +219,24 @@ export default function NarrativeControl() {
   }
 
   const toggleAchievementVisibility = async (id: string, isVisible: boolean) => {
+    console.log('Toggling achievement visibility:', { id, isVisible })
     const achievement = achievements.find(a => a.id === id)
     if (achievement) {
+      console.log('Found achievement:', achievement)
       await saveAchievement({ ...achievement, isVisible })
+    } else {
+      console.log('Achievement not found with id:', id)
     }
   }
 
   const toggleSectionVisibility = async (id: string, isVisible: boolean) => {
+    console.log('Toggling section visibility:', { id, isVisible })
     const section = narrativeSections.find(s => s.id === id)
     if (section) {
+      console.log('Found section:', section)
       await saveSection({ ...section, isVisible })
+    } else {
+      console.log('Section not found with id:', id)
     }
   }
 
@@ -344,178 +298,6 @@ export default function NarrativeControl() {
             </Button>
           </div>
 
-          {/* Add/Edit Achievement Form */}
-          {(showAddAchievement || editingAchievement) && (
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {editingAchievement ? 'Edit Achievement' : 'Add New Achievement'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="title">Achievement Title *</Label>
-                    <Input
-                      id="title"
-                      value={editingAchievement?.title || newAchievement.title}
-                      onChange={(e) => {
-                        if (editingAchievement) {
-                          setEditingAchievement({ ...editingAchievement, title: e.target.value })
-                        } else {
-                          setNewAchievement({ ...newAchievement, title: e.target.value })
-                        }
-                      }}
-                      placeholder="e.g., Led Development of E-commerce Platform"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="category">Category</Label>
-                    <select
-                      id="category"
-                      value={editingAchievement?.category || newAchievement.category}
-                      onChange={(e) => {
-                        if (editingAchievement) {
-                          setEditingAchievement({ ...editingAchievement, category: e.target.value as any })
-                        } else {
-                          setNewAchievement({ ...newAchievement, category: e.target.value as any })
-                        }
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    >
-                      <option value="professional">Professional</option>
-                      <option value="academic">Academic</option>
-                      <option value="personal">Personal</option>
-                      <option value="award">Award</option>
-                      <option value="project">Project</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="description">Description *</Label>
-                  <Textarea
-                    id="description"
-                    value={editingAchievement?.description || newAchievement.description}
-                    onChange={(e) => {
-                      if (editingAchievement) {
-                        setEditingAchievement({ ...editingAchievement, description: e.target.value })
-                      } else {
-                        setNewAchievement({ ...newAchievement, description: e.target.value })
-                      }
-                    }}
-                    placeholder="Describe what you accomplished and how you did it..."
-                    rows={3}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="impact">Impact *</Label>
-                  <Textarea
-                    id="impact"
-                    value={editingAchievement?.impact || newAchievement.impact}
-                    onChange={(e) => {
-                      if (editingAchievement) {
-                        setEditingAchievement({ ...editingAchievement, impact: e.target.value })
-                      } else {
-                        setNewAchievement({ ...newAchievement, impact: e.target.value })
-                      }
-                    }}
-                    placeholder="What was the impact or result of this achievement?"
-                    rows={2}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="metrics">Metrics (Optional)</Label>
-                    <Input
-                      id="metrics"
-                      value={editingAchievement?.metrics || newAchievement.metrics}
-                      onChange={(e) => {
-                        if (editingAchievement) {
-                          setEditingAchievement({ ...editingAchievement, metrics: e.target.value })
-                        } else {
-                          setNewAchievement({ ...newAchievement, metrics: e.target.value })
-                        }
-                      }}
-                      placeholder="e.g., 40% revenue increase, 10,000+ users"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="date">Date</Label>
-                    <Input
-                      id="date"
-                      type="date"
-                      value={editingAchievement?.date || newAchievement.date}
-                      onChange={(e) => {
-                        if (editingAchievement) {
-                          setEditingAchievement({ ...editingAchievement, date: e.target.value })
-                        } else {
-                          setNewAchievement({ ...newAchievement, date: e.target.value })
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="isVisible"
-                    checked={editingAchievement?.isVisible ?? newAchievement.isVisible}
-                    onChange={(e) => {
-                      if (editingAchievement) {
-                        setEditingAchievement({ ...editingAchievement, isVisible: e.target.checked })
-                      } else {
-                        setNewAchievement({ ...newAchievement, isVisible: e.target.checked })
-                      }
-                    }}
-                    className="rounded"
-                  />
-                  <Label htmlFor="isVisible">Make this achievement visible to employers</Label>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => {
-                      if (editingAchievement) {
-                        saveAchievement(editingAchievement)
-                      } else {
-                        saveAchievement({
-                          ...newAchievement,
-                          id: Date.now().toString()
-                        })
-                      }
-                    }}
-                    disabled={saving}
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    {saving ? 'Saving...' : 'Save Achievement'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setShowAddAchievement(false)
-                      setEditingAchievement(null)
-                      setNewAchievement({
-                        title: '',
-                        description: '',
-                        category: 'professional',
-                        impact: '',
-                        metrics: '',
-                        date: '',
-                        isVisible: true,
-                        priority: 1
-                      })
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Achievements List */}
           <div className="space-y-4">
@@ -576,7 +358,7 @@ export default function NarrativeControl() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => toggleAchievementVisibility(achievement.id, !achievement.isVisible)}
+                        onClick={() => achievement.id && toggleAchievementVisibility(achievement.id, !achievement.isVisible)}
                       >
                         {achievement.isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </Button>
@@ -590,7 +372,7 @@ export default function NarrativeControl() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => deleteAchievement(achievement.id)}
+                        onClick={() => achievement.id && deleteAchievement(achievement.id)}
                         className="text-red-600 hover:text-red-700"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -613,101 +395,6 @@ export default function NarrativeControl() {
             </Button>
           </div>
 
-          {/* Add/Edit Section Form */}
-          {(showAddSection || editingSection) && (
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {editingSection ? 'Edit Section' : 'Add New Section'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="sectionTitle">Section Title *</Label>
-                  <Input
-                    id="sectionTitle"
-                    value={editingSection?.title || newSection.title}
-                    onChange={(e) => {
-                      if (editingSection) {
-                        setEditingSection({ ...editingSection, title: e.target.value })
-                      } else {
-                        setNewSection({ ...newSection, title: e.target.value })
-                      }
-                    }}
-                    placeholder="e.g., Professional Philosophy"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="sectionContent">Content *</Label>
-                  <Textarea
-                    id="sectionContent"
-                    value={editingSection?.content || newSection.content}
-                    onChange={(e) => {
-                      if (editingSection) {
-                        setEditingSection({ ...editingSection, content: e.target.value })
-                      } else {
-                        setNewSection({ ...newSection, content: e.target.value })
-                      }
-                    }}
-                    placeholder="Write your professional narrative here..."
-                    rows={6}
-                  />
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="sectionVisible"
-                    checked={editingSection?.isVisible ?? newSection.isVisible}
-                    onChange={(e) => {
-                      if (editingSection) {
-                        setEditingSection({ ...editingSection, isVisible: e.target.checked })
-                      } else {
-                        setNewSection({ ...newSection, isVisible: e.target.checked })
-                      }
-                    }}
-                    className="rounded"
-                  />
-                  <Label htmlFor="sectionVisible">Make this section visible to employers</Label>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => {
-                      if (editingSection) {
-                        saveSection(editingSection)
-                      } else {
-                        saveSection({
-                          ...newSection,
-                          id: Date.now().toString()
-                        })
-                      }
-                    }}
-                    disabled={saving}
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    {saving ? 'Saving...' : 'Save Section'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setShowAddSection(false)
-                      setEditingSection(null)
-                      setNewSection({
-                        title: '',
-                        content: '',
-                        isVisible: true,
-                        order: 1
-                      })
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Sections List */}
           <div className="space-y-4">
@@ -738,7 +425,7 @@ export default function NarrativeControl() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => toggleSectionVisibility(section.id, !section.isVisible)}
+                        onClick={() => section.id && toggleSectionVisibility(section.id, !section.isVisible)}
                       >
                         {section.isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </Button>
@@ -752,7 +439,7 @@ export default function NarrativeControl() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => deleteSection(section.id)}
+                        onClick={() => section.id && deleteSection(section.id)}
                         className="text-red-600 hover:text-red-700"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -772,6 +459,29 @@ export default function NarrativeControl() {
           </Alert>
         </TabsContent>
       </Tabs>
+
+      {/* Modals */}
+      <AchievementModal
+        isOpen={showAddAchievement || !!editingAchievement}
+        onClose={() => {
+          setShowAddAchievement(false)
+          setEditingAchievement(null)
+        }}
+        onSave={saveAchievement}
+        achievement={editingAchievement}
+        saving={saving}
+      />
+
+      <NarrativeSectionModal
+        isOpen={showAddSection || !!editingSection}
+        onClose={() => {
+          setShowAddSection(false)
+          setEditingSection(null)
+        }}
+        onSave={saveSection}
+        section={editingSection}
+        saving={saving}
+      />
     </div>
   )
 }

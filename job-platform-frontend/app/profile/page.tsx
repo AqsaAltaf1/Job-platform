@@ -20,7 +20,6 @@ import ReviewerInvitationModal from "@/components/profile/reviewer-invitation-mo
 import { LinkedInSkillsImport } from "@/components/profile/linkedin-skills-import"
 import { TeamManagement } from "@/components/team/team-management"
 import { ProfileModalWrapper } from "@/components/profile/profile-modal-wrapper"
-import TransparencyDashboard from "@/components/profile/transparency-dashboard"
 import NarrativeControl from "@/components/profile/narrative-control"
 import AdvancedCustomization from "@/components/profile/advanced-customization"
 import type { Experience, Project, Education, EnhancedSkill } from "@/lib/types"
@@ -872,12 +871,11 @@ export default function ProfilePage() {
             <Card>
               <CardContent className="p-0">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="grid w-full grid-cols-7">
+                  <TabsList className="grid w-full grid-cols-6">
                     <TabsTrigger value="experience">Experience</TabsTrigger>
                     <TabsTrigger value="projects">Projects</TabsTrigger>
                     <TabsTrigger value="education">Education</TabsTrigger>
                     <TabsTrigger value="skills">Skills & Competencies</TabsTrigger>
-                    <TabsTrigger value="transparency">Transparency</TabsTrigger>
                     <TabsTrigger value="narrative">Narrative</TabsTrigger>
                     <TabsTrigger value="customization">Portfolio</TabsTrigger>
                   </TabsList>
@@ -1306,10 +1304,6 @@ export default function ProfilePage() {
                     )}
                   </TabsContent>
 
-                  {/* Transparency Dashboard Tab */}
-                  <TabsContent value="transparency" className="p-6">
-                    <TransparencyDashboard />
-                  </TabsContent>
 
                   {/* Narrative Control Tab */}
                   <TabsContent value="narrative" className="p-6">

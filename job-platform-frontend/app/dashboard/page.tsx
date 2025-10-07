@@ -5,6 +5,7 @@ import { AuthGuard } from "@/components/auth/auth-guard"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/lib/auth"
 import { jobsApi } from "@/lib/jobs"
 import type { JobWithCompany } from "@/lib/types"
@@ -24,6 +25,7 @@ import {
 } from "lucide-react"
 import { getApiUrl } from "@/lib/config"
 import { toast } from "sonner"
+import TransparencyDashboard from '@/components/profile/transparency-dashboard'
 
 interface DashboardStats {
   profileViews: number;
@@ -49,6 +51,7 @@ interface DashboardStats {
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const [activeTab, setActiveTab] = useState("overview")
   const [recentJobs, setRecentJobs] = useState<JobWithCompany[]>([])
   const [loading, setLoading] = useState(true)
   const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
@@ -382,10 +385,25 @@ export default function DashboardPage() {
         <div className="container mx-auto px-4 py-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold mb-2">Dashboard Overview</h1>
+            
+            {/* Tabs for Candidates */}
+            {user?.role === "candidate" && (
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 max-w-md">
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
+                  <TabsTrigger value="transparency">Transparency</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
           </div>
 
-          {/* KPI Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Tab Content */}
+          {user?.role === "candidate" ? (
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              {/* Overview Tab */}
+              <TabsContent value="overview" className="space-y-8">
+                {/* KPI Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {user?.role === "candidate" ? (
               <>
                 {/* Profile Views */}
@@ -859,6 +877,103 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
+              </TabsContent>
+
+              {/* Transparency Tab */}
+              <TabsContent value="transparency" className="space-y-8">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Eye className="h-5 w-5" />
+                      Transparency Dashboard
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <TransparencyDashboard />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          ) : (
+            /* Non-candidate content (employers, team members) */
+            <>
+              {/* KPI Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {/* Employer/Team Member KPI Cards */}
+                <Card className="hover:shadow-lg transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Total Jobs</p>
+                        {loadingStats ? (
+                          <div className="h-8 w-16 bg-gray-200 animate-pulse rounded"></div>
+                        ) : (
+                          <p className="text-3xl font-bold text-gray-900">{dashboardStats.totalJobs}</p>
+                        )}
+                      </div>
+                      <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <Briefcase className="h-6 w-6 text-primary" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="hover:shadow-lg transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Active Jobs</p>
+                        {loadingStats ? (
+                          <div className="h-8 w-16 bg-gray-200 animate-pulse rounded"></div>
+                        ) : (
+                          <p className="text-3xl font-bold text-gray-900">{dashboardStats.activeJobs}</p>
+                        )}
+                      </div>
+                      <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <CheckCircle className="h-6 w-6 text-primary" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="hover:shadow-lg transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Total Applications</p>
+                        {loadingStats ? (
+                          <div className="h-8 w-16 bg-gray-200 animate-pulse rounded"></div>
+                        ) : (
+                          <p className="text-3xl font-bold text-gray-900">{dashboardStats.totalApplications}</p>
+                        )}
+                      </div>
+                      <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <FileText className="h-6 w-6 text-primary" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="hover:shadow-lg transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Hired Candidates</p>
+                        {loadingStats ? (
+                          <div className="h-8 w-16 bg-gray-200 animate-pulse rounded"></div>
+                        ) : (
+                          <p className="text-3xl font-bold text-gray-900">{dashboardStats.hiredCandidates}</p>
+                        )}
+                      </div>
+                      <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <Users className="h-6 w-6 text-primary" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
         </div>
       </AuthGuard>
     )

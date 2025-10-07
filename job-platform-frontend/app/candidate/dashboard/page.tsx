@@ -30,6 +30,7 @@ import {
 import { toast } from 'sonner';
 import { getApiUrl } from '@/lib/config';
 import Link from 'next/link';
+import TransparencyDashboard from '@/components/profile/transparency-dashboard';
 
 interface Job {
   id: string;
@@ -569,6 +570,21 @@ export default function CandidateDashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Transparency Dashboard Section */}
+        <div className="col-span-full">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Eye className="h-5 w-5" />
+                Transparency Dashboard
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TransparencyDashboard />
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

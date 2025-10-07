@@ -5,7 +5,7 @@ import type React from "react"
 
 import { createContext, useContext, useEffect, useState } from "react"
 import type { User, UserWithProfile } from "./types"
-import { authAPI, tokenManager } from "./auth-api"
+import { authAPI, tokenManager, RegisterData } from "./auth-api"
 
 interface AuthContextType {
   user: UserWithProfile | null
@@ -18,14 +18,6 @@ interface AuthContextType {
   refreshUser: () => Promise<void>
 }
 
-interface RegisterData {
-  email: string
-  password: string
-  first_name: string
-  last_name: string
-  role: "super_admin" | "employer" | "candidate" | "team_member"
-  phone?: string
-}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
@@ -71,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         // Don't automatically show profile modal on login - let user decide when to edit
         
-        return { success: true }
+        return { success: true, user: response.user as UserWithProfile }
       } else {
         setLoading(false)
         return { success: false, error: response.error || "Login failed" }

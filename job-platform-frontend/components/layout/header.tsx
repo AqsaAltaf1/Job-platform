@@ -43,45 +43,42 @@ export function Header() {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link href={user ? "/dashboard" : "/"} className="flex items-center space-x-2">
+          <Link href={user?.role === "super_admin" ? "/admin" : (user ? "/dashboard" : "/")} className="flex items-center space-x-2">
             <Briefcase className="h-7 w-7 text-primary" />
             <span className="text-2xl font-bold">JobPlatform</span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-8">
-            {navigationItems
-              .filter((item) => {
-                // Hide items for specific roles
-                if (item.hideForRoles && user?.role && item.hideForRoles.includes(user.role)) {
-                  return false
-                }
-                // Show items only for specific roles
-                if (item.showForRoles && (!user?.role || !item.showForRoles.includes(user.role))) {
-                  return false
-                }
-                return true
-              })
-              .map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className="text-sm font-medium hover:text-primary transition-colors"
-                >
-                  {item.name}
+          {/* Desktop Navigation - Hidden for super_admin */}
+          {user?.role !== "super_admin" && (
+            <nav className="hidden lg:flex items-center space-x-8">
+              {navigationItems
+                .filter((item) => {
+                  // Hide items for specific roles
+                  if (item.hideForRoles && user?.role && item.hideForRoles.includes(user.role)) {
+                    return false
+                  }
+                  // Show items only for specific roles
+                  if (item.showForRoles && (!user?.role || !item.showForRoles.includes(user.role))) {
+                    return false
+                  }
+                  return true
+                })
+                .map((item) => (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className="text-sm font-medium hover:text-primary transition-colors"
+                  >
+                    {item.name}
+                  </Link>
+                ))}
+              {user?.role === "employer" && (
+                <Link href="/jobs/manage" className="text-sm font-medium hover:text-primary transition-colors">
+                  Manage Jobs
                 </Link>
-              ))}
-            {user?.role === "employer" && (
-              <Link href="/jobs/manage" className="text-sm font-medium hover:text-primary transition-colors">
-                Manage Jobs
-              </Link>
-            )}
-            {user?.role === "super_admin" && (
-              <Link href="/admin" className="text-sm font-medium hover:text-primary transition-colors">
-                Admin Panel
-              </Link>
-            )}
-          </nav>
+              )}
+            </nav>
+          )}
 
           {/* Right Side Actions */}
           <div className="flex items-center space-x-4">
@@ -150,20 +147,22 @@ export function Header() {
               </div>
             )}
 
-            {/* Mobile Menu Button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="lg:hidden"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            >
-              {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </Button>
+            {/* Mobile Menu Button - Hidden for super_admin */}
+            {user?.role !== "super_admin" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="lg:hidden"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              >
+                {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </Button>
+            )}
           </div>
         </div>
 
-        {/* Mobile Navigation */}
-        {isMobileMenuOpen && (
+        {/* Mobile Navigation - Hidden for super_admin */}
+        {isMobileMenuOpen && user?.role !== "super_admin" && (
           <div className="lg:hidden border-t bg-background">
             <nav className="py-4 space-y-2">
               {navigationItems
@@ -195,15 +194,6 @@ export function Header() {
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Manage Jobs
-                </Link>
-              )}
-              {user?.role === "super_admin" && (
-                <Link
-                  href="/admin"
-                  className="block px-4 py-2 text-sm font-medium hover:text-primary transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Admin Panel
                 </Link>
               )}
             </nav>

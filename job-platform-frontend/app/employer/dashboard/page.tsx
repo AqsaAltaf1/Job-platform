@@ -199,94 +199,94 @@ export default function EmployerDashboard() {
   if (user?.role === "employer" || user?.role === "team_member" || user?.role === "super_admin") {
     return (
       <AuthGuard>
-        <div className="container mx-auto px-4 py-8">
-          <div className="mb-8">
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
             <h1 className="text-3xl font-bold mb-2">Dashboard Overview</h1>
-          </div>
+      </div>
 
           {/* KPI Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {/* Total Jobs */}
             <Card className="hover:shadow-lg transition-shadow">
               <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
+            <div className="flex items-center justify-between">
+              <div>
                     <p className="text-sm font-medium text-gray-600">Total Jobs</p>
                     {loadingStats ? (
                       <div className="h-8 w-16 bg-gray-200 animate-pulse rounded"></div>
                     ) : (
                       <p className="text-3xl font-bold text-gray-900">{dashboardStats.totalJobs}</p>
                     )}
-                  </div>
+              </div>
                   <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
                     <Briefcase className="h-6 w-6 text-primary" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
             {/* Active Jobs */}
             <Card className="hover:shadow-lg transition-shadow">
               <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
+            <div className="flex items-center justify-between">
+              <div>
                     <p className="text-sm font-medium text-gray-600">Active Jobs</p>
                     {loadingStats ? (
                       <div className="h-8 w-16 bg-gray-200 animate-pulse rounded"></div>
                     ) : (
                       <p className="text-3xl font-bold text-gray-900">{dashboardStats.activeJobs}</p>
                     )}
-                  </div>
+              </div>
                   <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
                     <Eye className="h-6 w-6 text-primary" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
             {/* Total Applications */}
             <Card className="hover:shadow-lg transition-shadow">
               <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
+            <div className="flex items-center justify-between">
+              <div>
                     <p className="text-sm font-medium text-gray-600">Total Applications</p>
                     {loadingStats ? (
                       <div className="h-8 w-16 bg-gray-200 animate-pulse rounded"></div>
                     ) : (
                       <p className="text-3xl font-bold text-gray-900">{dashboardStats.totalApplications}</p>
                     )}
-                  </div>
+              </div>
                   <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
                     <FileText className="h-6 w-6 text-primary" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
             {/* Hired Candidates */}
             <Card className="hover:shadow-lg transition-shadow">
               <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
+            <div className="flex items-center justify-between">
+              <div>
                     <p className="text-sm font-medium text-gray-600">Hired Candidates</p>
                     {loadingStats ? (
                       <div className="h-8 w-16 bg-gray-200 animate-pulse rounded"></div>
                     ) : (
                       <p className="text-3xl font-bold text-gray-900">{dashboardStats.hiredCandidates}</p>
                     )}
-                  </div>
+              </div>
                   <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
                     <CheckCircle className="h-6 w-6 text-primary" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
           {/* Quick Actions */}
           <div className="mb-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -294,7 +294,7 @@ export default function EmployerDashboard() {
                       <p className="text-gray-600">
                         Manage job applications with drag-and-drop Kanban boards
                       </p>
-                    </div>
+                  </div>
                     <Link href="/employer/kanban">
                       <Button className="flex items-center gap-2">
                         <Kanban className="h-4 w-4" />
@@ -304,7 +304,7 @@ export default function EmployerDashboard() {
                   </div>
                 </CardContent>
               </Card>
-
+                  
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -313,16 +313,16 @@ export default function EmployerDashboard() {
                       <p className="text-gray-600">
                         Access comprehensive candidate comparison tools, team fit analysis, and DEI metrics
                       </p>
-                    </div>
+                  </div>
                     <Link href="/employer/analytics">
                       <Button className="flex items-center gap-2">
                         <BarChart3 className="h-4 w-4" />
                         View Analytics
-                      </Button>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
             </div>
           </div>
 
@@ -376,7 +376,7 @@ export default function EmployerDashboard() {
 
             {/* Application Status Pie Chart */}
             <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader>
+            <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <FileText className="h-5 w-5 text-primary" />
@@ -495,24 +495,24 @@ export default function EmployerDashboard() {
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-yellow-500 rounded-full"></div>
                     <span className="text-sm text-gray-600">Pending ({dashboardStats.applicationStatus.pending})</span>
-                  </div>
+                </div>
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
                     <span className="text-sm text-gray-600">Reviewing ({dashboardStats.applicationStatus.reviewing})</span>
-                  </div>
+                        </div>
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-purple-500 rounded-full"></div>
                     <span className="text-sm text-gray-600">Shortlisted ({dashboardStats.applicationStatus.shortlisted})</span>
-                  </div>
+                      </div>
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-green-500 rounded-full"></div>
                     <span className="text-sm text-gray-600">Hired ({dashboardStats.applicationStatus.hired})</span>
-                  </div>
+                    </div>
                 </div>
-              </CardContent>
-            </Card>
+            </CardContent>
+          </Card>
           </div>
-        </div>
+                </div>
       </AuthGuard>
     )
   }
@@ -526,9 +526,9 @@ export default function EmployerDashboard() {
             <p className="text-center text-muted-foreground">
               Access denied. This dashboard is only available for employers and team members.
             </p>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+    </div>
     </AuthGuard>
   )
 }

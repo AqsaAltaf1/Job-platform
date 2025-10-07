@@ -181,6 +181,13 @@ import {
   getModelMetrics,
   batchProcessCandidates
 } from './controllers/mlController.js';
+import {
+  getNarrativeData,
+  saveAchievement,
+  deleteAchievement,
+  saveNarrativeSection,
+  deleteNarrativeSection
+} from './controllers/narrativeController.js';
 
 import {
   trainModel,
@@ -322,6 +329,15 @@ app.get('/api/skills/:skillId', authenticateToken, getSkillDetails);
 app.post('/api/candidates/:candidateId/skills', authenticateToken, createEnhancedSkill);
 app.put('/api/skills/:skillId', authenticateToken, updateEnhancedSkill);
 app.delete('/api/skills/:skillId', authenticateToken, deleteEnhancedSkill);
+
+// Narrative Routes (Candidate only)
+app.get('/api/candidate/narrative-data', authenticateToken, getNarrativeData);
+app.post('/api/candidate/achievement', authenticateToken, saveAchievement);
+app.put('/api/candidate/achievement/:id', authenticateToken, saveAchievement);
+app.delete('/api/candidate/achievement/:id', authenticateToken, deleteAchievement);
+app.post('/api/candidate/narrative-section', authenticateToken, saveNarrativeSection);
+app.put('/api/candidate/narrative-section/:id', authenticateToken, saveNarrativeSection);
+app.delete('/api/candidate/narrative-section/:id', authenticateToken, deleteNarrativeSection);
 
 // Skill Evidence Routes
 app.post('/api/skills/:skillId/evidence', authenticateToken, addSkillEvidence);
