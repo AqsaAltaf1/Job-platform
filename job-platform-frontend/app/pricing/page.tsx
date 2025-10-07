@@ -4,71 +4,122 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Check, Star, Users, Briefcase, TrendingUp, Shield, Zap } from "lucide-react"
 import Link from "next/link"
+import { useState, useEffect } from "react"
+import { getApiUrl } from "@/lib/config"
+
+interface SubscriptionPlan {
+  id: string;
+  name: string;
+  display_name: string;
+  description: string;
+  price: number;
+  billing_cycle: 'monthly' | 'yearly' | 'one_time';
+  features: string[];
+  limits: {
+    max_job_postings?: number;
+    max_applications?: number;
+    max_team_members?: number;
+  };
+  is_popular: boolean;
+  sort_order: number;
+}
+
+interface FeatureWithIcon {
+  text: string;
+  icon: any;
+}
 
 export default function PricingPage() {
-  const plans = [
-    {
-      name: "Starter",
-      price: "Free",
-      period: "forever",
-      description: "Perfect for small businesses and startups",
-      features: [
-        "Post up to 3 jobs",
-        "Basic job management",
-        "Standard applications",
-        "Email support",
-        "Basic analytics"
-      ],
-      limitations: [
-        "Limited to 3 active jobs",
-        "No advanced features"
-      ],
-      popular: false,
-      cta: "Get Started Free",
-      href: "/register?plan=starter"
-    },
-    {
-      name: "Professional",
-      price: "$99",
-      period: "per month",
-      description: "Ideal for growing companies",
-      features: [
-        "Post unlimited jobs",
-        "Advanced job management",
-        "Priority applications",
-        "Dedicated support",
-        "Advanced analytics",
-        "Company branding",
-        "Bulk job posting",
-        "Custom application forms"
-      ],
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Static features with icons
+  const staticFeatures: { free: FeatureWithIcon[], paid: FeatureWithIcon[] } = {
+    free: [
+      { text: 'Post up to 3 jobs', icon: Briefcase },
+      { text: 'Basic job management', icon: Users },
+      { text: 'Standard applications', icon: Check },
+      { text: 'Email support', icon: Shield },
+      { text: 'Basic analytics', icon: TrendingUp }
+    ],
+    paid: [
+      { text: 'Unlimited job postings', icon: Briefcase },
+      { text: 'Unlimited applications', icon: Users },
+      { text: 'Advanced analytics', icon: TrendingUp },
+      { text: 'Priority support', icon: Shield },
+      { text: 'Team collaboration tools', icon: Zap },
+      { text: 'Custom branding', icon: Star },
+      { text: 'API access', icon: Check },
+      { text: 'Advanced reporting', icon: TrendingUp },
+      { text: 'Bulk operations', icon: Briefcase },
+      { text: 'White-label options', icon: Shield }
+    ]
+  };
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const response = await fetch(getApiUrl('/subscription-plans'));
+        const data = await response.json();
+        
+        if (data.success) {
+          setPlans(data.plans);
+        } else {
+          setError('Failed to load pricing plans');
+        }
+      } catch (err) {
+        setError('Failed to load pricing plans');
+        console.error('Error fetching plans:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPlans();
+  }, []);
+
+  // Create static free plan
+  const freePlan = {
+    id: 'free',
+    name: 'Free',
+    price: 'Free',
+    period: 'forever',
+    description: 'Perfect for small businesses and startups',
+    features: staticFeatures.free,
+    limitations: [
+      'Limited to 3 active jobs',
+      'No advanced features'
+    ],
+    popular: false,
+    cta: 'Get Started Free',
+    href: '/register?plan=free'
+  };
+
+  // Transform plans for display
+  const transformedPlans = plans.map(plan => {
+    // Use static features instead of database features
+    const features = plan.price === 0 ? staticFeatures.free : staticFeatures.paid;
+    
+    return {
+      id: plan.id,
+      name: plan.display_name || plan.name,
+      price: plan.price === 0 ? "Free" : `$${plan.price}`,
+      period: plan.price === 0 ? "forever" : 
+              plan.billing_cycle === 'one_time' ? "one-time" :
+              plan.billing_cycle === 'monthly' ? "per month" :
+              plan.billing_cycle === 'yearly' ? "per year" : "per month",
+      description: plan.description || "Perfect for your business needs",
+      features: features,
       limitations: [],
-      popular: true,
-      cta: "Start Free Trial",
-      href: "/register?plan=professional"
-    },
-    {
-      name: "Enterprise",
-      price: "Custom",
-      period: "pricing",
-      description: "For large organizations with complex needs",
-      features: [
-        "Everything in Professional",
-        "White-label solution",
-        "API access",
-        "Custom integrations",
-        "Dedicated account manager",
-        "Advanced reporting",
-        "Multi-location support",
-        "Custom workflows",
-        "SSO integration"
-      ],
-      limitations: [],
-      popular: false,
-      cta: "Contact Sales",
-      href: "/contact?plan=enterprise"
-    }
-  ]
+      popular: plan.is_popular,
+      cta: plan.price === 0 ? "Get Started Free" : "Subscribe",
+      href: plan.price === 0 ? "/register" : `/register?plan=${plan.id}`
+    };
+  });
+
+  // Combine free plan with dynamic plans
+  const allPlans = [freePlan, ...transformedPlans];
 
   const features = [
     {
@@ -147,8 +198,26 @@ export default function PricingPage() {
       <section className="py-16 bg-white">
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
-            <div className="grid md:grid-cols-3 gap-8">
-              {plans.map((plan, index) => (
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading pricing plans...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-12">
+                <p className="text-red-600 mb-4">{error}</p>
+                <Button onClick={() => window.location.reload()}>Try Again</Button>
+              </div>
+            ) : allPlans.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-600 mb-4">No pricing plans available at the moment.</p>
+                <Button asChild>
+                  <Link href="/contact">Contact Us</Link>
+                </Button>
+              </div>
+            ) : (
+              <div className={`grid gap-8 ${allPlans.length === 1 ? 'md:grid-cols-1 max-w-md mx-auto' : allPlans.length === 2 ? 'md:grid-cols-2 max-w-4xl mx-auto' : 'md:grid-cols-3'}`}>
+                {allPlans.map((plan, index) => (
                 <div className="relative">
                   {plan.popular && (
                     <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 z-50">
@@ -174,16 +243,21 @@ export default function PricingPage() {
                   
                   <CardContent className="relative z-10">
                     <ul className="space-y-3 mb-8">
-                      {plan.features.map((feature, featureIndex) => (
-                        <li key={featureIndex} className="flex items-center group-hover:scale-105 transition-transform duration-300">
-                          <Check className="h-5 w-5 text-primary mr-3 flex-shrink-0" />
-                          <span className="text-sm text-gray-600 group-hover:text-gray-800 transition-colors duration-300">{feature}</span>
-                        </li>
-                      ))}
+                      {plan.features.map((feature, featureIndex) => {
+                        const featureWithIcon = feature as FeatureWithIcon;
+                        const IconComponent = featureWithIcon.icon || Check;
+                        const featureText = featureWithIcon.text || (typeof feature === 'string' ? feature : '');
+                        return (
+                          <li key={featureIndex} className="flex items-center group-hover:scale-105 transition-transform duration-300">
+                            <IconComponent className="h-5 w-5 text-primary mr-3 flex-shrink-0" />
+                            <span className="text-sm text-gray-600 group-hover:text-gray-800 transition-colors duration-300">{featureText}</span>
+                          </li>
+                        );
+                      })}
                     </ul>
                     <Button 
-                      className={`w-full rounded-full ${plan.popular ? 'bg-primary hover:bg-primary/90 text-white' : 'border-gray-200 hover:bg-gray-50 text-gray-700'}`}
-                      variant={plan.popular ? "default" : "outline"}
+                      className={`w-full rounded-full ${plan.popular ? 'bg-primary hover:bg-primary/90 text-white' : plan.cta === 'Subscribe' ? 'bg-primary hover:bg-primary/90 text-white' : 'border-gray-200 hover:bg-gray-50 text-gray-700'}`}
+                      variant={plan.popular ? "default" : plan.cta === 'Subscribe' ? "default" : "outline"}
                       asChild
                     >
                       <Link href={plan.href} className="group-hover:scale-105 transition-transform duration-300">{plan.cta}</Link>
@@ -191,8 +265,9 @@ export default function PricingPage() {
                   </CardContent>
                   </Card>
                 </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -308,8 +383,8 @@ export default function PricingPage() {
               Join thousands of companies already using JobPlatform to find their next great hire.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up" style={{animationDelay: '0.4s'}}>
-              <Button size="lg" asChild className="rounded-full bg-primary hover:bg-primary/90">
-                <Link href="/register">Start Free Trial</Link>
+              <Button size="lg" asChild className="rounded-full bg-primary hover:bg-primary/90 text-white">
+                <Link href="/register">Subscribe Now</Link>
               </Button>
               <Button size="lg" variant="outline" asChild className="rounded-full border-gray-200 hover:bg-gray-50">
                 <Link href="/contact">Contact Sales</Link>

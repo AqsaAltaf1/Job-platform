@@ -439,3 +439,55 @@ export const getSubscriptionPlanStats = async (req, res) => {
     });
   }
 };
+
+/**
+ * Get active subscription plans for public pricing page
+ */
+export const getPublicSubscriptionPlans = async (req, res) => {
+  try {
+    const plans = await SubscriptionPlan.findAll({
+      where: {
+        is_active: true
+      },
+      order: [['sort_order', 'ASC'], ['created_at', 'ASC']],
+      attributes: [
+        'id',
+        'name',
+        'display_name',
+        'description',
+        'billing_cycle',
+        'price',
+        'features',
+        'limits',
+        'is_popular',
+        'sort_order'
+      ]
+    });
+
+    // Transform plans for frontend consumption
+    const transformedPlans = plans.map(plan => ({
+      id: plan.id,
+      name: plan.name,
+      display_name: plan.display_name,
+      description: plan.description,
+      price: plan.price,
+      billing_cycle: plan.billing_cycle,
+      features: plan.features || [],
+      limits: plan.limits || {},
+      is_popular: plan.is_popular,
+      sort_order: plan.sort_order
+    }));
+
+    res.json({
+      success: true,
+      plans: transformedPlans
+    });
+
+  } catch (error) {
+    console.error('Get public subscription plans error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch subscription plans'
+    });
+  }
+};

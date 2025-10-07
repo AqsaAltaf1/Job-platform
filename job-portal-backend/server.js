@@ -73,7 +73,8 @@ import {
   createSubscriptionPlan, 
   updateSubscriptionPlan, 
   deleteSubscriptionPlan, 
-  getSubscriptionPlanStats 
+  getSubscriptionPlanStats,
+  getPublicSubscriptionPlans
 } from './controllers/packageController.js';
 import {
   exchangeCodeForToken,
@@ -355,6 +356,9 @@ app.get('/api/admin/webhook-events', authenticateToken, requireRole(['super_admi
 app.get('/api/admin/webhook-events/:id', authenticateToken, requireRole(['super_admin']), getWebhookEvent);
 app.post('/api/admin/webhook-events/:id/retry', authenticateToken, requireRole(['super_admin']), retryWebhookEvent);
 app.get('/api/admin/webhook-stats', authenticateToken, requireRole(['super_admin']), getWebhookStats);
+
+// Public subscription plans route (for pricing page)
+app.get('/api/subscription-plans', getPublicSubscriptionPlans);
 
 // Package management routes (admin only)
 app.get('/api/admin/subscription-plans', authenticateToken, requireRole(['super_admin']), getAdminSubscriptionPlans);
