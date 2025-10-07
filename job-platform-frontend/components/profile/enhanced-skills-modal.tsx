@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { X, Plus, Star, ExternalLink, FileText, Github, Award, Briefcase, Eye } from 'lucide-react';
+import { X, Plus, Star, ExternalLink, FileText, Github, Award, Briefcase, Eye, CheckCircle } from 'lucide-react';
 import { EnhancedSkill, SkillEvidence, PeerEndorsement } from '@/lib/types';
 import { showToast, toastMessages } from '@/lib/toast';
 import { SKILL_CATEGORIES } from '@/lib/skills-data';
@@ -230,7 +230,7 @@ export default function EnhancedSkillsModal({ isOpen, onClose, candidateId, onSa
     switch (level) {
       case 'beginner': return 'bg-gray-100 text-gray-800';
       case 'intermediate': return 'bg-blue-100 text-blue-800';
-      case 'advanced': return 'bg-green-100 text-green-800';
+      case 'advanced': return 'bg-primary/10 text-primary';
       case 'expert': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -350,6 +350,7 @@ export default function EnhancedSkillsModal({ isOpen, onClose, candidateId, onSa
                             }}
                             className="hover:bg-blue-900 hover:text-white hover:border-blue-900"
                           >
+                            <CheckCircle className="h-4 w-4 mr-1 text-green-500" />
                             Evidence
                           </Button>
                           <Button
@@ -404,16 +405,19 @@ export default function EnhancedSkillsModal({ isOpen, onClose, candidateId, onSa
                       {/* Evidence Preview */}
                       {skill.evidence && skill.evidence.length > 0 && (
                         <div className="mb-3">
-                          <h4 className="text-sm font-medium text-gray-700 mb-2">Evidence:</h4>
+                          <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                            Evidence:
+                          </h4>
                           <div className="flex flex-wrap gap-2">
                             {skill.evidence.slice(0, 3).map((evidence) => (
-                              <div key={evidence.id} className="flex items-center gap-1 text-xs bg-gray-50 px-2 py-1 rounded">
+                              <div key={evidence.id} className="flex items-center gap-1 text-xs bg-green-50 border border-green-200 px-2 py-1 rounded">
                                 {getEvidenceIcon(evidence.type)}
-                                <span>{evidence.title}</span>
+                                <span className="text-green-700">{evidence.title}</span>
                               </div>
                             ))}
                             {skill.evidence.length > 3 && (
-                              <span className="text-xs text-gray-500">+{skill.evidence.length - 3} more</span>
+                              <span className="text-xs text-green-600 font-medium">+{skill.evidence.length - 3} more</span>
                             )}
                           </div>
                         </div>
@@ -484,7 +488,7 @@ export default function EnhancedSkillsModal({ isOpen, onClose, candidateId, onSa
                   </SelectTrigger>
                   <SelectContent>
                     {SKILL_CATEGORIES.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
+                      <SelectItem key={category.id} value={category.id} className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">
                         {category.name}
                       </SelectItem>
                     ))}
@@ -504,7 +508,7 @@ export default function EnhancedSkillsModal({ isOpen, onClose, candidateId, onSa
                         variant={newSkill.name === skill ? "default" : "outline"}
                         size="sm"
                         onClick={() => handleSkillFromCategory(skill)}
-                        className="text-xs"
+                        className="text-xs hover:bg-primary hover:text-white hover:border-primary"
                       >
                         {skill}
                       </Button>
@@ -520,7 +524,7 @@ export default function EnhancedSkillsModal({ isOpen, onClose, candidateId, onSa
                     type="button"
                     variant="outline"
                     onClick={() => setShowCustomSkillInput(true)}
-                    className="w-full"
+                    className="w-full hover:bg-primary hover:text-white hover:border-primary"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Custom Skill (Not in any category)
@@ -538,13 +542,13 @@ export default function EnhancedSkillsModal({ isOpen, onClose, candidateId, onSa
                         }
                       }}
                     />
-                    <Button type="button" onClick={handleCustomSkillName} disabled={!customSkillName.trim()}>
+                    <Button type="button" onClick={handleCustomSkillName} disabled={!customSkillName.trim()} className="bg-primary hover:bg-primary/90 text-white">
                       Add
                     </Button>
                     <Button type="button" variant="outline" onClick={() => {
                       setShowCustomSkillInput(false)
                       setCustomSkillName("")
-                    }}>
+                    }} className="hover:bg-primary hover:text-white hover:border-primary">
                       Cancel
                     </Button>
                   </div>
@@ -584,10 +588,10 @@ export default function EnhancedSkillsModal({ isOpen, onClose, candidateId, onSa
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="beginner">Beginner</SelectItem>
-                    <SelectItem value="intermediate">Intermediate</SelectItem>
-                    <SelectItem value="advanced">Advanced</SelectItem>
-                    <SelectItem value="expert">Expert</SelectItem>
+                    <SelectItem value="beginner" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Beginner</SelectItem>
+                    <SelectItem value="intermediate" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Intermediate</SelectItem>
+                    <SelectItem value="advanced" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Advanced</SelectItem>
+                    <SelectItem value="expert" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Expert</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

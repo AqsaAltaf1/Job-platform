@@ -139,7 +139,7 @@ export default function CompaniesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {industries.map((industry) => (
-                    <SelectItem key={industry} value={industry}>
+                    <SelectItem key={industry} value={industry} className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">
                       {industry}
                     </SelectItem>
                   ))}
@@ -152,7 +152,7 @@ export default function CompaniesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {sizes.map((size) => (
-                    <SelectItem key={size} value={size}>
+                    <SelectItem key={size} value={size} className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">
                       {size}
                     </SelectItem>
                   ))}
@@ -197,7 +197,7 @@ export default function CompaniesPage() {
                         </div>
                       </div>
                       <Button variant="ghost" size="sm" className="group-hover:scale-110 transition-transform duration-300">
-                        <Heart className="h-4 w-4 group-hover:text-red-500 transition-colors duration-300" />
+                        <Heart className="h-4 w-4 group-hover:text-primary transition-colors duration-300" />
                       </Button>
                     </div>
                     <p className="text-gray-600 mb-6 line-clamp-2 group-hover:text-gray-800 transition-colors duration-300">
@@ -254,10 +254,10 @@ export default function CompaniesPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="name">Name</SelectItem>
-                    <SelectItem value="size">Company Size</SelectItem>
-                    <SelectItem value="rating">Rating</SelectItem>
-                    <SelectItem value="jobs">Open Jobs</SelectItem>
+                    <SelectItem value="name" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Name</SelectItem>
+                    <SelectItem value="size" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Company Size</SelectItem>
+                    <SelectItem value="rating" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Rating</SelectItem>
+                    <SelectItem value="jobs" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Open Jobs</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

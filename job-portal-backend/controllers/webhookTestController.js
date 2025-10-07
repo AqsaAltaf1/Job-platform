@@ -1,93 +1,58 @@
-import stripeService from '../services/stripeService.js';
-import { Op } from 'sequelize';
+import Stripe from 'stripe';
 
-/**
- * Test webhook functionality (Development only)
- */
+// Initialize Stripe lazily to ensure environment variables are loaded
+let stripe;
+const getStripe = () => {
+  if (!stripe) {
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  }
+  return stripe;
+};
+
+// Test webhook endpoint to verify it's working
 export const testWebhook = async (req, res) => {
   try {
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(403).json({
-        success: false,
-        error: 'Webhook testing is only available in development mode'
-      });
-    }
-
-    const { event_type, subscription_id } = req.body;
-
-    if (!event_type || !subscription_id) {
-      return res.status(400).json({
-        success: false,
-        error: 'event_type and subscription_id are required'
-      });
-    }
-
-    // Create a mock webhook event
-    const mockEvent = {
-      id: `evt_test_${Date.now()}`,
-      type: event_type,
-      data: {
-        object: {
-          id: subscription_id,
-          status: event_type.includes('deleted') ? 'canceled' : 'active',
-          current_period_start: Math.floor(Date.now() / 1000),
-          current_period_end: Math.floor((Date.now() + 30 * 24 * 60 * 60 * 1000) / 1000),
-          cancel_at_period_end: event_type.includes('updated') ? true : false,
-          customer: 'cus_test_customer'
-        }
-      },
-      created: Math.floor(Date.now() / 1000)
-    };
-
-    // Process the mock webhook
-    await stripeService.handleWebhook(mockEvent);
-
+    console.log('🧪 Webhook test endpoint called');
+    console.log('Headers:', req.headers);
+    console.log('Body:', req.body);
+    
     res.json({
       success: true,
-      message: `Mock webhook ${event_type} processed successfully`,
-      event: mockEvent
+      message: 'Webhook test endpoint is working!',
+      timestamp: new Date().toISOString(),
+      headers: req.headers,
+      body: req.body
     });
-
   } catch (error) {
-    console.error('Test webhook error:', error);
+    console.error('Webhook test error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to test webhook'
+      error: 'Webhook test failed'
     });
   }
 };
 
-/**
- * Get webhook events log (Development only)
- */
+// Get webhook logs (for testing)
 export const getWebhookLogs = async (req, res) => {
   try {
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(403).json({
-        success: false,
-        error: 'Webhook logs are only available in development mode'
-      });
-    }
-
-    // In a real implementation, you'd store webhook events in a log table
-    // For now, we'll return recent subscription history as a proxy
-    const { SubscriptionHistory } = await import('../models/index.js');
-    
-    const recentEvents = await SubscriptionHistory.findAll({
-      limit: 20,
-      order: [['created_at', 'DESC']],
-      where: {
-        stripe_event_id: {
-          [Op.ne]: null
-        }
-      }
-    });
-
+    // This would typically come from your database
+    // For now, we'll return a mock response
     res.json({
       success: true,
-      events: recentEvents
+      logs: [
+        {
+          id: 'evt_test_123',
+          type: 'product.created',
+          created: new Date().toISOString(),
+          data: {
+            object: {
+              id: 'prod_test_123',
+              name: 'Test Product'
+            }
+          }
+        }
+      ]
     });
-
   } catch (error) {
     console.error('Get webhook logs error:', error);
     res.status(500).json({

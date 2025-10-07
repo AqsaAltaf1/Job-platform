@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
+import ProfileCompletionGuard from '@/components/auth/profile-completion-guard';
+import SubscriptionGuard from '@/components/auth/subscription-guard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -165,12 +167,14 @@ export default function PostJobPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Post a New Job</h1>
-          <p className="text-gray-600 mt-2">Fill out the details below to post your job listing</p>
-        </div>
+    <ProfileCompletionGuard requiredRole="employer">
+      <SubscriptionGuard requiredFeature="post_jobs">
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold text-gray-900">Post a New Job</h1>
+              <p className="text-gray-600 mt-2">Fill out the details below to post your job listing</p>
+            </div>
 
         <div className="space-y-8">
           {/* Basic Information */}
@@ -486,7 +490,7 @@ export default function PostJobPage() {
                       <Badge key={index} variant="secondary" className="flex items-center gap-1">
                         {skill}
                         <X 
-                          className="h-3 w-3 cursor-pointer hover:text-red-500" 
+                          className="h-3 w-3 cursor-pointer hover:text-primary" 
                           onClick={() => removeSkill(skill)}
                         />
                       </Badge>
@@ -525,5 +529,7 @@ export default function PostJobPage() {
         </div>
       </div>
     </div>
+      </SubscriptionGuard>
+    </ProfileCompletionGuard>
   );
 }

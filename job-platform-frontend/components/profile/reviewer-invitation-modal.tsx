@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { X, Plus, Mail, Copy, ExternalLink, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { ReviewerInvitation, EnhancedSkill } from '@/lib/types';
+import { showToast } from '@/lib/toast';
 
 interface ReviewerInvitationModalProps {
   isOpen: boolean;
@@ -103,15 +104,15 @@ export default function ReviewerInvitationModal({ isOpen, onClose, candidateId, 
         loadInvitations();
         onSave();
         
-        // Show the invitation link to the user
-        alert(`Invitation created! Share this link with the reviewer:\n\n${data.invitation_link}`);
+        // Show success message
+        showToast.success('Invitation sent successfully!');
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error || 'Failed to create invitation'}`);
+        showToast.error(errorData.error || 'Failed to create invitation');
       }
     } catch (error) {
       console.error('Error creating invitation:', error);
-      alert('Failed to create invitation');
+      showToast.error('Failed to create invitation');
     } finally {
       setLoading(false);
     }
@@ -136,11 +137,11 @@ export default function ReviewerInvitationModal({ isOpen, onClose, candidateId, 
         onSave();
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error || 'Failed to delete invitation'}`);
+        showToast.error(errorData.error || 'Failed to delete invitation');
       }
     } catch (error) {
       console.error('Error deleting invitation:', error);
-      alert('Failed to delete invitation');
+      showToast.error('Failed to delete invitation');
     } finally {
       setLoading(false);
     }
@@ -157,7 +158,7 @@ export default function ReviewerInvitationModal({ isOpen, onClose, candidateId, 
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    alert('Link copied to clipboard!');
+    showToast.success('Link copied to clipboard!');
   };
 
   const getStatusColor = (status: string) => {

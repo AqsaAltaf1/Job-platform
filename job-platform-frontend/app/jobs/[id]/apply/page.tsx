@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
+import ProfileCompletionGuard from '@/components/auth/profile-completion-guard';
+import SubscriptionGuard from '@/components/auth/subscription-guard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -204,17 +206,19 @@ export default function JobApplicationPage({ params }: JobApplicationProps) {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Back Button */}
-        <div className="mb-6">
-          <Button variant="ghost" asChild className="mb-4">
-            <Link href={`/jobs/${params.id}`}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Job Details
-            </Link>
-          </Button>
-        </div>
+    <ProfileCompletionGuard requiredRole="candidate">
+      <SubscriptionGuard requiredFeature="apply_jobs">
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto">
+            {/* Back Button */}
+            <div className="mb-6">
+              <Button variant="ghost" asChild className="mb-4">
+                <Link href={`/jobs/${params.id}`}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Job Details
+                </Link>
+              </Button>
+            </div>
 
         {/* Job Summary */}
         <Card className="mb-8">
@@ -384,5 +388,7 @@ export default function JobApplicationPage({ params }: JobApplicationProps) {
         </Card>
       </div>
     </div>
+      </SubscriptionGuard>
+    </ProfileCompletionGuard>
   );
 }

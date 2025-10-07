@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { X } from "lucide-react"
 import type { Education } from "@/lib/types"
+import { showToast } from "@/lib/toast"
 
 interface EducationModalProps {
   isOpen: boolean
@@ -33,6 +34,7 @@ export function EducationModal({ isOpen, onClose, onSave, education }: Education
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (isOpen) {
@@ -70,6 +72,14 @@ export function EducationModal({ isOpen, onClose, onSave, education }: Education
     e.preventDefault()
     setLoading(true)
     setError("")
+    setValidationErrors({})
+
+    // Validate form before submission
+    if (!validateForm()) {
+      setLoading(false)
+      setError("Please fix the validation errors below")
+      return
+    }
 
     try {
       const url = education ? `http://localhost:5000/api/educations/${education.id}` : 'http://localhost:5000/api/educations'
@@ -93,6 +103,7 @@ export function EducationModal({ isOpen, onClose, onSave, education }: Education
       const data = await response.json()
 
       if (data.success) {
+        showToast.success(education ? 'Education updated successfully!' : 'Education added successfully!')
         onSave()
       } else {
         setError(data.error || 'Failed to save education')
@@ -106,6 +117,69 @@ export function EducationModal({ isOpen, onClose, onSave, education }: Education
 
   const updateFormData = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {}
+
+    // Required field validations
+    if (!formData.institution_name.trim()) {
+      errors.institution_name = "Institution name is required"
+    }
+
+    if (!formData.degree.trim()) {
+      errors.degree = "Degree is required"
+    }
+
+    if (!formData.start_date) {
+      errors.start_date = "Start date is required"
+    }
+
+    if (!formData.is_current && !formData.end_date) {
+      errors.end_date = "End date is required when not currently studying"
+    }
+
+    // Date validations
+    if (formData.start_date && formData.end_date && !formData.is_current) {
+      const startDate = new Date(formData.start_date)
+      const endDate = new Date(formData.end_date)
+      
+      if (startDate >= endDate) {
+        errors.end_date = "End date must be after start date"
+      }
+    }
+
+    // Future date validation
+    if (formData.start_date) {
+      const startDate = new Date(formData.start_date)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      
+      if (startDate > today) {
+        errors.start_date = "Start date cannot be in the future"
+      }
+    }
+
+    if (formData.end_date && !formData.is_current) {
+      const endDate = new Date(formData.end_date)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      
+      if (endDate > today) {
+        errors.end_date = "End date cannot be in the future"
+      }
+    }
+
+    // GPA validation
+    if (formData.gpa) {
+      const gpa = parseFloat(formData.gpa)
+      if (isNaN(gpa) || gpa < 0 || gpa > 4.0) {
+        errors.gpa = "GPA must be a number between 0 and 4.0"
+      }
+    }
+
+    setValidationErrors(errors)
+    return Object.keys(errors).length === 0
   }
 
   if (!isOpen) return null

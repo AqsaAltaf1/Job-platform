@@ -481,7 +481,7 @@ export default function SmartMatching({
               Refresh Analysis
             </Button>
             <Button 
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-primary hover:bg-primary/90"
               disabled={!prediction || prediction.recommendation === 'pass'}
             >
               <CheckCircle className="h-4 w-4 mr-2" />

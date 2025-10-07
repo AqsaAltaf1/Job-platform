@@ -174,7 +174,7 @@ export function LinkedInSkillsImport({ candidateId, onSkillsImported }: LinkedIn
               <Button
                 onClick={handleImportSkills}
                 disabled={isLoading || linkedinProfile.skills.length === 0}
-                className="bg-green-600 hover:bg-green-700 text-white"
+                className="bg-primary hover:bg-primary/90 text-white"
               >
                 {isLoading ? (
                   <>

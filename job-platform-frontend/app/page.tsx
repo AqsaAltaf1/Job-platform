@@ -8,12 +8,14 @@ import { Briefcase, Users, Search, CheckCircle, MapPin, Clock, DollarSign, Build
 import Link from "next/link"
 import { getJobsWithCompany } from "@/lib/mock-data"
 import { useAuth } from "@/lib/auth"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 
 export default function HomePage() {
   const { user, loading } = useAuth()
   const router = useRouter()
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedLocation, setSelectedLocation] = useState("all-locations")
 
   useEffect(() => {
     // If user is logged in, redirect to dashboard
@@ -21,6 +23,27 @@ export default function HomePage() {
       router.push("/dashboard")
     }
   }, [user, loading, router])
+
+  const handleSearch = () => {
+    // Build search parameters
+    const params = new URLSearchParams()
+    if (searchTerm.trim()) {
+      params.append('search', searchTerm.trim())
+    }
+    if (selectedLocation && selectedLocation !== 'all-locations') {
+      params.append('location', selectedLocation)
+    }
+    
+    // Navigate to jobs page with search parameters
+    const searchUrl = `/jobs${params.toString() ? `?${params.toString()}` : ''}`
+    router.push(searchUrl)
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch()
+    }
+  }
 
   // Show loading or nothing while checking authentication
   if (loading) {
@@ -87,27 +110,39 @@ export default function HomePage() {
                     <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5 group-focus-within:text-primary transition-colors duration-200" />
                     <Input 
                       placeholder="Job Title or Keyword" 
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onKeyPress={handleKeyPress}
                       className="pl-12 h-14 text-lg border-0 focus:ring-0 bg-transparent focus:bg-gray-50 transition-all duration-200 rounded-full"
                     />
                   </div>
-                  <div className="relative group">
+                  <div className="flex-1 relative group">
                     <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5 group-focus-within:text-primary transition-colors duration-200" />
-                    <Select defaultValue="all-locations">
-                      <SelectTrigger className="pl-12 h-14 text-lg border-0 focus:ring-0 bg-transparent w-full md:w-64 focus:bg-gray-50 transition-all duration-200 rounded-full">
+                    <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                      <SelectTrigger className="pl-12 h-14 text-lg border-0 focus:ring-0 bg-transparent focus:bg-gray-50 transition-all duration-200 rounded-full">
                         <SelectValue placeholder="All Locations" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all-locations">All Locations</SelectItem>
-                        <SelectItem value="sydney">Sydney</SelectItem>
-                        <SelectItem value="melbourne">Melbourne</SelectItem>
-                        <SelectItem value="brisbane">Brisbane</SelectItem>
-                        <SelectItem value="perth">Perth</SelectItem>
+                        <SelectItem value="all-locations" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">All Locations</SelectItem>
+                        <SelectItem value="sydney" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Sydney</SelectItem>
+                        <SelectItem value="melbourne" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Melbourne</SelectItem>
+                        <SelectItem value="brisbane" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Brisbane</SelectItem>
+                        <SelectItem value="perth" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Perth</SelectItem>
+                        <SelectItem value="adelaide" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Adelaide</SelectItem>
+                        <SelectItem value="canberra" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Canberra</SelectItem>
+                        <SelectItem value="darwin" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Darwin</SelectItem>
+                        <SelectItem value="hobart" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Hobart</SelectItem>
+                        <SelectItem value="remote" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Remote</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button size="lg" className="h-14 w-14 bg-primary hover:bg-primary/90 text-white rounded-full p-0 hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
+                  <Button 
+                    size="lg" 
+                    onClick={handleSearch}
+                    className="h-14 w-14 bg-primary hover:bg-primary/90 text-white rounded-full p-0 hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
+                  >
                     <Search className="h-6 w-6" />
-            </Button>
+                  </Button>
                 </div>
               </div>
 
@@ -119,6 +154,10 @@ export default function HomePage() {
                     <Badge 
                       key={term} 
                       variant="outline" 
+                      onClick={() => {
+                        setSearchTerm(term)
+                        handleSearch()
+                      }}
                       className="px-4 py-2 text-sm bg-blue-100 text-slate-900 border-blue-200 hover:bg-blue-200 hover:scale-105 cursor-pointer transition-all duration-200 animate-fade-in-up rounded-full"
                       style={{animationDelay: `${0.9 + index * 0.1}s`}}
                     >

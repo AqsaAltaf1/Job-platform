@@ -32,7 +32,9 @@ export function Header() {
   const navigationItems = [
     { name: "Jobs", href: "/jobs" },
     { name: "Career Advice", href: "/career-advice" },
-    { name: "Companies", href: "/companies" },
+    { name: "Companies", href: "/companies", hideForRoles: ["employer", "team_member"] },
+    { name: "Candidates", href: "/candidates", showForRoles: ["employer", "team_member"] },
+    { name: "Pipeline", href: "/employer/kanban", showForRoles: ["employer", "team_member"] },
     { name: "Pricing", href: "/pricing" },
   ]
 
@@ -48,15 +50,27 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center space-x-8">
-            {navigationItems.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className="text-sm font-medium hover:text-primary transition-colors"
-              >
-                {item.name}
-              </Link>
-            ))}
+            {navigationItems
+              .filter((item) => {
+                // Hide items for specific roles
+                if (item.hideForRoles && user?.role && item.hideForRoles.includes(user.role)) {
+                  return false
+                }
+                // Show items only for specific roles
+                if (item.showForRoles && (!user?.role || !item.showForRoles.includes(user.role))) {
+                  return false
+                }
+                return true
+              })
+              .map((item) => (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className="text-sm font-medium hover:text-primary transition-colors"
+                >
+                  {item.name}
+                </Link>
+              ))}
             {user?.role === "employer" && (
               <Link href="/jobs/manage" className="text-sm font-medium hover:text-primary transition-colors">
                 Manage Jobs
@@ -152,16 +166,28 @@ export function Header() {
         {isMobileMenuOpen && (
           <div className="lg:hidden border-t bg-background">
             <nav className="py-4 space-y-2">
-              {navigationItems.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className="block px-4 py-2 text-sm font-medium hover:text-primary transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  {item.name}
-                </Link>
-              ))}
+              {navigationItems
+                .filter((item) => {
+                  // Hide items for specific roles
+                  if (item.hideForRoles && user?.role && item.hideForRoles.includes(user.role)) {
+                    return false
+                  }
+                  // Show items only for specific roles
+                  if (item.showForRoles && (!user?.role || !item.showForRoles.includes(user.role))) {
+                    return false
+                  }
+                  return true
+                })
+                .map((item) => (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className="block px-4 py-2 text-sm font-medium hover:text-primary transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    {item.name}
+                  </Link>
+                ))}
               {user?.role === "employer" && (
                 <Link
                   href="/jobs/manage"

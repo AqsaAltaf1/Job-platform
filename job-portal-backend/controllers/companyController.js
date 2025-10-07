@@ -54,7 +54,7 @@ export const getCompanies = async (req, res) => {
         {
           model: Job,
           as: 'jobs',
-          where: { is_active: true },
+          where: { status: 'active' },
           required: false,
           attributes: ['id', 'title', 'created_at']
         }
@@ -136,11 +136,11 @@ export const getCompanyById = async (req, res) => {
         {
           model: Job,
           as: 'jobs',
-          where: { is_active: true },
+          where: { status: 'active' },
           required: false,
           attributes: [
             'id', 'title', 'description', 'location', 'job_type', 
-            'experience_level', 'salary_min', 'salary_max', 'currency',
+            'experience_level', 'salary_min', 'salary_max', 'salary_currency',
             'skills_required', 'application_deadline', 'created_at'
           ],
           order: [['created_at', 'DESC']]
@@ -159,14 +159,14 @@ export const getCompanyById = async (req, res) => {
     const totalJobs = await Job.count({
       where: { 
         employer_profile_id: company.id,
-        is_active: true 
+        status: 'active' 
       }
     });
 
     const recentJobs = await Job.count({
       where: { 
         employer_profile_id: company.id,
-        is_active: true,
+        status: 'active',
         created_at: {
           [Op.gte]: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
         }
@@ -208,7 +208,7 @@ export const getCompanyStats = async (req, res) => {
       include: [{
         model: Job,
         as: 'jobs',
-        where: { is_active: true },
+        where: { status: 'active' },
         required: true
       }]
     });

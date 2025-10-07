@@ -10,7 +10,10 @@ import {
   Users, 
   BarChart3, 
   Settings,
-  Home
+  Home,
+  Webhook,
+  Package,
+  RefreshCw
 } from 'lucide-react';
 
 const adminNavItems = [
@@ -37,6 +40,24 @@ const adminNavItems = [
     href: '/admin/analytics',
     icon: BarChart3,
     description: 'System analytics and reports'
+  },
+  {
+    title: 'Webhooks',
+    href: '/admin/webhooks',
+    icon: Webhook,
+    description: 'Monitor Stripe webhook events'
+  },
+  {
+    title: 'Packages',
+    href: '/admin/packages',
+    icon: Package,
+    description: 'Manage subscription packages'
+  },
+  {
+    title: 'Stripe Sync',
+    href: '/admin/packages/stripe-sync',
+    icon: RefreshCw,
+    description: 'Sync packages with Stripe'
   },
   {
     title: 'Settings',

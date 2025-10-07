@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
+import { checkSubscriptionStatus } from '@/lib/subscription-check';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -90,6 +91,7 @@ export default function JobViewPage({ params }: JobViewPageProps) {
   const [canEdit, setCanEdit] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [savingJob, setSavingJob] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
 
   useEffect(() => {
     loadJob();
@@ -101,6 +103,7 @@ export default function JobViewPage({ params }: JobViewPageProps) {
       if (user.role === 'candidate') {
         checkIfJobSaved();
       }
+      setSubscriptionStatus(checkSubscriptionStatus(user));
     }
   }, [user, job]);
 
@@ -535,11 +538,19 @@ export default function JobViewPage({ params }: JobViewPageProps) {
             <Card>
               <CardContent className="pt-6">
                 <div className="space-y-3">
-                  <Link href={`/jobs/${job.id}/apply`}>
-                    <Button className="w-full" size="lg">
-                      Apply for this Job
-                    </Button>
-                  </Link>
+                  {subscriptionStatus?.canApplyJobs ? (
+                    <Link href={`/jobs/${job.id}/apply`}>
+                      <Button className="w-full" size="lg">
+                        Apply for this Job
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Link href="/pricing">
+                      <Button className="w-full" size="lg" variant="outline">
+                        Subscribe to Apply for Jobs
+                      </Button>
+                    </Link>
+                  )}
                   <Button 
                     variant="outline" 
                     className="w-full" 

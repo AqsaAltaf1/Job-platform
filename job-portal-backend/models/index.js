@@ -20,6 +20,7 @@ import Subscription from './Subscription.js';
 import SubscriptionHistory from './SubscriptionHistory.js';
 import Admin from './Admin.js';
 import Otp from './Otp.js';
+import { WebhookEvent } from './WebhookEvent.js';
 
 // Define associations
 User.hasOne(EmployerProfile, { foreignKey: 'user_id', as: 'employerProfile' });

@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { X } from "lucide-react"
 import type { Experience } from "@/lib/types"
+import { showToast } from "@/lib/toast"
 
 interface ExperienceModalProps {
   isOpen: boolean
@@ -30,6 +31,7 @@ export function ExperienceModal({ isOpen, onClose, onSave, experience }: Experie
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (isOpen) {
@@ -61,6 +63,14 @@ export function ExperienceModal({ isOpen, onClose, onSave, experience }: Experie
     e.preventDefault()
     setLoading(true)
     setError("")
+    setValidationErrors({})
+
+    // Validate form before submission
+    if (!validateForm()) {
+      setLoading(false)
+      setError("Please fix the validation errors below")
+      return
+    }
 
     try {
       const url = experience ? `http://localhost:5000/api/experiences/${experience.id}` : 'http://localhost:5000/api/experiences'
@@ -78,6 +88,7 @@ export function ExperienceModal({ isOpen, onClose, onSave, experience }: Experie
       const data = await response.json()
 
       if (data.success) {
+        showToast.success(experience ? 'Experience updated successfully!' : 'Experience added successfully!')
         onSave()
       } else {
         setError(data.error || 'Failed to save experience')
@@ -91,6 +102,61 @@ export function ExperienceModal({ isOpen, onClose, onSave, experience }: Experie
 
   const updateFormData = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {}
+
+    // Required field validations
+    if (!formData.company_name.trim()) {
+      errors.company_name = "Company name is required"
+    }
+
+    if (!formData.role.trim()) {
+      errors.role = "Job role is required"
+    }
+
+    if (!formData.from_date) {
+      errors.from_date = "Start date is required"
+    }
+
+    if (!formData.is_current && !formData.to_date) {
+      errors.to_date = "End date is required when not currently working"
+    }
+
+    // Date validations
+    if (formData.from_date && formData.to_date && !formData.is_current) {
+      const fromDate = new Date(formData.from_date)
+      const toDate = new Date(formData.to_date)
+      
+      if (fromDate >= toDate) {
+        errors.to_date = "End date must be after start date"
+      }
+    }
+
+    // Future date validation
+    if (formData.from_date) {
+      const fromDate = new Date(formData.from_date)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      
+      if (fromDate > today) {
+        errors.from_date = "Start date cannot be in the future"
+      }
+    }
+
+    if (formData.to_date && !formData.is_current) {
+      const toDate = new Date(formData.to_date)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      
+      if (toDate > today) {
+        errors.to_date = "End date cannot be in the future"
+      }
+    }
+
+    setValidationErrors(errors)
+    return Object.keys(errors).length === 0
   }
 
   if (!isOpen) return null
@@ -122,8 +188,12 @@ export function ExperienceModal({ isOpen, onClose, onSave, experience }: Experie
                 placeholder="e.g., Google, Microsoft"
                 value={formData.company_name}
                 onChange={(e) => updateFormData("company_name", e.target.value)}
+                className={validationErrors.company_name ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
                 required
               />
+              {validationErrors.company_name && (
+                <p className="text-sm text-red-600">{validationErrors.company_name}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -133,8 +203,12 @@ export function ExperienceModal({ isOpen, onClose, onSave, experience }: Experie
                 placeholder="e.g., Software Engineer, Product Manager"
                 value={formData.role}
                 onChange={(e) => updateFormData("role", e.target.value)}
+                className={validationErrors.role ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
                 required
               />
+              {validationErrors.role && (
+                <p className="text-sm text-red-600">{validationErrors.role}</p>
+              )}
             </div>
           </div>
 
@@ -157,8 +231,12 @@ export function ExperienceModal({ isOpen, onClose, onSave, experience }: Experie
                 type="date"
                 value={formData.from_date}
                 onChange={(e) => updateFormData("from_date", e.target.value)}
+                className={validationErrors.from_date ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
                 required
               />
+              {validationErrors.from_date && (
+                <p className="text-sm text-red-600">{validationErrors.from_date}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -169,7 +247,11 @@ export function ExperienceModal({ isOpen, onClose, onSave, experience }: Experie
                 value={formData.to_date}
                 onChange={(e) => updateFormData("to_date", e.target.value)}
                 disabled={formData.is_current}
+                className={validationErrors.to_date ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
               />
+              {validationErrors.to_date && (
+                <p className="text-sm text-red-600">{validationErrors.to_date}</p>
+              )}
             </div>
           </div>
 

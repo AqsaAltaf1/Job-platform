@@ -19,6 +19,10 @@ import PeerEndorsementModal from "@/components/profile/peer-endorsement-modal"
 import ReviewerInvitationModal from "@/components/profile/reviewer-invitation-modal"
 import { LinkedInSkillsImport } from "@/components/profile/linkedin-skills-import"
 import { TeamManagement } from "@/components/team/team-management"
+import { ProfileModalWrapper } from "@/components/profile/profile-modal-wrapper"
+import TransparencyDashboard from "@/components/profile/transparency-dashboard"
+import NarrativeControl from "@/components/profile/narrative-control"
+import AdvancedCustomization from "@/components/profile/advanced-customization"
 import type { Experience, Project, Education, EnhancedSkill } from "@/lib/types"
 import { showToast } from "@/lib/toast"
 import { useSearchParams } from "next/navigation"
@@ -46,6 +50,7 @@ export default function ProfilePage() {
   const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState("experience")
   const [verificationStatus, setVerificationStatus] = useState<any>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     if (user?.role === 'candidate') {
@@ -221,6 +226,87 @@ export default function ProfilePage() {
     }
   }
 
+  const handleDeleteExperience = async (experienceId: string, companyName: string) => {
+    try {
+      const token = localStorage.getItem('jwt_token')
+      if (!token) return
+
+      const response = await fetch(`http://localhost:5000/api/experiences/${experienceId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (response.ok) {
+        // Remove experience from local state
+        setExperiences(prev => prev.filter(exp => exp.id !== experienceId))
+        showToast.success(`Experience at "${companyName}" deleted successfully!`)
+      } else {
+        const errorData = await response.json()
+        showToast.error(errorData.error || 'Failed to delete experience')
+      }
+    } catch (error) {
+      console.error('Error deleting experience:', error)
+      showToast.error('Failed to delete experience')
+    }
+  }
+
+  const handleDeleteProject = async (projectId: string, projectTitle: string) => {
+    try {
+      const token = localStorage.getItem('jwt_token')
+      if (!token) return
+
+      const response = await fetch(`http://localhost:5000/api/projects/${projectId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (response.ok) {
+        // Remove project from local state
+        setProjects(prev => prev.filter(proj => proj.id !== projectId))
+        showToast.success(`Project "${projectTitle}" deleted successfully!`)
+      } else {
+        const errorData = await response.json()
+        showToast.error(errorData.error || 'Failed to delete project')
+      }
+    } catch (error) {
+      console.error('Error deleting project:', error)
+      showToast.error('Failed to delete project')
+    }
+  }
+
+  const handleDeleteEducation = async (educationId: string, institutionName: string) => {
+    try {
+      const token = localStorage.getItem('jwt_token')
+      if (!token) return
+
+      const response = await fetch(`http://localhost:5000/api/educations/${educationId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (response.ok) {
+        // Remove education from local state
+        setEducations(prev => prev.filter(edu => edu.id !== educationId))
+        showToast.success(`Education at "${institutionName}" deleted successfully!`)
+      } else {
+        const errorData = await response.json()
+        showToast.error(errorData.error || 'Failed to delete education')
+      }
+    } catch (error) {
+      console.error('Error deleting education:', error)
+      showToast.error('Failed to delete education')
+    }
+  }
+
   const reloadUserData = async () => {
     try {
       setRefreshing(true)
@@ -253,17 +339,34 @@ export default function ProfilePage() {
   }
 
   const handleSave = async () => {
-    // Reload user data first to get the latest profile information
-    await reloadUserData()
-    
-    // Then reload all the profile sections
-    loadExperiences()
-    loadProjects()
-    loadEducations()
-    loadEnhancedSkills()
-    
-    handleCloseModals()
-    // Keep the current tab active
+    try {
+      // Reload user data first to get the latest profile information
+      await reloadUserData()
+      
+      // Then reload all the profile sections
+      if (user?.role === 'candidate') {
+        await Promise.all([
+          loadExperiences(),
+          loadProjects(),
+          loadEducations(),
+          loadEnhancedSkills()
+        ])
+      }
+      
+      // Force re-render by updating refresh key
+      setRefreshKey(prev => prev + 1)
+      
+      // Show success message
+      showToast.success('Profile updated successfully!')
+      
+      handleCloseModals()
+      // Keep the current tab active
+    } catch (error) {
+      console.error('Failed to refresh profile data:', error)
+      showToast.error('Failed to update profile data')
+      // Still close modals even if refresh fails
+      handleCloseModals()
+    }
   }
 
   if (loading) {
@@ -304,7 +407,7 @@ export default function ProfilePage() {
   const profile = user.candidateProfile || user.employerProfile
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50" key={refreshKey}>
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
@@ -327,9 +430,6 @@ export default function ProfilePage() {
                         {user.first_name[0]}{user.last_name[0]}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="absolute -top-1 -right-1 bg-green-500 rounded-full p-1">
-                      <CheckCircle className="h-4 w-4 text-white" />
-                    </div>
                   </div>
 
                   {/* Name and Role */}
@@ -355,7 +455,7 @@ export default function ProfilePage() {
                     <>
                       {verificationStatus?.isVerified ? (
                         <div className="flex items-center justify-center gap-2 mb-4">
-                          <Badge variant="default" className="bg-green-500 hover:bg-green-600 text-white">
+                          <Badge className="bg-primary hover:bg-primary/90 text-white border-0">
                             <Shield className="h-3 w-3 mr-1" />
                             Identity Verified
                           </Badge>
@@ -377,7 +477,7 @@ export default function ProfilePage() {
                             variant="outline" 
                             size="sm" 
                             onClick={() => router.push('/verification')}
-                            className="text-xs"
+                            className="text-xs hover:bg-primary hover:text-white hover:border-primary"
                           >
                             <Shield className="h-3 w-3 mr-1" />
                             Try Again
@@ -385,15 +485,11 @@ export default function ProfilePage() {
                         </div>
                       ) : (
                         <div className="flex flex-col items-center gap-2 mb-4">
-                          <Badge variant="outline" className="border-orange-300 text-orange-600">
-                            <Clock className="h-3 w-3 mr-1" />
-                            Not Verified
-                          </Badge>
                           <Button 
                             variant="outline" 
                             size="sm" 
                             onClick={() => router.push('/verification')}
-                            className="text-xs"
+                            className="text-xs hover:bg-primary hover:text-white hover:border-primary"
                           >
                             <Shield className="h-3 w-3 mr-1" />
                             Verify Identity
@@ -416,7 +512,7 @@ export default function ProfilePage() {
                   {/* Rate (for candidates) */}
                   {user.role === 'candidate' && user.candidateProfile?.salary_expectation && (
                     <div className="flex items-center justify-center gap-1 mb-4">
-                      <span className="text-lg font-semibold text-green-600">
+                      <span className="text-lg font-semibold text-primary">
                         ${user.candidateProfile.salary_expectation.toLocaleString()}/year
                       </span>
                     </div>
@@ -455,42 +551,19 @@ export default function ProfilePage() {
 
                   {/* Contact Info */}
                   <div className="space-y-2 text-sm">
-                    {user.role === 'candidate' && user.candidateProfile?.location && (
-                      <div className="flex items-center justify-center gap-2 text-gray-600">
-                        <MapPin className="h-4 w-4" />
-                        <span>{user.candidateProfile.location}</span>
-                      </div>
-                    )}
-                    {user.role === 'employer' && user.employerProfile?.company_location && (
-                      <div className="flex items-center justify-center gap-2 text-gray-600">
-                        <MapPin className="h-4 w-4" />
-                        <span>{user.employerProfile.company_location}</span>
-                      </div>
-                    )}
-                    {user.role === 'candidate' && user.candidateProfile?.availability && (
-                      <div className="flex items-center justify-center gap-2 text-gray-600">
-                        <Clock className="h-4 w-4" />
-                        <span>
-                          {user.candidateProfile.availability === 'immediate' && 'Available Immediately'}
-                          {user.candidateProfile.availability === '2-weeks' && 'Available in 2 weeks'}
-                          {user.candidateProfile.availability === '1-month' && 'Available in 1 month'}
-                          {user.candidateProfile.availability === 'not-available' && 'Not Currently Available'}
-                        </span>
-                      </div>
-                    )}
                     <div className="flex items-center justify-center gap-2 text-gray-600">
-                      <Mail className="h-4 w-4" />
+                      <Mail className="h-4 w-4 text-primary" />
                       <span>{user.email}</span>
                     </div>
                     {user.role === 'candidate' && user.candidateProfile?.phone && (
                       <div className="flex items-center justify-center gap-2 text-gray-600">
-                        <Phone className="h-4 w-4" />
+                        <Phone className="h-4 w-4 text-primary" />
                         <span>{user.candidateProfile.phone}</span>
                       </div>
                     )}
                     {user.role === 'employer' && user.employerProfile?.phone && (
                       <div className="flex items-center justify-center gap-2 text-gray-600">
-                        <Phone className="h-4 w-4" />
+                        <Phone className="h-4 w-4 text-primary" />
                         <span>{user.employerProfile.phone}</span>
                       </div>
                     )}
@@ -509,7 +582,7 @@ export default function ProfilePage() {
                       </a>
                     )}
                     {user.candidateProfile?.github_url && (
-                      <a href={user.candidateProfile.github_url} target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-800">
+                      <a href={user.candidateProfile.github_url} target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-primary">
                         <Github className="h-5 w-5" />
                       </a>
                     )}
@@ -527,8 +600,7 @@ export default function ProfilePage() {
 
                   {/* Edit Profile Button */}
                   <Button 
-                    variant="outline" 
-                    className="w-full mt-6"
+                    className="w-full mt-6 bg-primary hover:bg-primary/90 text-white"
                     onClick={() => setShowProfileModal(true)}
                   >
                     <Edit className="h-4 w-4 mr-2" />
@@ -604,7 +676,7 @@ export default function ProfilePage() {
                     <div className="text-center">
                       <div className="text-2xl font-bold text-blue-600">
                         {verificationStatus?.isVerified ? (
-                          <Shield className="h-6 w-6 mx-auto text-green-500" />
+                          <Shield className="h-6 w-6 mx-auto text-primary" />
                         ) : verificationStatus?.status === 'SUBMITTED' || verificationStatus?.code === 'UNDER_REVIEW' ? (
                           <Clock className="h-6 w-6 mx-auto text-blue-500" />
                         ) : verificationStatus?.status === 'DECLINED' ? (
@@ -637,16 +709,6 @@ export default function ProfilePage() {
                       </div>
                     </div>
                   )}
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600">100%</div>
-                    <div className="text-sm text-gray-600 flex items-center justify-center gap-1">
-                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                    </div>
-                  </div>
                   </div>
               </CardContent>
             </Card>
@@ -785,7 +847,7 @@ export default function ProfilePage() {
                               href={user.employerProfile.careers_page_url} 
                               target="_blank" 
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2 px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors text-sm"
+                              className="inline-flex items-center gap-2 px-3 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-sm"
                             >
                               <Briefcase className="h-4 w-4" />
                               Careers Page
@@ -810,11 +872,14 @@ export default function ProfilePage() {
             <Card>
               <CardContent className="p-0">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="grid w-full grid-cols-4">
+                  <TabsList className="grid w-full grid-cols-7">
                     <TabsTrigger value="experience">Experience</TabsTrigger>
                     <TabsTrigger value="projects">Projects</TabsTrigger>
                     <TabsTrigger value="education">Education</TabsTrigger>
                     <TabsTrigger value="skills">Skills & Competencies</TabsTrigger>
+                    <TabsTrigger value="transparency">Transparency</TabsTrigger>
+                    <TabsTrigger value="narrative">Narrative</TabsTrigger>
+                    <TabsTrigger value="customization">Portfolio</TabsTrigger>
                   </TabsList>
                   
                   <TabsContent value="experience" className="p-6">
@@ -853,9 +918,23 @@ export default function ProfilePage() {
                                     <p className="text-gray-600 mt-2 text-sm">{experience.description}</p>
                                   )}
                                 </div>
-                                <Button variant="ghost" size="sm" onClick={() => handleEditExperience(experience)}>
-                                  <Edit className="h-4 w-4" />
-                                </Button>
+                                <div className="flex gap-1">
+                                  <Button variant="ghost" size="sm" onClick={() => handleEditExperience(experience)} className="hover:bg-primary hover:text-white">
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={() => {
+                                      if (confirm(`Are you sure you want to delete your experience at "${experience.company_name}"?`)) {
+                                        handleDeleteExperience(experience.id, experience.company_name)
+                                      }
+                                    }}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           ))}
@@ -889,9 +968,23 @@ export default function ProfilePage() {
                             <div key={project.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                               <div className="flex items-start justify-between mb-2">
                                 <h4 className="font-semibold text-lg">{project.title}</h4>
-                                <Button variant="ghost" size="sm" onClick={() => handleEditProject(project)}>
-                                  <Edit className="h-4 w-4" />
-                                </Button>
+                                <div className="flex gap-1">
+                                  <Button variant="ghost" size="sm" onClick={() => handleEditProject(project)} className="hover:bg-primary hover:text-white">
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={() => {
+                                      if (confirm(`Are you sure you want to delete the project "${project.title}"?`)) {
+                                        handleDeleteProject(project.id, project.title)
+                                      }
+                                    }}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </div>
                               {project.description && (
                                 <p className="text-gray-600 text-sm mb-3">{project.description}</p>
@@ -911,7 +1004,7 @@ export default function ProfilePage() {
                                   </a>
                                 )}
                                 {project.github_url && (
-                                  <a href={project.github_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-gray-600 hover:text-gray-800 text-sm">
+                                  <a href={project.github_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-gray-600 hover:text-primary text-sm">
                                     <Github className="h-3 w-3" />
                                     Code
                                   </a>
@@ -980,9 +1073,23 @@ export default function ProfilePage() {
                                     </p>
                                   )}
                                 </div>
-                                <Button variant="ghost" size="sm" onClick={() => handleEditEducation(education)}>
-                                  <Edit className="h-4 w-4" />
-                                </Button>
+                                <div className="flex gap-1">
+                                  <Button variant="ghost" size="sm" onClick={() => handleEditEducation(education)} className="hover:bg-primary hover:text-white">
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={() => {
+                                      if (confirm(`Are you sure you want to delete your education at "${education.institution_name}"?`)) {
+                                        handleDeleteEducation(education.id, education.institution_name)
+                                      }
+                                    }}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           ))}
@@ -1007,7 +1114,7 @@ export default function ProfilePage() {
                             <Plus className="h-4 w-4 mr-2" />
                             Add Skill
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => setShowReviewerInvitationModal(true)}>
+                          <Button size="sm" variant="outline" onClick={() => setShowReviewerInvitationModal(true)} className="hover:bg-primary hover:text-white hover:border-primary">
                             <Mail className="h-4 w-4 mr-2" />
                             Send Invitations
                           </Button>
@@ -1040,7 +1147,7 @@ export default function ProfilePage() {
                                     <Badge className={
                                       skill.level === 'beginner' ? 'bg-gray-100 text-gray-800' :
                                       skill.level === 'intermediate' ? 'bg-blue-100 text-blue-800' :
-                                      skill.level === 'advanced' ? 'bg-green-100 text-green-800' :
+                                      skill.level === 'advanced' ? 'bg-primary/10 text-primary' :
                                       'bg-purple-100 text-purple-800'
                                     }>
                                       {skill.level}
@@ -1071,7 +1178,7 @@ export default function ProfilePage() {
                                   </div>
                                   
                                   {skill.verified_rating && (
-                                    <div className="text-sm text-green-600">
+                                    <div className="text-sm text-primary">
                                       Verified Rating: {skill.verified_rating}/5
                                     </div>
                                   )}
@@ -1096,6 +1203,7 @@ export default function ProfilePage() {
                                       setShowEnhancedSkillsModal(true);
                                     }}
                                     title="Edit Skill"
+                                    className="hover:bg-primary hover:text-white hover:border-primary"
                                   >
                                     <Edit className="h-4 w-4" />
                                   </Button>
@@ -1120,8 +1228,9 @@ export default function ProfilePage() {
                                       setShowSkillEvidenceModal(true);
                                     }}
                                     title="Manage Evidence"
+                                    className="hover:bg-primary hover:text-white"
                                   >
-                                    <FileText className="h-4 w-4" />
+                                    <CheckCircle className="h-4 w-4 text-green-500" />
                                   </Button>
                                   <Button
                                     variant="outline"
@@ -1140,20 +1249,23 @@ export default function ProfilePage() {
                               {/* Evidence Preview */}
                               {skill.evidence && skill.evidence.length > 0 && (
                                 <div className="mb-3">
-                                  <h5 className="text-sm font-medium text-gray-700 mb-2">Evidence:</h5>
+                                  <h5 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                    Evidence:
+                                  </h5>
                                   <div className="flex flex-wrap gap-2">
                                     {skill.evidence.slice(0, 3).map((evidence) => (
-                                      <div key={evidence.id} className="flex items-center gap-1 text-xs bg-gray-50 px-2 py-1 rounded">
-                                        {evidence.type === 'work_sample' && <FileText className="h-3 w-3" />}
-                                        {evidence.type === 'github_repo' && <Github className="h-3 w-3" />}
-                                        {evidence.type === 'portfolio_link' && <ExternalLink className="h-3 w-3" />}
-                                        {evidence.type === 'certification' && <CheckCircle className="h-3 w-3" />}
-                                        {evidence.type === 'project' && <Briefcase className="h-3 w-3" />}
-                                        <span>{evidence.title}</span>
+                                      <div key={evidence.id} className="flex items-center gap-1 text-xs bg-green-50 border border-green-200 px-2 py-1 rounded">
+                                        {evidence.type === 'work_sample' && <FileText className="h-3 w-3 text-green-600" />}
+                                        {evidence.type === 'github_repo' && <Github className="h-3 w-3 text-green-600" />}
+                                        {evidence.type === 'portfolio_link' && <ExternalLink className="h-3 w-3 text-green-600" />}
+                                        {evidence.type === 'certification' && <CheckCircle className="h-3 w-3 text-green-600" />}
+                                        {evidence.type === 'project' && <Briefcase className="h-3 w-3 text-green-600" />}
+                                        <span className="text-green-700">{evidence.title}</span>
                                       </div>
                                     ))}
                                     {skill.evidence.length > 3 && (
-                                      <span className="text-xs text-gray-500">+{skill.evidence.length - 3} more</span>
+                                      <span className="text-xs text-green-600 font-medium">+{skill.evidence.length - 3} more</span>
                                     )}
                                   </div>
                                 </div>
@@ -1166,7 +1278,7 @@ export default function ProfilePage() {
                                   <div className="text-xs text-gray-600">
                                     {skill.endorsements.length} endorsement{skill.endorsements.length !== 1 ? 's' : ''}
                                     {skill.endorsements.filter(e => e.verified).length > 0 && (
-                                      <span className="text-green-600 ml-2">
+                                      <span className="text-primary ml-2">
                                         ({skill.endorsements.filter(e => e.verified).length} verified)
                                       </span>
                                     )}
@@ -1193,14 +1305,31 @@ export default function ProfilePage() {
                       </div>
                     )}
                   </TabsContent>
+
+                  {/* Transparency Dashboard Tab */}
+                  <TabsContent value="transparency" className="p-6">
+                    <TransparencyDashboard />
+                  </TabsContent>
+
+                  {/* Narrative Control Tab */}
+                  <TabsContent value="narrative" className="p-6">
+                    <NarrativeControl />
+                  </TabsContent>
+
+                  {/* Advanced Customization Tab */}
+                  <TabsContent value="customization" className="p-6">
+                    <AdvancedCustomization />
+                  </TabsContent>
                 </Tabs>
-                </CardContent>
-              </Card>
+              </CardContent>
+            </Card>
             )}
           </div>
         </div>
 
         {/* Modals */}
+        <ProfileModalWrapper onProfileSave={handleSave} />
+        
         {user.role === 'candidate' && (
           <>
             <ExperienceModal

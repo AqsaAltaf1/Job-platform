@@ -20,25 +20,21 @@ const SubscriptionPlan = sequelize.define('SubscriptionPlan', {
     type: DataTypes.TEXT,
     allowNull: true
   },
-  price_monthly: {
+  billing_cycle: {
+    type: DataTypes.ENUM('monthly', 'yearly', 'one_time'),
+    allowNull: false
+  },
+  price: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false
   },
-  price_yearly: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: false
-  },
-  stripe_price_id_monthly: {
+  stripe_price_id: {
     type: DataTypes.STRING,
-    allowNull: false
-  },
-  stripe_price_id_yearly: {
-    type: DataTypes.STRING,
-    allowNull: false
+    allowNull: true
   },
   stripe_product_id: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: true
   },
   features: {
     type: DataTypes.JSONB,

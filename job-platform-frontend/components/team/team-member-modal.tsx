@@ -277,10 +277,10 @@ export function TeamMemberModal({ isOpen, onClose, onSave, member, employerProfi
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="recruiter">Recruiter</SelectItem>
-                    <SelectItem value="hr_manager">HR Manager</SelectItem>
-                    <SelectItem value="interviewer">Interviewer</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="recruiter" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Recruiter</SelectItem>
+                    <SelectItem value="hr_manager" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">HR Manager</SelectItem>
+                    <SelectItem value="interviewer" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Interviewer</SelectItem>
+                    <SelectItem value="admin" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Admin</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-sm text-gray-600">

@@ -151,7 +151,7 @@ export function JobForm({ job, onSuccess, onCancel }: JobFormProps) {
               </SelectTrigger>
               <SelectContent>
                 {companies.map((company) => (
-                  <SelectItem key={company.id} value={company.id}>
+                  <SelectItem key={company.id} value={company.id} className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">
                     {company.name}
                   </SelectItem>
                 ))}
@@ -167,10 +167,10 @@ export function JobForm({ job, onSuccess, onCancel }: JobFormProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="full-time">Full Time</SelectItem>
-                  <SelectItem value="part-time">Part Time</SelectItem>
-                  <SelectItem value="contract">Contract</SelectItem>
-                  <SelectItem value="internship">Internship</SelectItem>
+                  <SelectItem value="full-time" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Full Time</SelectItem>
+                  <SelectItem value="part-time" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Part Time</SelectItem>
+                  <SelectItem value="contract" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Contract</SelectItem>
+                  <SelectItem value="internship" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Internship</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -185,10 +185,10 @@ export function JobForm({ job, onSuccess, onCancel }: JobFormProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="entry">Entry Level</SelectItem>
-                  <SelectItem value="mid">Mid Level</SelectItem>
-                  <SelectItem value="senior">Senior Level</SelectItem>
-                  <SelectItem value="executive">Executive</SelectItem>
+                  <SelectItem value="entry" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Entry Level</SelectItem>
+                  <SelectItem value="mid" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Mid Level</SelectItem>
+                  <SelectItem value="senior" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Senior Level</SelectItem>
+                  <SelectItem value="executive" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Executive</SelectItem>
                 </SelectContent>
               </Select>
             </div>

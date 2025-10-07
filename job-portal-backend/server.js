@@ -55,6 +55,26 @@ import {
   deletePeerEndorsement,
   getSkillEndorsements
 } from './controllers/enhancedSkillController.js';
+import { 
+  getCandidates, 
+  getCandidateProfile, 
+  getCandidateStats, 
+  testCandidates 
+} from './controllers/candidateController.js';
+import { 
+  getWebhookEvents, 
+  getWebhookEvent, 
+  retryWebhookEvent, 
+  getWebhookStats 
+} from './controllers/webhookController.js';
+import { 
+  getAdminSubscriptionPlans, 
+  getSubscriptionPlan, 
+  createSubscriptionPlan, 
+  updateSubscriptionPlan, 
+  deleteSubscriptionPlan, 
+  getSubscriptionPlanStats 
+} from './controllers/packageController.js';
 import {
   exchangeCodeForToken,
   fetchLinkedInProfile,
@@ -186,10 +206,6 @@ import {
 } from './controllers/subscriptionController.js';
 
 import {
-  getAdminSubscriptionPlans,
-  createSubscriptionPlan,
-  updateSubscriptionPlan,
-  deleteSubscriptionPlan,
   getAdminUsers,
   createAdminUser,
   updateAdminUser
@@ -206,6 +222,9 @@ import {
   getCompanyStats
 } from './controllers/companyController.js';
 
+// Import Stripe routes
+import stripeRoutes from './routes/stripeRoutes.js';
+
 const app = express();
 const PORT = process.env.PORT || 5001;
 
@@ -217,6 +236,7 @@ app.use(cors({
 
 // Raw body parser for Stripe webhooks
 app.use('/api/subscription/webhook', express.raw({ type: 'application/json' }));
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
 
 // JSON parser for all other routes
 app.use(express.json());
@@ -324,6 +344,26 @@ app.delete('/api/invitations/:invitationId', authenticateToken, deleteReviewerIn
 app.get('/api/review/:token', getInvitationByToken);
 app.post('/api/review/:token/feedback', submitReviewerFeedback);
 
+// Candidate Routes (for employers to browse candidates)
+app.get('/api/candidates', authenticateToken, requireRole(['employer', 'team_member']), getCandidates);
+app.get('/api/candidates/:id', authenticateToken, requireRole(['employer', 'team_member']), getCandidateProfile);
+app.get('/api/candidates/stats', authenticateToken, requireRole(['employer', 'team_member']), getCandidateStats);
+app.get('/api/test-candidates', testCandidates); // Test endpoint without auth
+
+// Webhook management routes (admin only)
+app.get('/api/admin/webhook-events', authenticateToken, requireRole(['super_admin']), getWebhookEvents);
+app.get('/api/admin/webhook-events/:id', authenticateToken, requireRole(['super_admin']), getWebhookEvent);
+app.post('/api/admin/webhook-events/:id/retry', authenticateToken, requireRole(['super_admin']), retryWebhookEvent);
+app.get('/api/admin/webhook-stats', authenticateToken, requireRole(['super_admin']), getWebhookStats);
+
+// Package management routes (admin only)
+app.get('/api/admin/subscription-plans', authenticateToken, requireRole(['super_admin']), getAdminSubscriptionPlans);
+app.get('/api/admin/subscription-plans/:id', authenticateToken, requireRole(['super_admin']), getSubscriptionPlan);
+app.post('/api/admin/subscription-plans', authenticateToken, requireRole(['super_admin']), createSubscriptionPlan);
+app.put('/api/admin/subscription-plans/:id', authenticateToken, requireRole(['super_admin']), updateSubscriptionPlan);
+app.delete('/api/admin/subscription-plans/:id', authenticateToken, requireRole(['super_admin']), deleteSubscriptionPlan);
+app.get('/api/admin/subscription-plans-stats', authenticateToken, requireRole(['super_admin']), getSubscriptionPlanStats);
+
 // Bias Reduction Routes
 app.post('/api/bias-reduction/process-endorsement', authenticateToken, processEndorsementText);
 app.get('/api/bias-reduction/reviewer/:reviewerEmail/consistency', authenticateToken, analyzeReviewerConsistency);
@@ -422,14 +462,7 @@ app.post('/api/subscription/webhook', handleStripeWebhook); // Stripe webhook (n
 app.get('/api/subscription/success', handleCheckoutSuccess); // Handle checkout success
 app.get('/api/admin/subscription-analytics', authenticateToken, getSubscriptionAnalytics); // Admin analytics
 
-// Admin Management Routes
-app.get('/api/admin/subscription-plans', authenticateToken, getAdminSubscriptionPlans); // Get all plans (admin view)
-app.post('/api/admin/subscription-plans', authenticateToken, createSubscriptionPlan); // Create new plan
-app.put('/api/admin/subscription-plans/:plan_id', authenticateToken, updateSubscriptionPlan); // Update plan
-app.delete('/api/admin/subscription-plans/:plan_id', authenticateToken, deleteSubscriptionPlan); // Delete plan
-app.get('/api/admin/users', authenticateToken, getAdminUsers); // Get admin users
-app.post('/api/admin/users', authenticateToken, createAdminUser); // Create admin user
-app.put('/api/admin/users/:admin_id', authenticateToken, updateAdminUser); // Update admin user
+// Admin Management Routes (duplicate routes removed - already defined above)
 
 // Webhook Testing Routes (Development only)
 app.post('/api/test/webhook', testWebhook); // Test webhook functionality
@@ -439,6 +472,9 @@ app.get('/api/test/webhook-logs', getWebhookLogs); // Get webhook logs
 app.get('/api/companies', getCompanies); // Get all companies with filters
 app.get('/api/companies/stats', getCompanyStats); // Get company statistics
 app.get('/api/companies/:id', getCompanyById); // Get company by ID
+
+// Stripe Sync Routes
+app.use('/api/stripe', stripeRoutes);
 
 // Start server
 app.listen(PORT, async () => {

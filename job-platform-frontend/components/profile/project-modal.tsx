@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { X } from "lucide-react"
 import type { Project } from "@/lib/types"
+import { showToast } from "@/lib/toast"
 
 interface ProjectModalProps {
   isOpen: boolean
@@ -32,6 +33,7 @@ export function ProjectModal({ isOpen, onClose, onSave, project }: ProjectModalP
   const [newTechnology, setNewTechnology] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (isOpen) {
@@ -65,6 +67,14 @@ export function ProjectModal({ isOpen, onClose, onSave, project }: ProjectModalP
     e.preventDefault()
     setLoading(true)
     setError("")
+    setValidationErrors({})
+
+    // Validate form before submission
+    if (!validateForm()) {
+      setLoading(false)
+      setError("Please fix the validation errors below")
+      return
+    }
 
     try {
       const url = project ? `http://localhost:5000/api/projects/${project.id}` : 'http://localhost:5000/api/projects'
@@ -82,6 +92,7 @@ export function ProjectModal({ isOpen, onClose, onSave, project }: ProjectModalP
       const data = await response.json()
 
       if (data.success) {
+        showToast.success(project ? 'Project updated successfully!' : 'Project added successfully!')
         onSave()
       } else {
         setError(data.error || 'Failed to save project')
@@ -95,6 +106,81 @@ export function ProjectModal({ isOpen, onClose, onSave, project }: ProjectModalP
 
   const updateFormData = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {}
+
+    // Required field validations
+    if (!formData.title.trim()) {
+      errors.title = "Project title is required"
+    }
+
+    if (!formData.description.trim()) {
+      errors.description = "Project description is required"
+    } else if (formData.description.trim().length < 20) {
+      errors.description = "Description must be at least 20 characters long"
+    }
+
+    if (formData.technologies.length === 0) {
+      errors.technologies = "At least one technology is required"
+    }
+
+    // Date validations
+    if (formData.start_date && formData.end_date) {
+      const startDate = new Date(formData.start_date)
+      const endDate = new Date(formData.end_date)
+      
+      if (startDate >= endDate) {
+        errors.end_date = "End date must be after start date"
+      }
+    }
+
+    // Future date validation
+    if (formData.start_date) {
+      const startDate = new Date(formData.start_date)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      
+      if (startDate > today) {
+        errors.start_date = "Start date cannot be in the future"
+      }
+    }
+
+    if (formData.end_date) {
+      const endDate = new Date(formData.end_date)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      
+      if (endDate > today) {
+        errors.end_date = "End date cannot be in the future"
+      }
+    }
+
+    // URL validations
+    if (formData.project_url && !isValidUrl(formData.project_url)) {
+      errors.project_url = "Please enter a valid project URL"
+    }
+
+    if (formData.github_url && !isValidUrl(formData.github_url)) {
+      errors.github_url = "Please enter a valid GitHub URL"
+    }
+
+    if (formData.image_url && !isValidUrl(formData.image_url)) {
+      errors.image_url = "Please enter a valid image URL"
+    }
+
+    setValidationErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  const isValidUrl = (url: string): boolean => {
+    try {
+      new URL(url)
+      return true
+    } catch {
+      return false
+    }
   }
 
   const addTechnology = () => {
@@ -130,7 +216,7 @@ export function ProjectModal({ isOpen, onClose, onSave, project }: ProjectModalP
           <h2 className="text-2xl font-bold">
             {project ? 'Edit Project' : 'Add Project'}
           </h2>
-          <Button variant="ghost" size="sm" onClick={onClose}>
+          <Button variant="ghost" size="sm" onClick={onClose} className="hover:bg-primary hover:text-white">
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -149,23 +235,31 @@ export function ProjectModal({ isOpen, onClose, onSave, project }: ProjectModalP
               placeholder="e.g., E-commerce Website, Mobile App"
               value={formData.title}
               onChange={(e) => updateFormData("title", e.target.value)}
+              className={validationErrors.title ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
               required
             />
+            {validationErrors.title && (
+              <p className="text-sm text-red-600">{validationErrors.title}</p>
+            )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">Description *</Label>
             <Textarea
               id="description"
               placeholder="Describe your project, what it does, and your role..."
               value={formData.description}
               onChange={(e) => updateFormData("description", e.target.value)}
+              className={validationErrors.description ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
               rows={3}
             />
+            {validationErrors.description && (
+              <p className="text-sm text-red-600">{validationErrors.description}</p>
+            )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="technologies">Technologies Used</Label>
+            <Label htmlFor="technologies">Technologies Used *</Label>
             <div className="flex gap-2">
               <Input
                 id="technologies"
@@ -173,6 +267,7 @@ export function ProjectModal({ isOpen, onClose, onSave, project }: ProjectModalP
                 value={newTechnology}
                 onChange={(e) => setNewTechnology(e.target.value)}
                 onKeyPress={handleKeyPress}
+                className={validationErrors.technologies ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
               />
               <Button type="button" onClick={addTechnology} disabled={!newTechnology.trim()}>
                 Add
@@ -186,6 +281,9 @@ export function ProjectModal({ isOpen, onClose, onSave, project }: ProjectModalP
                 </Badge>
               ))}
             </div>
+            {validationErrors.technologies && (
+              <p className="text-sm text-red-600">{validationErrors.technologies}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -197,7 +295,11 @@ export function ProjectModal({ isOpen, onClose, onSave, project }: ProjectModalP
                 placeholder="https://yourproject.com"
                 value={formData.project_url}
                 onChange={(e) => updateFormData("project_url", e.target.value)}
+                className={validationErrors.project_url ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
               />
+              {validationErrors.project_url && (
+                <p className="text-sm text-red-600">{validationErrors.project_url}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -208,7 +310,11 @@ export function ProjectModal({ isOpen, onClose, onSave, project }: ProjectModalP
                 placeholder="https://github.com/username/project"
                 value={formData.github_url}
                 onChange={(e) => updateFormData("github_url", e.target.value)}
+                className={validationErrors.github_url ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
               />
+              {validationErrors.github_url && (
+                <p className="text-sm text-red-600">{validationErrors.github_url}</p>
+              )}
             </div>
           </div>
 
@@ -220,7 +326,11 @@ export function ProjectModal({ isOpen, onClose, onSave, project }: ProjectModalP
               placeholder="https://example.com/project-image.jpg"
               value={formData.image_url}
               onChange={(e) => updateFormData("image_url", e.target.value)}
+              className={validationErrors.image_url ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
             />
+            {validationErrors.image_url && (
+              <p className="text-sm text-red-600">{validationErrors.image_url}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -231,7 +341,11 @@ export function ProjectModal({ isOpen, onClose, onSave, project }: ProjectModalP
                 type="date"
                 value={formData.start_date}
                 onChange={(e) => updateFormData("start_date", e.target.value)}
+                className={validationErrors.start_date ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
               />
+              {validationErrors.start_date && (
+                <p className="text-sm text-red-600">{validationErrors.start_date}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -241,15 +355,19 @@ export function ProjectModal({ isOpen, onClose, onSave, project }: ProjectModalP
                 type="date"
                 value={formData.end_date}
                 onChange={(e) => updateFormData("end_date", e.target.value)}
+                className={validationErrors.end_date ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
               />
+              {validationErrors.end_date && (
+                <p className="text-sm text-red-600">{validationErrors.end_date}</p>
+              )}
             </div>
           </div>
 
           <div className="flex justify-end space-x-4 pt-6 border-t">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose} className="hover:bg-primary hover:text-white hover:border-primary">
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} className="bg-primary hover:bg-primary/90 text-white">
               {loading ? "Saving..." : project ? "Update Project" : "Add Project"}
             </Button>
           </div>

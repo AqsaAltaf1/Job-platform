@@ -381,7 +381,7 @@ export default function SubscriptionPlans() {
                   plan.is_popular 
                     ? 'bg-purple-600 hover:bg-purple-700' 
                     : isCurrentPlan(plan.id)
-                    ? 'bg-green-600 hover:bg-green-700'
+                    ? 'bg-primary hover:bg-primary/90'
                     : ''
                 }`}
                 variant={isCurrentPlan(plan.id) ? 'default' : plan.is_popular ? 'default' : 'outline'}

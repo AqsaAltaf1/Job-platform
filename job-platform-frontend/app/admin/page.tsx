@@ -13,7 +13,9 @@ import {
   ArrowRight,
   CheckCircle,
   AlertTriangle,
-  TrendingUp
+  TrendingUp,
+  Webhook,
+  Package
 } from 'lucide-react';
 
 const adminFeatures = [
@@ -40,6 +42,22 @@ const adminFeatures = [
     icon: BarChart3,
     status: 'coming-soon',
     features: ['Usage Statistics', 'Performance Metrics', 'Custom Reports']
+  },
+  {
+    title: 'Webhook Management',
+    description: 'Monitor and manage Stripe webhook events',
+    href: '/admin/webhooks',
+    icon: Webhook,
+    status: 'active',
+    features: ['Event Monitoring', 'Error Tracking', 'Retry Failed Events']
+  },
+  {
+    title: 'Package Management',
+    description: 'Create and manage subscription packages',
+    href: '/admin/packages',
+    icon: Package,
+    status: 'active',
+    features: ['Create Packages', 'Pricing Management', 'Feature Configuration']
   },
   {
     title: 'System Settings',

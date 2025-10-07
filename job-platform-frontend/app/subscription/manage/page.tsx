@@ -394,7 +394,7 @@ export default function SubscriptionManagement() {
                   <Button 
                     onClick={handleResumeSubscription}
                     disabled={actionLoading === 'resume'}
-                    className="bg-green-600 hover:bg-green-700"
+                    className="bg-primary hover:bg-primary/90"
                   >
                     {actionLoading === 'resume' ? (
                       <RefreshCw className="h-4 w-4 mr-2 animate-spin" />

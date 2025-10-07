@@ -9,7 +9,7 @@ import Link from "next/link"
 
 interface AuthGuardProps {
   children: React.ReactNode
-  allowedRoles?: Array<"admin" | "employer" | "candidate">
+  allowedRoles?: Array<"super_admin" | "employer" | "candidate">
   fallback?: React.ReactNode
 }
 

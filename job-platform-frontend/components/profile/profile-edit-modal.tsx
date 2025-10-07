@@ -69,6 +69,7 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
   const [error, setError] = useState("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (isOpen && user) {
@@ -138,6 +139,14 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
     setLoading(true)
     setSuccess(false)
     setError("")
+    setValidationErrors({})
+
+    // Validate form before submission
+    if (!validateForm()) {
+      setLoading(false)
+      setError("Please fix the validation errors below")
+      return
+    }
 
     try {
       // Prepare data for submission
@@ -290,6 +299,145 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
     setPreviewUrl(null)
   }
 
+  // Validation functions
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
+  const validateURL = (url: string): boolean => {
+    if (!url.trim()) return true // Empty URLs are allowed
+    try {
+      new URL(url)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const validatePhone = (phone: string): boolean => {
+    if (!phone.trim()) return true // Empty phone is allowed
+    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/
+    const cleanPhone = phone.replace(/[\s\-\(\)]/g, '')
+    return phoneRegex.test(cleanPhone)
+  }
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {}
+
+    // Basic validation for all users
+    if (!formData.phone.trim()) {
+      errors.phone = "Phone number is required"
+    } else if (!validatePhone(formData.phone)) {
+      errors.phone = "Please enter a valid phone number"
+    }
+
+    if (!formData.location.trim()) {
+      errors.location = "Location is required"
+    }
+
+    // URL validations
+    if (formData.website && !validateURL(formData.website)) {
+      errors.website = "Please enter a valid website URL"
+    }
+
+    if (formData.linkedin_url && !validateURL(formData.linkedin_url)) {
+      errors.linkedin_url = "Please enter a valid LinkedIn URL"
+    }
+
+    if (formData.github_url && !validateURL(formData.github_url)) {
+      errors.github_url = "Please enter a valid GitHub URL"
+    }
+
+    // Role-specific validations
+    if (user?.role === "candidate") {
+      if (!formData.bio.trim()) {
+        errors.bio = "Bio is required"
+      } else if (formData.bio.trim().length < 50) {
+        errors.bio = "Bio must be at least 50 characters long"
+      }
+
+      if (!formData.job_title.trim()) {
+        errors.job_title = "Job title is required"
+      }
+
+      if (formData.skills.length === 0) {
+        errors.skills = "At least one skill is required"
+      }
+
+      if (!formData.experience_years || formData.experience_years < 0) {
+        errors.experience_years = "Years of experience is required and must be 0 or greater"
+      }
+
+      if (formData.resume_url && !validateURL(formData.resume_url)) {
+        errors.resume_url = "Please enter a valid resume URL"
+      }
+
+      if (formData.portfolio_url && !validateURL(formData.portfolio_url)) {
+        errors.portfolio_url = "Please enter a valid portfolio URL"
+      }
+
+      if (formData.salary_expectation && formData.salary_expectation < 0) {
+        errors.salary_expectation = "Salary expectation must be 0 or greater"
+      }
+    }
+
+    if (user?.role === "employer") {
+      if (!formData.first_name.trim()) {
+        errors.first_name = "First name is required"
+      }
+
+      if (!formData.last_name.trim()) {
+        errors.last_name = "Last name is required"
+      }
+
+      if (!formData.position.trim()) {
+        errors.position = "Your position is required"
+      }
+
+      if (!formData.company_name.trim()) {
+        errors.company_name = "Company name is required"
+      }
+
+      if (!formData.company_description.trim()) {
+        errors.company_description = "Company description is required"
+      } else if (formData.company_description.trim().length < 50) {
+        errors.company_description = "Company description must be at least 50 characters long"
+      }
+
+      if (!formData.company_industry) {
+        errors.company_industry = "Company industry is required"
+      }
+
+      if (!formData.company_size) {
+        errors.company_size = "Company size is required"
+      }
+
+      if (!formData.headquarters_location.trim()) {
+        errors.headquarters_location = "Headquarters location is required"
+      }
+
+      if (!formData.remote_policy) {
+        errors.remote_policy = "Remote work policy is required"
+      }
+
+      if (formData.company_website && !validateURL(formData.company_website)) {
+        errors.company_website = "Please enter a valid company website URL"
+      }
+
+      if (formData.careers_page_url && !validateURL(formData.careers_page_url)) {
+        errors.careers_page_url = "Please enter a valid careers page URL"
+      }
+
+      if (formData.company_logo_url && !validateURL(formData.company_logo_url)) {
+        errors.company_logo_url = "Please enter a valid logo URL"
+      }
+    }
+
+    setValidationErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
   if (!isOpen) return null
 
   return (
@@ -357,7 +505,7 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
                         <button
                           type="button"
                           onClick={handleRemoveFile}
-                          className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50"
+                          className="text-red-500 hover:text-primary p-1 rounded-full hover:bg-primary/10"
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -378,26 +526,36 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
             
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-3">
-                <Label htmlFor="phone" className="text-sm font-medium text-gray-700">Phone</Label>
+                <Label htmlFor="phone" className="text-sm font-medium text-gray-700">Phone *</Label>
                 <Input
                   id="phone"
                   type="tel"
                   placeholder="+1 (555) 123-4567"
                   value={formData.phone}
                   onChange={(e) => updateFormData("phone", e.target.value)}
-                  className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900"
+                  className={`h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900 ${
+                    validationErrors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                  }`}
                 />
+                {validationErrors.phone && (
+                  <p className="text-sm text-red-600">{validationErrors.phone}</p>
+                )}
               </div>
 
               <div className="space-y-3">
-                <Label htmlFor="location" className="text-sm font-medium text-gray-700">Location</Label>
+                <Label htmlFor="location" className="text-sm font-medium text-gray-700">Location *</Label>
                 <Input
                   id="location"
                   placeholder="e.g., San Francisco, CA"
                   value={formData.location}
                   onChange={(e) => updateFormData("location", e.target.value)}
-                  className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900"
+                  className={`h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900 ${
+                    validationErrors.location ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                  }`}
                 />
+                {validationErrors.location && (
+                  <p className="text-sm text-red-600">{validationErrors.location}</p>
+                )}
               </div>
             </div>
 
@@ -405,26 +563,36 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
             {user?.role === "candidate" && (
               <>
             <div className="space-y-3">
-              <Label htmlFor="bio" className="text-sm font-medium text-gray-700">Bio</Label>
+              <Label htmlFor="bio" className="text-sm font-medium text-gray-700">Bio * (min 50 characters)</Label>
               <Textarea
                 id="bio"
                 placeholder="Tell us about yourself..."
                 value={formData.bio}
                 onChange={(e) => updateFormData("bio", e.target.value)}
                 rows={4}
-                className="rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900 resize-none"
+                className={`rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900 resize-none ${
+                  validationErrors.bio ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                }`}
               />
+              {validationErrors.bio && (
+                <p className="text-sm text-red-600">{validationErrors.bio}</p>
+              )}
             </div>
 
                 <div className="space-y-3">
-                  <Label htmlFor="job_title" className="text-sm font-medium text-gray-700">Job Title</Label>
+                  <Label htmlFor="job_title" className="text-sm font-medium text-gray-700">Job Title *</Label>
                   <Input
                     id="job_title"
                     placeholder="e.g., Software Engineer, Chef, Marketing Manager, Data Scientist"
                     value={formData.job_title}
                     onChange={(e) => updateFormData("job_title", e.target.value)}
-                    className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900"
+                    className={`h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900 ${
+                      validationErrors.job_title ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                    }`}
                   />
+                  {validationErrors.job_title && (
+                    <p className="text-sm text-red-600">{validationErrors.job_title}</p>
+                  )}
                 </div>
               </>
             )}
@@ -433,27 +601,37 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
             {user?.role === "employer" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-3">
-                  <Label htmlFor="first_name" className="text-sm font-medium text-gray-700">First Name</Label>
+                  <Label htmlFor="first_name" className="text-sm font-medium text-gray-700">First Name *</Label>
                   <Input
                     id="first_name"
                     placeholder="e.g., John"
                     value={formData.first_name}
                     onChange={(e) => updateFormData("first_name", e.target.value)}
-                    className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900"
+                    className={`h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900 ${
+                      validationErrors.first_name ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                    }`}
                     required
                   />
+                  {validationErrors.first_name && (
+                    <p className="text-sm text-red-600">{validationErrors.first_name}</p>
+                  )}
                 </div>
 
                 <div className="space-y-3">
-                  <Label htmlFor="last_name" className="text-sm font-medium text-gray-700">Last Name</Label>
+                  <Label htmlFor="last_name" className="text-sm font-medium text-gray-700">Last Name *</Label>
                   <Input
                     id="last_name"
                     placeholder="e.g., Smith"
                     value={formData.last_name}
                     onChange={(e) => updateFormData("last_name", e.target.value)}
-                    className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900"
+                    className={`h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900 ${
+                      validationErrors.last_name ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                    }`}
                     required
                   />
+                  {validationErrors.last_name && (
+                    <p className="text-sm text-red-600">{validationErrors.last_name}</p>
+                  )}
                 </div>
               </div>
             )}
@@ -466,8 +644,13 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
                 placeholder="https://yourwebsite.com"
                 value={formData.website}
                 onChange={(e) => updateFormData("website", e.target.value)}
-                className="h-12 rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                className={`h-12 rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-500 ${
+                  validationErrors.website ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                }`}
               />
+              {validationErrors.website && (
+                <p className="text-sm text-red-600">{validationErrors.website}</p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-6">
@@ -479,8 +662,13 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
                   placeholder="https://linkedin.com/in/yourprofile"
                   value={formData.linkedin_url}
                   onChange={(e) => updateFormData("linkedin_url", e.target.value)}
-                  className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900"
+                  className={`h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900 ${
+                    validationErrors.linkedin_url ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                  }`}
                 />
+                {validationErrors.linkedin_url && (
+                  <p className="text-sm text-red-600">{validationErrors.linkedin_url}</p>
+                )}
               </div>
 
               <div className="space-y-3">
@@ -491,8 +679,13 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
                   placeholder="https://github.com/yourusername"
                   value={formData.github_url}
                   onChange={(e) => updateFormData("github_url", e.target.value)}
-                  className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900"
+                  className={`h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900 ${
+                    validationErrors.github_url ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                  }`}
                 />
+                {validationErrors.github_url && (
+                  <p className="text-sm text-red-600">{validationErrors.github_url}</p>
+                )}
               </div>
             </div>
 
@@ -515,7 +708,7 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
                     </SelectTrigger>
                     <SelectContent>
                       {SKILL_CATEGORIES.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
+                        <SelectItem key={category.id} value={category.id} className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">
                           {category.name}
                         </SelectItem>
                       ))}
@@ -586,8 +779,10 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
 
                 {/* Selected Skills Display */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">Your Skills ({formData.skills.length})</Label>
-                  <div className="flex flex-wrap gap-2 min-h-[2rem] p-3 border rounded-xl">
+                  <Label className="text-sm font-medium text-gray-700">Your Skills ({formData.skills.length}) *</Label>
+                  <div className={`flex flex-wrap gap-2 min-h-[2rem] p-3 border rounded-xl ${
+                    validationErrors.skills ? 'border-red-500' : ''
+                  }`}>
                     {formData.skills.length > 0 ? (
                       formData.skills.map((skill) => (
                     <Badge key={skill} variant="secondary" className="flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
@@ -599,12 +794,15 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
                       <span className="text-muted-foreground text-sm">No skills added yet</span>
                     )}
                   </div>
+                  {validationErrors.skills && (
+                    <p className="text-sm text-red-600">{validationErrors.skills}</p>
+                  )}
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-3">
-                  <Label htmlFor="experience_years" className="text-sm font-medium text-gray-700">Years of Experience</Label>
+                  <Label htmlFor="experience_years" className="text-sm font-medium text-gray-700">Years of Experience *</Label>
                   <Input
                     id="experience_years"
                     type="number"
@@ -613,8 +811,13 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
                     onChange={(e) =>
                       updateFormData("experience_years", e.target.value ? Number.parseInt(e.target.value) : undefined)
                     }
-                    className="h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900"
+                    className={`h-12 rounded-xl border-gray-200 focus:border-blue-900 focus:ring-blue-900 ${
+                      validationErrors.experience_years ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                    }`}
                   />
+                  {validationErrors.experience_years && (
+                    <p className="text-sm text-red-600">{validationErrors.experience_years}</p>
+                  )}
                 </div>
 
                 <div className="space-y-3">
@@ -627,10 +830,10 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="immediate">Available Immediately</SelectItem>
-                      <SelectItem value="2-weeks">2 Weeks Notice</SelectItem>
-                      <SelectItem value="1-month">1 Month Notice</SelectItem>
-                      <SelectItem value="not-available">Not Available</SelectItem>
+                      <SelectItem value="immediate" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Available Immediately</SelectItem>
+                      <SelectItem value="2-weeks" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">2 Weeks Notice</SelectItem>
+                      <SelectItem value="1-month" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">1 Month Notice</SelectItem>
+                      <SelectItem value="not-available" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Not Available</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -655,7 +858,11 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
                     placeholder="https://example.com/resume.pdf"
                     value={formData.resume_url}
                     onChange={(e) => updateFormData("resume_url", e.target.value)}
+                    className={validationErrors.resume_url ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
                   />
+                  {validationErrors.resume_url && (
+                    <p className="text-sm text-red-600">{validationErrors.resume_url}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -666,7 +873,11 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
                     placeholder="https://yourportfolio.com"
                     value={formData.portfolio_url}
                     onChange={(e) => updateFormData("portfolio_url", e.target.value)}
+                    className={validationErrors.portfolio_url ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
                   />
+                  {validationErrors.portfolio_url && (
+                    <p className="text-sm text-red-600">{validationErrors.portfolio_url}</p>
+                  )}
                 </div>
               </div>
 
@@ -680,7 +891,11 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
                   onChange={(e) =>
                     updateFormData("salary_expectation", e.target.value ? Number.parseInt(e.target.value) : undefined)
                   }
+                  className={validationErrors.salary_expectation ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
                 />
+                {validationErrors.salary_expectation && (
+                  <p className="text-sm text-red-600">{validationErrors.salary_expectation}</p>
+                )}
               </div>
             </div>
           )}
@@ -690,13 +905,17 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
               <h3 className="text-lg font-medium">Company Information</h3>
               
               <div className="space-y-2">
-                <Label htmlFor="position">Your Position</Label>
+                <Label htmlFor="position">Your Position *</Label>
                 <Input
                   id="position"
                   placeholder="e.g., HR Manager, CEO, Recruiter"
                   value={formData.position}
                   onChange={(e) => updateFormData("position", e.target.value)}
+                  className={validationErrors.position ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
                 />
+                {validationErrors.position && (
+                  <p className="text-sm text-red-600">{validationErrors.position}</p>
+                )}
               </div>
 
               {/* Company Names Section */}
@@ -705,13 +924,17 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                    <Label htmlFor="company_name">Company Name (Primary)</Label>
+                    <Label htmlFor="company_name">Company Name (Primary) *</Label>
                 <Input
                   id="company_name"
                   placeholder="e.g., TechCorp Inc."
                   value={formData.company_name}
                   onChange={(e) => updateFormData("company_name", e.target.value)}
+                  className={validationErrors.company_name ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
                 />
+                {validationErrors.company_name && (
+                  <p className="text-sm text-red-600">{validationErrors.company_name}</p>
+                )}
               </div>
 
                   <div className="space-y-2">
@@ -738,14 +961,18 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
 
               {/* Company Description */}
               <div className="space-y-2">
-                <Label htmlFor="company_description">Company Description</Label>
+                <Label htmlFor="company_description">Company Description * (min 50 characters)</Label>
                 <Textarea
                   id="company_description"
                   placeholder="Tell us about your company, mission, and culture..."
                   value={formData.company_description}
                   onChange={(e) => updateFormData("company_description", e.target.value)}
                   rows={4}
+                  className={validationErrors.company_description ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
                 />
+                {validationErrors.company_description && (
+                  <p className="text-sm text-red-600">{validationErrors.company_description}</p>
+                )}
               </div>
 
               {/* Branding Section */}
@@ -770,29 +997,32 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="company_industry">Industry</Label>
+                    <Label htmlFor="company_industry">Industry *</Label>
                     <Select
                       value={formData.company_industry}
                       onValueChange={(value) => updateFormData("company_industry", value)}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className={validationErrors.company_industry ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}>
                         <SelectValue placeholder="Select industry" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Technology">Technology</SelectItem>
-                        <SelectItem value="Healthcare">Healthcare</SelectItem>
-                        <SelectItem value="Finance">Finance</SelectItem>
-                        <SelectItem value="Education">Education</SelectItem>
-                        <SelectItem value="Manufacturing">Manufacturing</SelectItem>
-                        <SelectItem value="Retail">Retail</SelectItem>
-                        <SelectItem value="Consulting">Consulting</SelectItem>
-                        <SelectItem value="Marketing">Marketing & Advertising</SelectItem>
-                        <SelectItem value="Real Estate">Real Estate</SelectItem>
-                        <SelectItem value="Non-profit">Non-profit</SelectItem>
-                        <SelectItem value="Government">Government</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
+                        <SelectItem value="Technology" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Technology</SelectItem>
+                        <SelectItem value="Healthcare" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Healthcare</SelectItem>
+                        <SelectItem value="Finance" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Finance</SelectItem>
+                        <SelectItem value="Education" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Education</SelectItem>
+                        <SelectItem value="Manufacturing" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Manufacturing</SelectItem>
+                        <SelectItem value="Retail" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Retail</SelectItem>
+                        <SelectItem value="Consulting" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Consulting</SelectItem>
+                        <SelectItem value="Marketing" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Marketing & Advertising</SelectItem>
+                        <SelectItem value="Real Estate" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Real Estate</SelectItem>
+                        <SelectItem value="Non-profit" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Non-profit</SelectItem>
+                        <SelectItem value="Government" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Government</SelectItem>
+                        <SelectItem value="Other" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Other</SelectItem>
                       </SelectContent>
                     </Select>
+                    {validationErrors.company_industry && (
+                      <p className="text-sm text-red-600">{validationErrors.company_industry}</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -809,24 +1039,27 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
 
               {/* Company Size */}
                 <div className="space-y-2">
-                  <Label htmlFor="company_size">Company Size</Label>
+                  <Label htmlFor="company_size">Company Size *</Label>
                   <Select
                     value={formData.company_size}
                     onValueChange={(value) => updateFormData("company_size", value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={validationErrors.company_size ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}>
                       <SelectValue placeholder="Select company size" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1-10">1-10 employees</SelectItem>
-                      <SelectItem value="11-50">11-50 employees</SelectItem>
-                      <SelectItem value="51-200">51-200 employees</SelectItem>
-                      <SelectItem value="201-500">201-500 employees</SelectItem>
-                      <SelectItem value="501-1000">501-1000 employees</SelectItem>
-                    <SelectItem value="1001-5000">1001-5000 employees</SelectItem>
-                    <SelectItem value="5000+">5000+ employees</SelectItem>
+                      <SelectItem value="1-10" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">1-10 employees</SelectItem>
+                      <SelectItem value="11-50" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">11-50 employees</SelectItem>
+                      <SelectItem value="51-200" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">51-200 employees</SelectItem>
+                      <SelectItem value="201-500" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">201-500 employees</SelectItem>
+                      <SelectItem value="501-1000" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">501-1000 employees</SelectItem>
+                    <SelectItem value="1001-5000" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">1001-5000 employees</SelectItem>
+                    <SelectItem value="5000+" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">5000+ employees</SelectItem>
                   </SelectContent>
                 </Select>
+                {validationErrors.company_size && (
+                  <p className="text-sm text-red-600">{validationErrors.company_size}</p>
+                )}
               </div>
 
               {/* Locations Section */}
@@ -835,13 +1068,17 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="headquarters_location">Headquarters Location</Label>
+                    <Label htmlFor="headquarters_location">Headquarters Location *</Label>
                     <Input
                       id="headquarters_location"
                       placeholder="e.g., San Francisco, CA, USA"
                       value={formData.headquarters_location}
                       onChange={(e) => updateFormData("headquarters_location", e.target.value)}
+                      className={validationErrors.headquarters_location ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
                     />
+                    {validationErrors.headquarters_location && (
+                      <p className="text-sm text-red-600">{validationErrors.headquarters_location}</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -856,21 +1093,24 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="remote_policy">Remote Work Policy</Label>
+                  <Label htmlFor="remote_policy">Remote Work Policy *</Label>
                   <Select
                     value={formData.remote_policy}
                     onValueChange={(value) => updateFormData("remote_policy", value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={validationErrors.remote_policy ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}>
                       <SelectValue placeholder="Select remote policy" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="on-site">On-site Only</SelectItem>
-                      <SelectItem value="remote">Fully Remote</SelectItem>
-                      <SelectItem value="hybrid">Hybrid (Office + Remote)</SelectItem>
-                      <SelectItem value="flexible">Flexible</SelectItem>
+                      <SelectItem value="on-site" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">On-site Only</SelectItem>
+                      <SelectItem value="remote" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Fully Remote</SelectItem>
+                      <SelectItem value="hybrid" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Hybrid (Office + Remote)</SelectItem>
+                      <SelectItem value="flexible" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Flexible</SelectItem>
                     </SelectContent>
                   </Select>
+                  {validationErrors.remote_policy && (
+                    <p className="text-sm text-red-600">{validationErrors.remote_policy}</p>
+                  )}
                 </div>
               </div>
 
@@ -887,7 +1127,11 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
                       placeholder="https://yourcompany.com"
                       value={formData.company_website}
                       onChange={(e) => updateFormData("company_website", e.target.value)}
+                      className={validationErrors.company_website ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
                   />
+                  {validationErrors.company_website && (
+                    <p className="text-sm text-red-600">{validationErrors.company_website}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -898,7 +1142,11 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
                       placeholder="https://yourcompany.com/careers"
                       value={formData.careers_page_url}
                       onChange={(e) => updateFormData("careers_page_url", e.target.value)}
+                      className={validationErrors.careers_page_url ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
                     />
+                    {validationErrors.careers_page_url && (
+                      <p className="text-sm text-red-600">{validationErrors.careers_page_url}</p>
+                    )}
                   </div>
                 </div>
               </div>

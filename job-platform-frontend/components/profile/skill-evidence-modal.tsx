@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { X, Plus, ExternalLink, FileText, Github, Award, Briefcase, Upload } from 'lucide-react';
+import { X, Plus, ExternalLink, FileText, Github, Award, Briefcase, Upload, Download } from 'lucide-react';
 import { SkillEvidence } from '@/lib/types';
 import { showToast, toastMessages } from '@/lib/toast';
 
@@ -263,6 +263,43 @@ export default function SkillEvidenceModal({ isOpen, onClose, skillId, skillName
     }
   };
 
+  const handleDownloadFile = (evidence: SkillEvidence) => {
+    if (!evidence.file_url) {
+      showToast.error('No file available for download');
+      return;
+    }
+
+    try {
+      // Create a temporary anchor element to trigger download
+      const link = document.createElement('a');
+      link.href = evidence.file_url;
+      
+      // Determine file extension based on evidence type or URL
+      let filename = evidence.title || 'evidence';
+      if (evidence.file_url.includes('data:')) {
+        // Handle base64 data URLs
+        const mimeType = evidence.file_url.split(';')[0].split(':')[1];
+        const extension = mimeType.split('/')[1] || 'file';
+        filename += `.${extension}`;
+      } else if (evidence.file_url.includes('.')) {
+        // Handle regular URLs
+        const urlParts = evidence.file_url.split('.');
+        const extension = urlParts[urlParts.length - 1];
+        filename += `.${extension}`;
+      }
+      
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      showToast.success('File download started');
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      showToast.error('Failed to download file');
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -319,7 +356,7 @@ export default function SkillEvidenceModal({ isOpen, onClose, skillId, skillName
                               {getTypeLabel(item.type)}
                             </Badge>
                             {item.verified && (
-                              <Badge className="bg-green-100 text-green-800">
+                              <Badge className="bg-primary/10 text-primary">
                                 Verified
                               </Badge>
                             )}
@@ -340,14 +377,29 @@ export default function SkillEvidenceModal({ isOpen, onClose, skillId, skillName
                               </a>
                             )}
                             {item.file_url && (
-                              <span className="flex items-center gap-1">
-                                <FileText className="h-3 w-3" />
-                                File Attached
-                              </span>
+                              <button 
+                                onClick={() => handleDownloadFile(item)}
+                                className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline"
+                                title="Download file"
+                              >
+                                <Download className="h-3 w-3" />
+                                Download File
+                              </button>
                             )}
                           </div>
                         </div>
                         <div className="flex gap-2">
+                          {item.file_url && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDownloadFile(item)}
+                              className="hover:bg-primary hover:text-white hover:border-primary"
+                              title="Download file"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="outline"
                             size="sm"
@@ -462,7 +514,7 @@ export default function SkillEvidenceModal({ isOpen, onClose, skillId, skillName
                         variant="outline"
                         size="sm"
                         onClick={handleRemoveFile}
-                        className="text-red-600 hover:text-red-700 hover:border-red-600"
+                        className="text-red-600 hover:text-primary hover:border-primary"
                         title="Remove file"
                       >
                         <X className="h-4 w-4" />
@@ -478,7 +530,7 @@ export default function SkillEvidenceModal({ isOpen, onClose, skillId, skillName
                       variant="outline"
                       size="sm"
                       onClick={handleRemoveFile}
-                      className="absolute -top-2 -right-2 h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:border-red-600 bg-white"
+                      className="absolute -top-2 -right-2 h-6 w-6 p-0 text-red-600 hover:text-primary hover:border-primary bg-white"
                       title="Remove image"
                     >
                       <X className="h-3 w-3" />

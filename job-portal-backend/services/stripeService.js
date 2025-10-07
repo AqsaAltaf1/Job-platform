@@ -4,6 +4,7 @@ import Subscription from '../models/Subscription.js';
 import SubscriptionHistory from '../models/SubscriptionHistory.js';
 import User from '../models/User.js';
 import { EmployerProfile } from '../models/EmployerProfile.js';
+import { WebhookEvent } from '../models/WebhookEvent.js';
 
 class StripeService {
   constructor() {
@@ -355,8 +356,18 @@ class StripeService {
    * Handle webhook events
    */
   async handleWebhook(event) {
+    let webhookEvent = null;
+    
     try {
-      console.log(`Processing webhook event: ${event.type}`);
+      console.log(`Processing webhook event: ${event.type} (${event.id})`);
+      
+      // Log the webhook event
+      webhookEvent = await WebhookEvent.create({
+        stripe_event_id: event.id,
+        event_type: event.type,
+        event_data: event.data,
+        processed: false
+      });
       
       switch (event.type) {
         case 'customer.subscription.created':
@@ -386,8 +397,27 @@ class StripeService {
         default:
           console.log(`Unhandled event type: ${event.type}`);
       }
+      
+      // Mark as processed successfully
+      if (webhookEvent) {
+        await webhookEvent.update({
+          processed: true,
+          processed_at: new Date()
+        });
+      }
+      
     } catch (error) {
       console.error('Handle webhook error:', error);
+      
+      // Mark as failed
+      if (webhookEvent) {
+        await webhookEvent.update({
+          processed: false,
+          processing_error: error.message,
+          processed_at: new Date()
+        });
+      }
+      
       throw error;
     }
   }

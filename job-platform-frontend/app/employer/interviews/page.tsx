@@ -374,7 +374,7 @@ export default function InterviewScheduling() {
                             key={`${day.toISOString()}-${time}`}
                             className={`border rounded p-1 h-12 text-xs ${
                               slot.available 
-                                ? 'bg-green-50 border-green-200 hover:bg-green-100 cursor-pointer' 
+                                ? 'bg-primary/10 border-primary/20 hover:bg-primary/20 cursor-pointer' 
                                 : 'bg-red-50 border-red-200'
                             }`}
                           >
