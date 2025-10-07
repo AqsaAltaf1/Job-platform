@@ -190,6 +190,19 @@ import {
 } from './controllers/narrativeController.js';
 
 import {
+  getCustomizationData,
+  savePortfolioItem,
+  deletePortfolioItem,
+  saveWorkSample,
+  deleteWorkSample
+} from './controllers/portfolioController.js';
+
+import {
+  uploadPortfolioImage,
+  upload
+} from './controllers/uploadController.js';
+
+import {
   trainModel,
   evaluateModel,
   deployModel,
@@ -248,6 +261,9 @@ app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
 
 // JSON parser for all other routes
 app.use(express.json());
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static('uploads'));
 
 // Test route
 app.get('/', (req, res) => {
@@ -338,6 +354,18 @@ app.delete('/api/candidate/achievement/:id', authenticateToken, deleteAchievemen
 app.post('/api/candidate/narrative-section', authenticateToken, saveNarrativeSection);
 app.put('/api/candidate/narrative-section/:id', authenticateToken, saveNarrativeSection);
 app.delete('/api/candidate/narrative-section/:id', authenticateToken, deleteNarrativeSection);
+
+// Portfolio Routes (Candidate only)
+app.get('/api/candidate/customization-data', authenticateToken, getCustomizationData);
+app.post('/api/candidate/portfolio-item', authenticateToken, savePortfolioItem);
+app.put('/api/candidate/portfolio-item/:id', authenticateToken, savePortfolioItem);
+app.delete('/api/candidate/portfolio-item/:id', authenticateToken, deletePortfolioItem);
+app.post('/api/candidate/work-sample', authenticateToken, saveWorkSample);
+app.put('/api/candidate/work-sample/:id', authenticateToken, saveWorkSample);
+app.delete('/api/candidate/work-sample/:id', authenticateToken, deleteWorkSample);
+
+// Upload Routes
+app.post('/api/upload/portfolio-image', authenticateToken, upload.single('image'), uploadPortfolioImage);
 
 // Skill Evidence Routes
 app.post('/api/skills/:skillId/evidence', authenticateToken, addSkillEvidence);

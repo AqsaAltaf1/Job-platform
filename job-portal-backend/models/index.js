@@ -23,6 +23,8 @@ import Otp from './Otp.js';
 import { WebhookEvent } from './WebhookEvent.js';
 import { Achievement } from './Achievement.js';
 import { NarrativeSection } from './NarrativeSection.js';
+import { PortfolioItem } from './PortfolioItem.js';
+import { WorkSample } from './WorkSample.js';
 
 // Define associations
 User.hasOne(EmployerProfile, { foreignKey: 'user_id', as: 'employerProfile' });
@@ -129,6 +131,13 @@ Achievement.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 User.hasMany(NarrativeSection, { foreignKey: 'user_id', as: 'narrativeSections' });
 NarrativeSection.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
+// Portfolio associations
+User.hasMany(PortfolioItem, { foreignKey: 'user_id', as: 'portfolioItems' });
+PortfolioItem.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+User.hasMany(WorkSample, { foreignKey: 'user_id', as: 'workSamples' });
+WorkSample.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
 export {
   sequelize,
   User,
@@ -154,4 +163,6 @@ export {
   Otp,
   Achievement,
   NarrativeSection,
+  PortfolioItem,
+  WorkSample,
 };

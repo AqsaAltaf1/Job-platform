@@ -32,9 +32,11 @@ import {
 } from 'lucide-react'
 import { showToast } from '@/lib/toast'
 import { getApiUrl } from '@/lib/config'
+import PortfolioItemModal from './portfolio-item-modal'
+import WorkSampleModal from './work-sample-modal'
 
 interface PortfolioItem {
-  id: string
+  id?: string
   title: string
   description: string
   type: 'project' | 'article' | 'video' | 'presentation' | 'certificate'
@@ -47,7 +49,7 @@ interface PortfolioItem {
 }
 
 interface WorkSample {
-  id: string
+  id?: string
   title: string
   description: string
   type: 'code' | 'design' | 'writing' | 'analysis' | 'other'
@@ -101,7 +103,7 @@ export default function AdvancedCustomization() {
   const fetchCustomizationData = async () => {
     try {
       setLoading(true)
-      const token = localStorage.getItem('token')
+      const token = localStorage.getItem('jwt_token')
       const response = await fetch(getApiUrl('/candidate/customization-data'), {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -114,32 +116,10 @@ export default function AdvancedCustomization() {
         setPortfolioItems(data.data.portfolio || [])
         setWorkSamples(data.data.workSamples || [])
       } else {
-        // Mock data for now
-        setPortfolioItems([
-          {
-            id: '1',
-            title: 'E-commerce Platform',
-            description: 'Full-stack e-commerce platform built with React, Node.js, and PostgreSQL',
-            type: 'project',
-            url: 'https://github.com/user/ecommerce-platform',
-            thumbnail_url: '/api/placeholder/400/300',
-            technologies: ['React', 'Node.js', 'PostgreSQL', 'Stripe'],
-            isVisible: true,
-            order: 1
-          }
-        ])
-        setWorkSamples([
-          {
-            id: '1',
-            title: 'API Design Documentation',
-            description: 'Comprehensive API documentation for RESTful services',
-            type: 'writing',
-            url: 'https://docs.example.com/api',
-            skills_demonstrated: ['Technical Writing', 'API Design', 'Documentation'],
-            isVisible: true,
-            order: 1
-          }
-        ])
+        console.error('Failed to fetch customization data:', response.status)
+        showToast.error('Failed to load customization data')
+        setPortfolioItems([])
+        setWorkSamples([])
       }
     } catch (error) {
       console.error('Error fetching customization data:', error)
@@ -152,8 +132,11 @@ export default function AdvancedCustomization() {
   const savePortfolioItem = async (item: PortfolioItem) => {
     try {
       setSaving(true)
-      const token = localStorage.getItem('token')
-      const response = await fetch(getApiUrl('/candidate/portfolio-item'), {
+      const token = localStorage.getItem('jwt_token')
+      const url = item.id 
+        ? getApiUrl(`/candidate/portfolio-item/${item.id}`)
+        : getApiUrl('/candidate/portfolio-item')
+      const response = await fetch(url, {
         method: item.id ? 'PUT' : 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -182,8 +165,11 @@ export default function AdvancedCustomization() {
   const saveWorkSample = async (sample: WorkSample) => {
     try {
       setSaving(true)
-      const token = localStorage.getItem('token')
-      const response = await fetch(getApiUrl('/candidate/work-sample'), {
+      const token = localStorage.getItem('jwt_token')
+      const url = sample.id 
+        ? getApiUrl(`/candidate/work-sample/${sample.id}`)
+        : getApiUrl('/candidate/work-sample')
+      const response = await fetch(url, {
         method: sample.id ? 'PUT' : 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -206,6 +192,52 @@ export default function AdvancedCustomization() {
       showToast.error('Failed to save work sample')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const deletePortfolioItem = async (id: string) => {
+    try {
+      const token = localStorage.getItem('jwt_token')
+      const response = await fetch(getApiUrl(`/candidate/portfolio-item/${id}`), {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        showToast.success('Portfolio item deleted successfully')
+        fetchCustomizationData()
+      } else {
+        showToast.error('Failed to delete portfolio item')
+      }
+    } catch (error) {
+      console.error('Error deleting portfolio item:', error)
+      showToast.error('Failed to delete portfolio item')
+    }
+  }
+
+  const deleteWorkSample = async (id: string) => {
+    try {
+      const token = localStorage.getItem('jwt_token')
+      const response = await fetch(getApiUrl(`/candidate/work-sample/${id}`), {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        showToast.success('Work sample deleted successfully')
+        fetchCustomizationData()
+      } else {
+        showToast.error('Failed to delete work sample')
+      }
+    } catch (error) {
+      console.error('Error deleting work sample:', error)
+      showToast.error('Failed to delete work sample')
     }
   }
 
@@ -302,185 +334,24 @@ export default function AdvancedCustomization() {
             </Button>
           </div>
 
-          {/* Add/Edit Portfolio Form */}
-          {(showAddPortfolio || editingPortfolio) && (
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {editingPortfolio ? 'Edit Portfolio Item' : 'Add New Portfolio Item'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="portfolioTitle">Title *</Label>
-                    <Input
-                      id="portfolioTitle"
-                      value={editingPortfolio?.title || newPortfolio.title}
-                      onChange={(e) => {
-                        if (editingPortfolio) {
-                          setEditingPortfolio({ ...editingPortfolio, title: e.target.value })
-                        } else {
-                          setNewPortfolio({ ...newPortfolio, title: e.target.value })
-                        }
-                      }}
-                      placeholder="e.g., E-commerce Platform"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="portfolioType">Type</Label>
-                    <select
-                      id="portfolioType"
-                      value={editingPortfolio?.type || newPortfolio.type}
-                      onChange={(e) => {
-                        if (editingPortfolio) {
-                          setEditingPortfolio({ ...editingPortfolio, type: e.target.value as any })
-                        } else {
-                          setNewPortfolio({ ...newPortfolio, type: e.target.value as any })
-                        }
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    >
-                      <option value="project">Project</option>
-                      <option value="article">Article</option>
-                      <option value="video">Video</option>
-                      <option value="presentation">Presentation</option>
-                      <option value="certificate">Certificate</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="portfolioDescription">Description *</Label>
-                  <Textarea
-                    id="portfolioDescription"
-                    value={editingPortfolio?.description || newPortfolio.description}
-                    onChange={(e) => {
-                      if (editingPortfolio) {
-                        setEditingPortfolio({ ...editingPortfolio, description: e.target.value })
-                      } else {
-                        setNewPortfolio({ ...newPortfolio, description: e.target.value })
-                      }
-                    }}
-                    placeholder="Describe your project, what you built, and the technologies used..."
-                    rows={3}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="portfolioUrl">URL (Optional)</Label>
-                    <Input
-                      id="portfolioUrl"
-                      type="url"
-                      value={editingPortfolio?.url || newPortfolio.url}
-                      onChange={(e) => {
-                        if (editingPortfolio) {
-                          setEditingPortfolio({ ...editingPortfolio, url: e.target.value })
-                        } else {
-                          setNewPortfolio({ ...newPortfolio, url: e.target.value })
-                        }
-                      }}
-                      placeholder="https://example.com"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="portfolioThumbnail">Thumbnail URL (Optional)</Label>
-                    <Input
-                      id="portfolioThumbnail"
-                      type="url"
-                      value={editingPortfolio?.thumbnail_url || newPortfolio.thumbnail_url}
-                      onChange={(e) => {
-                        if (editingPortfolio) {
-                          setEditingPortfolio({ ...editingPortfolio, thumbnail_url: e.target.value })
-                        } else {
-                          setNewPortfolio({ ...newPortfolio, thumbnail_url: e.target.value })
-                        }
-                      }}
-                      placeholder="https://example.com/image.jpg"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="portfolioTechnologies">Technologies (comma-separated)</Label>
-                  <Input
-                    id="portfolioTechnologies"
-                    value={(editingPortfolio?.technologies || newPortfolio.technologies).join(', ')}
-                    onChange={(e) => {
-                      const technologies = e.target.value.split(',').map(t => t.trim()).filter(t => t)
-                      if (editingPortfolio) {
-                        setEditingPortfolio({ ...editingPortfolio, technologies })
-                      } else {
-                        setNewPortfolio({ ...newPortfolio, technologies })
-                      }
-                    }}
-                    placeholder="React, Node.js, PostgreSQL, Stripe"
-                  />
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="portfolioVisible"
-                    checked={editingPortfolio?.isVisible ?? newPortfolio.isVisible}
-                    onChange={(e) => {
-                      if (editingPortfolio) {
-                        setEditingPortfolio({ ...editingPortfolio, isVisible: e.target.checked })
-                      } else {
-                        setNewPortfolio({ ...newPortfolio, isVisible: e.target.checked })
-                      }
-                    }}
-                    className="rounded"
-                  />
-                  <Label htmlFor="portfolioVisible">Make this portfolio item visible to employers</Label>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => {
-                      if (editingPortfolio) {
-                        savePortfolioItem(editingPortfolio)
-                      } else {
-                        savePortfolioItem({
-                          ...newPortfolio,
-                          id: Date.now().toString()
-                        })
-                      }
-                    }}
-                    disabled={saving}
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    {saving ? 'Saving...' : 'Save Portfolio Item'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setShowAddPortfolio(false)
-                      setEditingPortfolio(null)
-                      resetPortfolioForm()
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Portfolio Items List */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {portfolioItems.map((item) => (
               <Card key={item.id} className="overflow-hidden">
-                {item.thumbnail_url && (
-                  <div className="aspect-video bg-gray-100">
+                <div className="aspect-video bg-gray-100">
+                  {item.thumbnail_url ? (
                     <img
                       src={item.thumbnail_url}
                       alt={item.title}
                       className="w-full h-full object-cover"
                     />
-                  </div>
-                )}
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400">
+                      <ImageIcon className="h-12 w-12" />
+                    </div>
+                  )}
+                </div>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
@@ -498,7 +369,7 @@ export default function AdvancedCustomization() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {/* Delete function */}}
+                        onClick={() => item.id && deletePortfolioItem(item.id)}
                         className="text-red-600 hover:text-red-700"
                       >
                         <Trash2 className="h-3 w-3" />
@@ -567,153 +438,6 @@ export default function AdvancedCustomization() {
             </Button>
           </div>
 
-          {/* Add/Edit Work Sample Form */}
-          {(showAddWorkSample || editingWorkSample) && (
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {editingWorkSample ? 'Edit Work Sample' : 'Add New Work Sample'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="sampleTitle">Title *</Label>
-                    <Input
-                      id="sampleTitle"
-                      value={editingWorkSample?.title || newWorkSample.title}
-                      onChange={(e) => {
-                        if (editingWorkSample) {
-                          setEditingWorkSample({ ...editingWorkSample, title: e.target.value })
-                        } else {
-                          setNewWorkSample({ ...newWorkSample, title: e.target.value })
-                        }
-                      }}
-                      placeholder="e.g., API Design Documentation"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="sampleType">Type</Label>
-                    <select
-                      id="sampleType"
-                      value={editingWorkSample?.type || newWorkSample.type}
-                      onChange={(e) => {
-                        if (editingWorkSample) {
-                          setEditingWorkSample({ ...editingWorkSample, type: e.target.value as any })
-                        } else {
-                          setNewWorkSample({ ...newWorkSample, type: e.target.value as any })
-                        }
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    >
-                      <option value="code">Code</option>
-                      <option value="design">Design</option>
-                      <option value="writing">Writing</option>
-                      <option value="analysis">Analysis</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="sampleDescription">Description *</Label>
-                  <Textarea
-                    id="sampleDescription"
-                    value={editingWorkSample?.description || newWorkSample.description}
-                    onChange={(e) => {
-                      if (editingWorkSample) {
-                        setEditingWorkSample({ ...editingWorkSample, description: e.target.value })
-                      } else {
-                        setNewWorkSample({ ...newWorkSample, description: e.target.value })
-                      }
-                    }}
-                    placeholder="Describe your work sample and what it demonstrates..."
-                    rows={3}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="sampleUrl">URL (Optional)</Label>
-                  <Input
-                    id="sampleUrl"
-                    type="url"
-                    value={editingWorkSample?.url || newWorkSample.url}
-                    onChange={(e) => {
-                      if (editingWorkSample) {
-                        setEditingWorkSample({ ...editingWorkSample, url: e.target.value })
-                      } else {
-                        setNewWorkSample({ ...newWorkSample, url: e.target.value })
-                      }
-                    }}
-                    placeholder="https://example.com"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="sampleSkills">Skills Demonstrated (comma-separated)</Label>
-                  <Input
-                    id="sampleSkills"
-                    value={(editingWorkSample?.skills_demonstrated || newWorkSample.skills_demonstrated).join(', ')}
-                    onChange={(e) => {
-                      const skills = e.target.value.split(',').map(s => s.trim()).filter(s => s)
-                      if (editingWorkSample) {
-                        setEditingWorkSample({ ...editingWorkSample, skills_demonstrated: skills })
-                      } else {
-                        setNewWorkSample({ ...newWorkSample, skills_demonstrated: skills })
-                      }
-                    }}
-                    placeholder="Technical Writing, API Design, Documentation"
-                  />
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="sampleVisible"
-                    checked={editingWorkSample?.isVisible ?? newWorkSample.isVisible}
-                    onChange={(e) => {
-                      if (editingWorkSample) {
-                        setEditingWorkSample({ ...editingWorkSample, isVisible: e.target.checked })
-                      } else {
-                        setNewWorkSample({ ...newWorkSample, isVisible: e.target.checked })
-                      }
-                    }}
-                    className="rounded"
-                  />
-                  <Label htmlFor="sampleVisible">Make this work sample visible to employers</Label>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => {
-                      if (editingWorkSample) {
-                        saveWorkSample(editingWorkSample)
-                      } else {
-                        saveWorkSample({
-                          ...newWorkSample,
-                          id: Date.now().toString()
-                        })
-                      }
-                    }}
-                    disabled={saving}
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    {saving ? 'Saving...' : 'Save Work Sample'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setShowAddWorkSample(false)
-                      setEditingWorkSample(null)
-                      resetWorkSampleForm()
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Work Samples List */}
           <div className="space-y-4">
@@ -776,7 +500,7 @@ export default function AdvancedCustomization() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => {/* Delete function */}}
+                        onClick={() => sample.id && deleteWorkSample(sample.id)}
                         className="text-red-600 hover:text-red-700"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -796,6 +520,29 @@ export default function AdvancedCustomization() {
           <strong>Pro Tip:</strong> Showcase your best work with high-quality portfolio items and work samples. This helps employers understand your capabilities beyond your resume and gives them concrete examples of your skills in action.
         </AlertDescription>
       </Alert>
+
+      {/* Modals */}
+      <PortfolioItemModal
+        isOpen={showAddPortfolio || !!editingPortfolio}
+        onClose={() => {
+          setShowAddPortfolio(false)
+          setEditingPortfolio(null)
+        }}
+        onSave={savePortfolioItem}
+        item={editingPortfolio}
+        saving={saving}
+      />
+
+      <WorkSampleModal
+        isOpen={showAddWorkSample || !!editingWorkSample}
+        onClose={() => {
+          setShowAddWorkSample(false)
+          setEditingWorkSample(null)
+        }}
+        onSave={saveWorkSample}
+        sample={editingWorkSample}
+        saving={saving}
+      />
     </div>
   )
 }
