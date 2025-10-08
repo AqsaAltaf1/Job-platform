@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useAuth } from '@/lib/auth-context';
+import { useAuth } from '@/lib/auth';
 import { getApiUrl } from '@/lib/config';
 import { 
   CreditCard, 
@@ -34,8 +34,8 @@ interface Subscription {
     id: string;
     display_name: string;
     description: string;
-    price_monthly: number;
-    price_yearly: number;
+    price: string | number;
+    billing_cycle: string;
     features: { [key: string]: boolean };
     limits: { [key: string]: number };
   };
@@ -50,7 +50,7 @@ interface HistoryItem {
   id: string;
   action: string;
   description: string;
-  amount: number | null;
+  amount: number | string | null;
   currency: string;
   created_at: string;
   oldPlan: { display_name: string } | null;
@@ -63,6 +63,11 @@ export default function SubscriptionManagement() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Helper function to safely convert price to number
+  const getPriceAsNumber = (price: string | number): number => {
+    return typeof price === 'string' ? parseFloat(price) : price;
+  };
 
   useEffect(() => {
     if (user) {
@@ -77,7 +82,7 @@ export default function SubscriptionManagement() {
       // Load current subscription
       const subResponse = await fetch(getApiUrl('/subscription/current'), {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
         }
       });
 
@@ -89,7 +94,7 @@ export default function SubscriptionManagement() {
       // Load subscription history
       const historyResponse = await fetch(getApiUrl('/subscription/history'), {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
         }
       });
 
@@ -121,7 +126,7 @@ export default function SubscriptionManagement() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
         },
         body: JSON.stringify({ cancel_at_period_end: true })
       });
@@ -150,7 +155,7 @@ export default function SubscriptionManagement() {
       const response = await fetch(getApiUrl(`/subscription/${subscription.id}/resume`), {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
         }
       });
 
@@ -273,9 +278,9 @@ export default function SubscriptionManagement() {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="usage">Usage & Limits</TabsTrigger>
+          {/* <TabsTrigger value="usage">Usage & Limits</TabsTrigger> */}
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
 
@@ -305,15 +310,19 @@ export default function SubscriptionManagement() {
                   </div>
 
                   <div className="text-3xl font-bold">
-                    ${subscription.billing_cycle === 'yearly' 
-                      ? (subscription.subscriptionPlan.price_yearly / 12).toFixed(0)
-                      : subscription.subscriptionPlan.price_monthly.toFixed(0)
-                    }
-                    <span className="text-lg font-normal text-muted-foreground">/month</span>
+                    ${getPriceAsNumber(subscription.subscriptionPlan.price).toFixed(0)}
+                    <span className="text-lg font-normal text-muted-foreground">
+                      /{subscription.billing_cycle === 'yearly' ? 'year' : 'month'}
+                    </span>
                   </div>
                   {subscription.billing_cycle === 'yearly' && (
                     <p className="text-sm text-muted-foreground">
-                      Billed annually (${subscription.subscriptionPlan.price_yearly}/year)
+                      Monthly equivalent: ${(getPriceAsNumber(subscription.subscriptionPlan.price) / 12).toFixed(0)}/month
+                    </p>
+                  )}
+                  {subscription.billing_cycle === 'monthly' && (
+                    <p className="text-sm text-muted-foreground">
+                      Billed monthly
                     </p>
                   )}
                 </div>
@@ -553,7 +562,7 @@ export default function SubscriptionManagement() {
                         
                         {item.amount && (
                           <span className="font-medium">
-                            ${item.amount.toFixed(2)} {item.currency}
+                            ${(typeof item.amount === 'string' ? parseFloat(item.amount) : (item.amount || 0)).toFixed(2)} {item.currency}
                           </span>
                         )}
                       </div>

@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { getApiUrl } from '@/lib/config';
-import { useAuth } from '@/lib/auth-context';
+import { useAuth } from '@/lib/auth';
 import { 
   CreditCard, 
   Lock, 
@@ -33,8 +33,8 @@ interface SubscriptionPlan {
   name: string;
   display_name: string;
   description: string;
-  price_monthly: number;
-  price_yearly: number;
+  price: number;
+  billing_cycle: string;
   features: { [key: string]: boolean };
   limits: { [key: string]: number };
   is_popular: boolean;

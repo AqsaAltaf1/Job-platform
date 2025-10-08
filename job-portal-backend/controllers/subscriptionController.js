@@ -13,7 +13,7 @@ export const getSubscriptionPlans = async (req, res) => {
   try {
     const plans = await SubscriptionPlan.findAll({
       where: { is_active: true },
-      order: [['sort_order', 'ASC'], ['price_monthly', 'ASC']]
+      order: [['sort_order', 'ASC'], ['price', 'ASC']]
     });
 
     res.json({
@@ -288,29 +288,41 @@ export const getSubscriptionHistory = async (req, res) => {
 
     const offset = (page - 1) * limit;
 
-    const { count, rows: history } = await SubscriptionHistory.findAndCountAll({
-      where: { user_id: user.id },
-      include: [
-        {
-          model: SubscriptionPlan,
-          as: 'oldPlan',
-          attributes: ['id', 'name', 'display_name']
-        },
-        {
-          model: SubscriptionPlan,
-          as: 'newPlan',
-          attributes: ['id', 'name', 'display_name']
-        },
-        {
-          model: Subscription,
-          as: 'subscription',
-          attributes: ['id', 'stripe_subscription_id']
-        }
-      ],
-      order: [['created_at', 'DESC']],
-      limit: parseInt(limit),
-      offset: parseInt(offset)
-    });
+    // Try to access subscription history, but handle permission errors gracefully
+    let history = [];
+    let count = 0;
+    
+    try {
+      const result = await SubscriptionHistory.findAndCountAll({
+        where: { user_id: user.id },
+        include: [
+          {
+            model: SubscriptionPlan,
+            as: 'oldPlan',
+            attributes: ['id', 'name', 'display_name']
+          },
+          {
+            model: SubscriptionPlan,
+            as: 'newPlan',
+            attributes: ['id', 'name', 'display_name']
+          },
+          {
+            model: Subscription,
+            as: 'subscription',
+            attributes: ['id', 'stripe_subscription_id']
+          }
+        ],
+        order: [['created_at', 'DESC']],
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
+
+      history = result.rows;
+      count = result.count;
+    } catch (historyError) {
+      console.log('Subscription history not accessible, returning empty array:', historyError.message);
+      // Continue with empty history array
+    }
 
     res.json({
       success: true,
@@ -490,8 +502,8 @@ export const createSubscription = async (req, res) => {
         stripe_customer_id: stripeCustomer.id,
         stripe_subscription_id: stripeSubscription.id,
         status: stripeSubscription.status,
-        current_period_start: new Date(stripeSubscription.current_period_start * 1000),
-        current_period_end: new Date(stripeSubscription.current_period_end * 1000),
+        current_period_start: stripeSubscription.current_period_start ? new Date(stripeSubscription.current_period_start * 1000) : null,
+        current_period_end: stripeSubscription.current_period_end ? new Date(stripeSubscription.current_period_end * 1000) : null,
         trial_start: stripeSubscription.trial_start ? new Date(stripeSubscription.trial_start * 1000) : null,
         trial_end: stripeSubscription.trial_end ? new Date(stripeSubscription.trial_end * 1000) : null
       });
@@ -500,7 +512,7 @@ export const createSubscription = async (req, res) => {
       await stripeServiceModule.getInstance().logSubscriptionHistory(subscription.id, userId, 'created', {
         plan_name: plan.name,
         billing_cycle: billing_cycle,
-        amount: billing_cycle === 'monthly' ? plan.price_monthly : plan.price_yearly,
+        amount: plan.price,
         stripe_subscription_id: stripeSubscription.id,
         description: 'Subscription created with direct payment'
       });

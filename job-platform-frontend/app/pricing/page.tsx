@@ -6,6 +6,7 @@ import { Check, Star, Users, Briefcase, TrendingUp, Shield, Zap } from "lucide-r
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { getApiUrl } from "@/lib/config"
+import { useAuth } from "@/lib/auth"
 
 interface SubscriptionPlan {
   id: string;
@@ -30,9 +31,11 @@ interface FeatureWithIcon {
 }
 
 export default function PricingPage() {
+  const { user } = useAuth();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentSubscription, setCurrentSubscription] = useState<any>(null);
 
   // Static features with icons
   const staticFeatures: { free: FeatureWithIcon[], paid: FeatureWithIcon[] } = {
@@ -60,7 +63,7 @@ export default function PricingPage() {
   useEffect(() => {
     const fetchPlans = async () => {
       try {
-        const response = await fetch(getApiUrl('/subscription-plans'));
+        const response = await fetch(getApiUrl('/subscription/plans'));
         const data = await response.json();
         
         if (data.success) {
@@ -76,10 +79,34 @@ export default function PricingPage() {
       }
     };
 
+    const fetchCurrentSubscription = async () => {
+      if (!user) return;
+      
+      try {
+        const response = await fetch(getApiUrl('/subscription/current'), {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setCurrentSubscription(data.subscription);
+        }
+      } catch (error) {
+        console.error('Load current subscription error:', error);
+      }
+    };
+
     fetchPlans();
-  }, []);
+    fetchCurrentSubscription();
+  }, [user]);
 
   const handleStripeCheckout = async (plan: any) => {
+    if (!user) {
+      window.location.href = '/login';
+      return;
+    }
+
     try {
       const response = await fetch(getApiUrl('/subscription/checkout'), {
         method: 'POST',
@@ -106,6 +133,70 @@ export default function PricingPage() {
     }
   };
 
+  const handleChangePlan = async (planId: string, billingCycle?: string) => {
+    if (!currentSubscription) return;
+
+    // Handle free plan - cancel subscription instead of changing plan
+    if (planId === 'free') {
+      try {
+        const response = await fetch(getApiUrl(`/subscription/${currentSubscription.id}/cancel`), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+          },
+          body: JSON.stringify({
+            cancel_at_period_end: true
+          })
+        });
+
+        if (response.ok) {
+          alert('Your subscription has been cancelled. You will continue to have access until the end of your billing period.');
+          // Reload the page to update the subscription status
+          window.location.reload();
+        } else {
+          const errorData = await response.json();
+          alert(errorData.error || 'Failed to cancel subscription');
+        }
+      } catch (error) {
+        console.error('Cancel subscription error:', error);
+        alert('Failed to cancel subscription');
+      }
+      return;
+    }
+
+    // Handle regular plan changes
+    try {
+      const response = await fetch(getApiUrl('/subscription/change'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+        },
+        body: JSON.stringify({
+          subscription_id: currentSubscription.id,
+          new_plan_id: planId,
+          billing_cycle: billingCycle || 'monthly' // Use the plan's billing cycle
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        window.location.href = data.url;
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to create change session');
+      }
+    } catch (error) {
+      console.error('Change plan error:', error);
+      alert('Failed to change plan');
+    }
+  };
+
+  const isCurrentPlan = (planId: string) => {
+    return currentSubscription?.subscription_plan_id === planId;
+  };
+
   // Create static free plan
   const freePlan = {
     id: 'free',
@@ -114,19 +205,39 @@ export default function PricingPage() {
     period: 'forever',
     description: 'Perfect for small businesses and startups',
     features: staticFeatures.free,
-    limitations: [
+      limitations: [
       'Limited to 3 active jobs',
       'No advanced features'
-    ],
-    popular: false,
-    cta: 'Get Started Free',
-    href: '/register?plan=free'
+      ],
+      popular: false,
+    isCurrent: !currentSubscription, // Free plan is current if no subscription
+    cta: currentSubscription ? 'Cancel Subscription' : 'Get Started Free',
+    href: currentSubscription ? null : '/register?plan=free',
+    onClick: currentSubscription ? () => handleChangePlan('free', 'monthly') : null
   };
 
   // Transform plans for display
   const transformedPlans = plans.map(plan => {
     // Use static features instead of database features
     const features = plan.price === 0 ? staticFeatures.free : staticFeatures.paid;
+    const isCurrent = isCurrentPlan(plan.id);
+    
+    const getButtonText = () => {
+      if (!user) return 'Get Started';
+      if (isCurrent) return 'Current Plan';
+      if (currentSubscription) {
+        // Special case for free plan (when plan price is 0 or plan name is 'Free')
+        if (plan.price === 0 || plan.name.toLowerCase().includes('free')) return 'Cancel Subscription';
+        return 'Change Plan';
+      }
+      return 'Subscribe';
+    };
+
+    const getButtonAction = () => {
+      if (isCurrent) return null;
+      if (currentSubscription) return () => handleChangePlan(plan.id, plan.billing_cycle);
+      return () => handleStripeCheckout(plan);
+    };
     
     return {
       id: plan.id,
@@ -140,9 +251,10 @@ export default function PricingPage() {
       features: features,
       limitations: [],
       popular: plan.is_popular,
-      cta: plan.price === 0 ? "Get Started Free" : "Subscribe",
+      isCurrent: isCurrent,
+      cta: getButtonText(),
       href: plan.price === 0 ? "/register" : null, // No href for paid plans - will use onClick
-      onClick: plan.price === 0 ? null : () => handleStripeCheckout(plan)
+      onClick: getButtonAction()
     };
   });
 
@@ -222,6 +334,30 @@ export default function PricingPage() {
         </div>
       </section>
 
+      {/* Current Subscription Alert - Only show if user is logged in */}
+      {user && currentSubscription && (
+        <section className="py-8 bg-blue-50">
+          <div className="container mx-auto px-4">
+            <div className="max-w-6xl mx-auto">
+              <div className="bg-blue-100 border border-blue-200 rounded-lg p-6">
+                <div className="flex items-center gap-3">
+                  <Check className="h-6 w-6 text-blue-600" />
+                  <div>
+                    <h3 className="font-semibold text-blue-900">
+                      You're currently on the {currentSubscription.subscriptionPlan?.display_name} plan
+                    </h3>
+                    <p className="text-sm text-blue-700">
+                      Your subscription {currentSubscription.cancel_at_period_end ? 'will end' : 'renews'} on{' '}
+                      {new Date(currentSubscription.current_period_end).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Pricing Cards */}
       <section className="py-16 bg-white">
         <div className="container mx-auto px-4">
@@ -255,7 +391,19 @@ export default function PricingPage() {
                       </Badge>
                     </div>
                   )}
-                  <Card className={`group hover:shadow-xl transition-all duration-300 cursor-pointer border-0 animate-fade-in-up ${plan.popular ? 'bg-white shadow-lg scale-105 border-2 border-blue-200' : 'bg-white hover:bg-blue-50/30'}`} style={{animationDelay: `${0.1 + index * 0.2}s`}}>
+                  {user && plan.isCurrent && (
+                    <div className="absolute -top-8 right-4 z-50">
+                      <Badge className="bg-green-600 text-white px-4 py-2 rounded-full shadow-xl border-2 border-white text-sm font-semibold">
+                        <Check className="h-3 w-3 mr-1" />
+                        Current Plan
+                      </Badge>
+                    </div>
+                  )}
+                  <Card className={`group hover:shadow-xl transition-all duration-300 cursor-pointer border-0 animate-fade-in-up ${
+                    plan.popular ? 'bg-white shadow-lg scale-105 border-2 border-blue-200' : 
+                    (user && plan.isCurrent) ? 'bg-green-50 shadow-lg border-2 border-green-200' :
+                    'bg-white hover:bg-blue-50/30'
+                  }`} style={{animationDelay: `${0.1 + index * 0.2}s`}}>
                   
                   <CardHeader className="text-center pb-6 relative z-10">
                     <div className={`w-16 h-16 mx-auto mb-4 rounded-xl flex items-center justify-center ${plan.popular ? 'bg-primary/10' : 'bg-blue-100'} transition-all duration-300`}>
@@ -276,26 +424,38 @@ export default function PricingPage() {
                         const IconComponent = featureWithIcon.icon || Check;
                         const featureText = featureWithIcon.text || (typeof feature === 'string' ? feature : '');
                         return (
-                          <li key={featureIndex} className="flex items-center group-hover:scale-105 transition-transform duration-300">
+                        <li key={featureIndex} className="flex items-center group-hover:scale-105 transition-transform duration-300">
                             <IconComponent className="h-5 w-5 text-primary mr-3 flex-shrink-0" />
                             <span className="text-sm text-gray-600 group-hover:text-gray-800 transition-colors duration-300">{featureText}</span>
-                          </li>
+                        </li>
                         );
                       })}
                     </ul>
                     {plan.href ? (
-                      <Button 
-                        className={`w-full rounded-full ${plan.popular ? 'bg-primary hover:bg-primary/90 text-white' : plan.cta === 'Subscribe' ? 'bg-primary hover:bg-primary/90 text-white' : 'border-gray-200 hover:bg-gray-50 text-gray-700'}`}
-                        variant={plan.popular ? "default" : plan.cta === 'Subscribe' ? "default" : "outline"}
-                        asChild
-                      >
-                        <Link href={plan.href} className="group-hover:scale-105 transition-transform duration-300">{plan.cta}</Link>
-                      </Button>
+                    <Button 
+                        className={`w-full rounded-full ${
+                          (user && plan.isCurrent) ? 'bg-gray-400 cursor-not-allowed' :
+                          plan.popular ? 'bg-primary hover:bg-primary/90 text-white' : 
+                          plan.cta === 'Subscribe' ? 'bg-primary hover:bg-primary/90 text-white' : 
+                          'border-gray-200 hover:bg-gray-50 text-gray-700'
+                        }`}
+                        variant={(user && plan.isCurrent) ? "default" : plan.popular ? "default" : plan.cta === 'Subscribe' ? "default" : "outline"}
+                        disabled={user && plan.isCurrent || false}
+                      asChild
+                    >
+                      <Link href={plan.href} className="group-hover:scale-105 transition-transform duration-300">{plan.cta}</Link>
+                    </Button>
                     ) : (
                       <Button 
-                        className={`w-full rounded-full ${plan.popular ? 'bg-primary hover:bg-primary/90 text-white' : plan.cta === 'Subscribe' ? 'bg-primary hover:bg-primary/90 text-white' : 'border-gray-200 hover:bg-gray-50 text-gray-700'}`}
-                        variant={plan.popular ? "default" : plan.cta === 'Subscribe' ? "default" : "outline"}
-                        onClick={plan.onClick}
+                        className={`w-full rounded-full ${
+                          (user && plan.isCurrent) ? 'bg-gray-400 cursor-not-allowed' :
+                          plan.popular ? 'bg-primary hover:bg-primary/90 text-white' : 
+                          plan.cta === 'Subscribe' ? 'bg-primary hover:bg-primary/90 text-white' : 
+                          'border-gray-200 hover:bg-gray-50 text-gray-700'
+                        }`}
+                        variant={(user && plan.isCurrent) ? "default" : plan.popular ? "default" : plan.cta === 'Subscribe' ? "default" : "outline"}
+                        disabled={user && plan.isCurrent || false}
+                        onClick={plan.onClick || undefined}
                       >
                         <span className="group-hover:scale-105 transition-transform duration-300">{plan.cta}</span>
                       </Button>
@@ -303,8 +463,8 @@ export default function PricingPage() {
                   </CardContent>
                   </Card>
                 </div>
-                ))}
-              </div>
+              ))}
+            </div>
             )}
           </div>
         </div>

@@ -36,6 +36,7 @@ export function Header() {
     { name: "Candidates", href: "/candidates", showForRoles: ["employer", "team_member"] },
     { name: "Pipeline", href: "/employer/kanban", showForRoles: ["employer", "team_member"] },
     { name: "Pricing", href: "/pricing" },
+    { name: "Subscription", href: "/subscription/manage", showForRoles: ["employer", "candidate"] },
   ]
 
   return (
@@ -125,6 +126,14 @@ export function Header() {
                         <Link href="/jobs/manage">
                           <Briefcase className="mr-2 h-4 w-4" />
                           Manage Jobs
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    {(user.role === "employer" || user.role === "candidate") && (
+                      <DropdownMenuItem asChild>
+                        <Link href="/subscription/manage">
+                          <Settings className="mr-2 h-4 w-4" />
+                          Subscription
                         </Link>
                       </DropdownMenuItem>
                     )}

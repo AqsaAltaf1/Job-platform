@@ -19,9 +19,9 @@ class StripeService {
       if (!process.env.STRIPE_SECRET_KEY) {
         throw new Error('STRIPE_SECRET_KEY environment variable is not set');
       }
-      this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-        apiVersion: '2023-10-16',
-      });
+    this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2023-10-16',
+    });
     }
     return this.stripe;
   }
@@ -120,6 +120,13 @@ class StripeService {
 
       if (!subscription) {
         throw new Error('Subscription not found');
+      }
+
+      // Handle free plan case
+      if (newPlanId === 'free') {
+        // For free plan, we need to cancel the current subscription instead of creating a new one
+        // This should be handled differently - we'll cancel the subscription
+        throw new Error('Free plan downgrade should be handled via subscription cancellation');
       }
 
       const newPlan = await SubscriptionPlan.findByPk(newPlanId);
@@ -258,12 +265,33 @@ class StripeService {
     try {
       const { user_id, plan_id, billing_cycle, action, old_subscription_id } = session.metadata;
 
+      // If plan_id is missing from metadata, try to get it from the subscription
+      let resolvedPlanId = plan_id;
+      if (!resolvedPlanId && session.subscription) {
+        try {
+          const stripeSubscription = await this.getStripe().subscriptions.retrieve(session.subscription);
+          if (stripeSubscription.items && stripeSubscription.items.data.length > 0) {
+            const priceId = stripeSubscription.items.data[0].price.id;
+            // Find the plan by stripe_price_id
+            const plan = await SubscriptionPlan.findOne({
+              where: { stripe_price_id: priceId }
+            });
+            if (plan) {
+              resolvedPlanId = plan.id;
+              console.log(`Resolved plan ID from price: ${resolvedPlanId}`);
+            }
+          }
+        } catch (subscriptionError) {
+          console.error('Error retrieving subscription for plan resolution:', subscriptionError);
+        }
+      }
+
       if (action === 'change_plan') {
         // Handle subscription change
-        await this.handleSubscriptionChange(old_subscription_id, plan_id, billing_cycle, session);
+        await this.handleSubscriptionChange(old_subscription_id, resolvedPlanId, billing_cycle, session);
       } else {
         // Handle new subscription
-        await this.createNewSubscription(user_id, plan_id, billing_cycle, session);
+        await this.createNewSubscription(user_id, resolvedPlanId, billing_cycle, session);
       }
     } catch (error) {
       console.error('Handle checkout success error:', error);
@@ -276,7 +304,31 @@ class StripeService {
    */
   async createNewSubscription(userId, planId, billingCycle, session) {
     try {
-      const stripeSubscription = await this.getStripe().subscriptions.retrieve(session.subscription);
+      // Validate required parameters
+      if (!planId) {
+        throw new Error('Plan ID is required to create subscription');
+      }
+
+      let stripeSubscription;
+      try {
+        stripeSubscription = await this.getStripe().subscriptions.retrieve(session.subscription);
+      } catch (stripeError) {
+        if (stripeError.code === 'resource_missing') {
+          console.log(`Subscription ${session.subscription} no longer exists in Stripe, skipping creation`);
+          return null;
+        }
+        throw stripeError;
+      }
+      
+      // Check if subscription already exists
+      const existingSubscription = await Subscription.findOne({
+        where: { stripe_subscription_id: stripeSubscription.id }
+      });
+      
+      if (existingSubscription) {
+        console.log(`Subscription already exists: ${stripeSubscription.id}`);
+        return existingSubscription;
+      }
       
       const subscription = await Subscription.create({
         user_id: userId,
@@ -285,8 +337,8 @@ class StripeService {
         stripe_customer_id: stripeSubscription.customer,
         status: stripeSubscription.status,
         billing_cycle: billingCycle,
-        current_period_start: new Date(stripeSubscription.current_period_start * 1000),
-        current_period_end: new Date(stripeSubscription.current_period_end * 1000),
+        current_period_start: stripeSubscription.current_period_start ? new Date(stripeSubscription.current_period_start * 1000) : null,
+        current_period_end: stripeSubscription.current_period_end ? new Date(stripeSubscription.current_period_end * 1000) : null,
         trial_start: stripeSubscription.trial_start ? new Date(stripeSubscription.trial_start * 1000) : null,
         trial_end: stripeSubscription.trial_end ? new Date(stripeSubscription.trial_end * 1000) : null,
         metadata: {
@@ -321,8 +373,21 @@ class StripeService {
         include: [{ model: SubscriptionPlan, as: 'subscriptionPlan' }]
       });
 
+      if (!oldSubscription) {
+        console.log(`Old subscription ${oldSubscriptionId} not found, skipping change`);
+        return null;
+      }
+
       // Cancel old subscription
-      await this.getStripe().subscriptions.cancel(oldSubscription.stripe_subscription_id);
+      try {
+        await this.getStripe().subscriptions.cancel(oldSubscription.stripe_subscription_id);
+      } catch (cancelError) {
+        if (cancelError.code === 'resource_missing') {
+          console.log(`Old subscription ${oldSubscription.stripe_subscription_id} already deleted in Stripe`);
+        } else {
+          throw cancelError;
+        }
+      }
       await oldSubscription.update({ status: 'canceled', canceled_at: new Date() });
 
       // Create new subscription
@@ -332,6 +397,11 @@ class StripeService {
         billingCycle,
         session
       );
+
+      if (!newSubscription) {
+        console.log('New subscription creation failed, skipping history log');
+        return null;
+      }
 
       // Log change in history
       await this.logSubscriptionHistory(newSubscription.id, oldSubscription.user_id, 
@@ -431,8 +501,8 @@ class StripeService {
         // Update the existing subscription with latest data
         await existingSubscription.update({
           status: stripeSubscription.status,
-          current_period_start: new Date(stripeSubscription.current_period_start * 1000),
-          current_period_end: new Date(stripeSubscription.current_period_end * 1000),
+          current_period_start: stripeSubscription.current_period_start ? new Date(stripeSubscription.current_period_start * 1000) : null,
+          current_period_end: stripeSubscription.current_period_end ? new Date(stripeSubscription.current_period_end * 1000) : null,
           trial_start: stripeSubscription.trial_start ? new Date(stripeSubscription.trial_start * 1000) : null,
           trial_end: stripeSubscription.trial_end ? new Date(stripeSubscription.trial_end * 1000) : null
         });
@@ -615,10 +685,18 @@ class StripeService {
 
       if (subscription) {
         const oldStatus = subscription.status;
+        // Safely convert timestamps to dates, handling null/undefined values
+        const currentPeriodStart = stripeSubscription.current_period_start 
+          ? new Date(stripeSubscription.current_period_start * 1000) 
+          : null;
+        const currentPeriodEnd = stripeSubscription.current_period_end 
+          ? new Date(stripeSubscription.current_period_end * 1000) 
+          : null;
+
         await subscription.update({
           status: stripeSubscription.status,
-          current_period_start: new Date(stripeSubscription.current_period_start * 1000),
-          current_period_end: new Date(stripeSubscription.current_period_end * 1000),
+          current_period_start: currentPeriodStart,
+          current_period_end: currentPeriodEnd,
           cancel_at_period_end: stripeSubscription.cancel_at_period_end
         });
 
