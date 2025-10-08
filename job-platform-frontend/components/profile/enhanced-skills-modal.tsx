@@ -85,7 +85,7 @@ export default function EnhancedSkillsModal({ isOpen, onClose, candidateId, onSa
     try {
       setLoading(true);
       const token = localStorage.getItem('jwt_token');
-      const response = await fetch(`process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/candidates/${candidateId}/skills`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/candidates/${candidateId}/skills`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -141,8 +141,8 @@ export default function EnhancedSkillsModal({ isOpen, onClose, candidateId, onSa
       };
 
       const url = editingSkill 
-        ? `process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/skills/${editingSkill.id}`
-        : `process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/candidates/${candidateId}/skills`;
+        ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/skills/${editingSkill.id}`
+        : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/candidates/${candidateId}/skills`;
       
       const method = editingSkill ? 'PUT' : 'POST';
 
@@ -191,7 +191,7 @@ export default function EnhancedSkillsModal({ isOpen, onClose, candidateId, onSa
       setLoading(true);
       const token = localStorage.getItem('jwt_token');
       
-      const response = await fetch(`process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/skills/${skillId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/skills/${skillId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

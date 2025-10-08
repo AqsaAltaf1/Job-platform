@@ -68,7 +68,7 @@ export default function PeerEndorsementModal({ isOpen, onClose, skillId, skillNa
       const token = localStorage.getItem('jwt_token');
       
       // Get the current user's profile ID
-      const response = await fetch('${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/auth/profile', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/auth/profile`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -159,7 +159,7 @@ export default function PeerEndorsementModal({ isOpen, onClose, skillId, skillNa
       const token = localStorage.getItem('jwt_token');
 
       // Get the current user's profile ID from the token or context
-      const response = await fetch('${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/auth/profile', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/auth/profile`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',

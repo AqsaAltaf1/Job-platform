@@ -66,14 +66,14 @@ export default function EmployerDashboard() {
 
   useEffect(() => {
     loadDashboardData()
-    if (user?.role === "employer" || user?.role === "team_member" || user?.role === "super_admin") {
+    if (user?.role === "employer" || (user?.role as any) === "team_member" || user?.role === "super_admin") {
       fetchDashboardStats()
     }
   }, [user])
 
   // Refetch dashboard stats when time range changes
   useEffect(() => {
-    if (user?.role === "employer" || user?.role === "team_member" || user?.role === "super_admin") {
+    if (user?.role === "employer" || (user?.role as any) === "team_member" || user?.role === "super_admin") {
       fetchDashboardStats()
     }
   }, [timeRange])
@@ -84,7 +84,7 @@ export default function EmployerDashboard() {
     try {
       let jobs: JobWithCompany[] = []
 
-      if (user.role === "employer" || user.role === "team_member") {
+      if (user.role === "employer" || (user.role as any) === "team_member") {
         // Load jobs posted by this employer
         jobs = await jobsApi.getJobs({ posted_by: user.id })
       }
@@ -196,7 +196,7 @@ export default function EmployerDashboard() {
   }
 
   // Show new dashboard design for employers
-  if (user?.role === "employer" || user?.role === "team_member" || user?.role === "super_admin") {
+  if (user?.role === "employer" || (user?.role as any) === "team_member" || user?.role === "super_admin") {
     return (
       <AuthGuard>
     <div className="container mx-auto px-4 py-8">

@@ -32,7 +32,7 @@ export default function StripeSyncPage() {
     try {
       setLoading(true);
       const token = localStorage.getItem('jwt_token');
-      const response = await fetch('${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/stripe/products', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/stripe/products`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -83,7 +83,7 @@ export default function StripeSyncPage() {
     try {
       setLoading(true);
       const token = localStorage.getItem('jwt_token');
-      const response = await fetch('${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/stripe/sync-all-from-stripe', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/stripe/sync-all-from-stripe`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

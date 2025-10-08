@@ -36,7 +36,7 @@ class LinkedInAuthService {
     if (typeof window !== 'undefined') {
       return `${window.location.origin}/auth/linkedin/callback`;
     }
-    return 'http://localhost:3000/auth/linkedin/callback'; // fallback for SSR
+    return `${process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000'}/auth/linkedin/callback`; // fallback for SSR
   }
 
   // Generate LinkedIn OAuth URL

@@ -64,7 +64,7 @@ export default function CompanyJobsPage() {
       setError(null)
       
       // Load company info
-      const companyResponse = await fetch(`process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/companies/${params.id}`)
+      const companyResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/companies/${params.id}`)
       const companyData = await companyResponse.json()
       
       if (companyData.success) {
@@ -72,7 +72,7 @@ export default function CompanyJobsPage() {
       }
 
       // Load jobs for this company
-      const jobsResponse = await fetch(`process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/jobs?employer_id=${params.id}&page=${currentPage}&limit=12`)
+      const jobsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/jobs?employer_id=${params.id}&page=${currentPage}&limit=12`)
       const jobsData = await jobsResponse.json()
       
       if (jobsData.success) {

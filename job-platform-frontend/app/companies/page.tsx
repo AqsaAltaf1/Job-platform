@@ -60,7 +60,7 @@ export default function CompaniesPage() {
         params.append('company_size', selectedSize)
       }
       
-      const response = await fetch(`process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/companies?${params}`)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/companies?${params}`)
       const data = await response.json()
       console.log('Companies API response:', data)
       

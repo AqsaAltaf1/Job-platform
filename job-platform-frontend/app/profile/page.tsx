@@ -84,7 +84,7 @@ export default function ProfilePage() {
 
   const loadExperiences = async () => {
     try {
-      const response = await fetch('process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/experiences', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/experiences`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
         }
@@ -100,7 +100,7 @@ export default function ProfilePage() {
 
   const loadProjects = async () => {
     try {
-      const response = await fetch('process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/projects', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/projects`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
         }
@@ -116,7 +116,7 @@ export default function ProfilePage() {
 
   const loadEducations = async () => {
     try {
-      const response = await fetch('process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/educations', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/educations`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
         }
@@ -133,7 +133,7 @@ export default function ProfilePage() {
   const loadEnhancedSkills = async () => {
     try {
       if (!user?.candidateProfile?.id) return
-      const response = await fetch(`process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/candidates/${user.candidateProfile.id}/skills`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/candidates/${user.candidateProfile.id}/skills`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`,
           'Content-Type': 'application/json'
@@ -152,7 +152,7 @@ export default function ProfilePage() {
 
   const loadVerificationStatus = async () => {
     try {
-      const response = await fetch('process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/verification/user-status', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/verification/user-status`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`,
           'Content-Type': 'application/json'
@@ -207,7 +207,7 @@ export default function ProfilePage() {
       const token = localStorage.getItem('jwt_token')
       if (!token) return
 
-      const response = await fetch(`process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/skills/${skillId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/skills/${skillId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -236,7 +236,7 @@ export default function ProfilePage() {
       const token = localStorage.getItem('jwt_token')
       if (!token) return
 
-      const response = await fetch(`process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/experiences/${experienceId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/experiences/${experienceId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -263,7 +263,7 @@ export default function ProfilePage() {
       const token = localStorage.getItem('jwt_token')
       if (!token) return
 
-      const response = await fetch(`process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/projects/${projectId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/projects/${projectId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -290,7 +290,7 @@ export default function ProfilePage() {
       const token = localStorage.getItem('jwt_token')
       if (!token) return
 
-      const response = await fetch(`process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/educations/${educationId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/educations/${educationId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -320,7 +320,7 @@ export default function ProfilePage() {
       // Force refresh the user data by calling the API directly
       const token = localStorage.getItem('jwt_token')
       if (token) {
-        const response = await fetch('process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/auth/profile', {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/auth/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',

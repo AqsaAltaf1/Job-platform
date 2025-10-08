@@ -73,7 +73,7 @@ export function ExperienceModal({ isOpen, onClose, onSave, experience }: Experie
     }
 
     try {
-      const url = experience ? `process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/experiences/${experience.id}` : 'process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/experiences'
+      const url = experience ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/experiences/${experience.id}` : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/experiences`
       const method = experience ? 'PUT' : 'POST'
       
       const response = await fetch(url, {
