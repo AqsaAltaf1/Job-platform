@@ -226,6 +226,7 @@ export interface CandidateProfile {
   github_url?: string
   profile_picture_url?: string
   // Enhanced skills system
+  skills?: string[] // Database skills field
   core_skills?: EnhancedSkill[]
   additional_skills?: string[] // Legacy simple skills
   experience_years?: number

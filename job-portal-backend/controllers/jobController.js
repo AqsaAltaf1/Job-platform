@@ -296,6 +296,47 @@ export const createJob = async (req, res) => {
       }
     }
 
+    // Validate salary fields
+    const { salary_min, salary_max } = req.body;
+    const maxSalaryValue = 99999999.99; // Maximum value for DECIMAL(10,2)
+    
+    if (salary_min !== null && salary_min !== undefined) {
+      if (salary_min < 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Minimum salary cannot be negative'
+        });
+      }
+      if (salary_min > maxSalaryValue) {
+        return res.status(400).json({
+          success: false,
+          error: `Minimum salary cannot exceed ${maxSalaryValue.toLocaleString()}`
+        });
+      }
+    }
+    
+    if (salary_max !== null && salary_max !== undefined) {
+      if (salary_max < 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Maximum salary cannot be negative'
+        });
+      }
+      if (salary_max > maxSalaryValue) {
+        return res.status(400).json({
+          success: false,
+          error: `Maximum salary cannot exceed ${maxSalaryValue.toLocaleString()}`
+        });
+      }
+    }
+    
+    if (salary_min && salary_max && salary_min > salary_max) {
+      return res.status(400).json({
+        success: false,
+        error: 'Minimum salary cannot be greater than maximum salary'
+      });
+    }
+
     const jobData = {
       ...req.body,
       employer_profile_id: employerProfile.id,

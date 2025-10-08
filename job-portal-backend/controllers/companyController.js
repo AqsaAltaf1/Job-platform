@@ -18,23 +18,22 @@ export const getCompanies = async (req, res) => {
     if (search) {
       whereConditions[Op.or] = [
         { company_name: { [Op.iLike]: `%${search}%` } },
-        { description: { [Op.iLike]: `%${search}%` } },
-        { industry: { [Op.iLike]: `%${search}%` } }
+        { company_description: { [Op.iLike]: `%${search}%` } },
+        { company_industry: { [Op.iLike]: `%${search}%` } }
       ];
     }
 
     // Industry filter
     if (industry) {
-      whereConditions.industry = industry;
+      whereConditions.company_industry = industry;
     }
 
     // Location filter
     if (location) {
       whereConditions[Op.or] = [
         ...(whereConditions[Op.or] || []),
-        { city: { [Op.iLike]: `%${location}%` } },
-        { state: { [Op.iLike]: `%${location}%` } },
-        { country: { [Op.iLike]: `%${location}%` } }
+        { company_location: { [Op.iLike]: `%${location}%` } },
+        { headquarters_location: { [Op.iLike]: `%${location}%` } }
       ];
     }
 
@@ -67,12 +66,12 @@ export const getCompanies = async (req, res) => {
 
     // Get unique industries for filters
     const industries = await EmployerProfile.findAll({
-      attributes: ['industry'],
+      attributes: ['company_industry'],
       where: { 
-        industry: { [Op.ne]: null },
+        company_industry: { [Op.ne]: null },
         is_active: true 
       },
-      group: ['industry'],
+      group: ['company_industry'],
       raw: true
     });
 
@@ -92,7 +91,10 @@ export const getCompanies = async (req, res) => {
       companies: companies.rows.map(company => ({
         ...company.toJSON(),
         active_jobs_count: company.jobs?.length || 0,
-        location: `${company.city || ''}${company.city && company.state ? ', ' : ''}${company.state || ''}${(company.city || company.state) && company.country ? ', ' : ''}${company.country || ''}`.trim().replace(/^,\s*|,\s*$/g, '') || 'Location not specified'
+        location: company.company_location || company.headquarters_location || 'Location not specified',
+        description: company.company_description,
+        industry: company.company_industry,
+        website: company.company_website
       })),
       pagination: {
         current_page: parseInt(page),
@@ -101,7 +103,7 @@ export const getCompanies = async (req, res) => {
         per_page: parseInt(limit)
       },
       filters: {
-        industries: industries.map(i => i.industry).filter(Boolean),
+        industries: industries.map(i => i.company_industry).filter(Boolean),
         company_sizes: companySizes.map(c => c.company_size).filter(Boolean)
       }
     });

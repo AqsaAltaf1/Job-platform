@@ -101,6 +101,23 @@ export function JobForm({ job, onSuccess, onCancel }: JobFormProps) {
   }
 
   const updateFormData = (field: keyof CreateJobData, value: any) => {
+    // Validate salary fields - only prevent database overflow
+    if (field === 'salary_min' || field === 'salary_max') {
+      // Allow empty/undefined values for clearing the field
+      if (value === undefined || value === null || value === '') {
+        setFormData((prev) => ({ ...prev, [field]: value }))
+        return;
+      }
+      
+      const numValue = typeof value === 'number' ? value : parseFloat(value);
+      const maxSalary = 99999999.99; // Maximum value for DECIMAL(10,2)
+      
+      if (!isNaN(numValue) && numValue > maxSalary) {
+        // Don't update the field if it exceeds database limit
+        return;
+      }
+    }
+    
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
@@ -214,7 +231,7 @@ export function JobForm({ job, onSuccess, onCancel }: JobFormProps) {
                 placeholder="e.g. 80000"
                 value={formData.salary_min || ""}
                 onChange={(e) =>
-                  updateFormData("salary_min", e.target.value ? Number.parseInt(e.target.value) : undefined)
+                  updateFormData("salary_min", e.target.value)
                 }
               />
             </div>
@@ -227,7 +244,7 @@ export function JobForm({ job, onSuccess, onCancel }: JobFormProps) {
                 placeholder="e.g. 120000"
                 value={formData.salary_max || ""}
                 onChange={(e) =>
-                  updateFormData("salary_max", e.target.value ? Number.parseInt(e.target.value) : undefined)
+                  updateFormData("salary_max", e.target.value)
                 }
               />
             </div>

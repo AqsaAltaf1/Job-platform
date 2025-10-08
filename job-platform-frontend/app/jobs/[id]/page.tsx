@@ -92,6 +92,7 @@ export default function JobViewPage({ params }: JobViewPageProps) {
   const [isSaved, setIsSaved] = useState(false);
   const [savingJob, setSavingJob] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
 
   useEffect(() => {
     loadJob();
@@ -102,10 +103,41 @@ export default function JobViewPage({ params }: JobViewPageProps) {
       checkEditPermissions();
       if (user.role === 'candidate') {
         checkIfJobSaved();
+        fetchSubscription();
       }
-      setSubscriptionStatus(checkSubscriptionStatus(user));
     }
   }, [user, job]);
+
+  const fetchSubscription = async () => {
+    if (!user) return;
+    
+    try {
+      setSubscriptionLoading(true);
+      const token = localStorage.getItem('jwt_token');
+      const response = await fetch(getApiUrl('/subscription/current'), {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setSubscriptionStatus(checkSubscriptionStatus(user, data.subscription));
+        } else {
+          setSubscriptionStatus(checkSubscriptionStatus(user));
+        }
+      } else {
+        setSubscriptionStatus(checkSubscriptionStatus(user));
+      }
+    } catch (error) {
+      console.error('Failed to fetch subscription:', error);
+      setSubscriptionStatus(checkSubscriptionStatus(user));
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  };
 
   const loadJob = async () => {
     try {
@@ -141,7 +173,7 @@ export default function JobViewPage({ params }: JobViewPageProps) {
     if (!user || user.role !== 'candidate') return;
     
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('jwt_token');
       const response = await fetch(getApiUrl(`/jobs/${params.id}/saved`), {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -165,7 +197,7 @@ export default function JobViewPage({ params }: JobViewPageProps) {
 
     setSavingJob(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('jwt_token');
       const method = isSaved ? 'DELETE' : 'POST';
       const response = await fetch(getApiUrl(`/jobs/${params.id}/save`), {
         method,
@@ -538,7 +570,12 @@ export default function JobViewPage({ params }: JobViewPageProps) {
             <Card>
               <CardContent className="pt-6">
                 <div className="space-y-3">
-                  {subscriptionStatus?.canApplyJobs ? (
+                  {subscriptionLoading ? (
+                    <div className="text-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                      <p className="text-sm text-gray-600">Loading subscription status...</p>
+                    </div>
+                  ) : subscriptionStatus?.canApplyJobs ? (
                     <Link href={`/jobs/${job.id}/apply`}>
                       <Button className="w-full" size="lg">
                         Apply for this Job

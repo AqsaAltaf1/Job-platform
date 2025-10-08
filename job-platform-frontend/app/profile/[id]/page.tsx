@@ -106,7 +106,7 @@ export default function CandidateProfilePage() {
   const fetchCandidateProfile = async () => {
     try {
       setLoading(true)
-      const token = localStorage.getItem('token')
+      const token = localStorage.getItem('jwt_token')
       const response = await fetch(getApiUrl(`/candidates/${candidateId}`), {
         headers: {
           'Authorization': `Bearer ${token}`,

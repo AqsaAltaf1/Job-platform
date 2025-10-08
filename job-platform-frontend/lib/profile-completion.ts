@@ -37,11 +37,11 @@ export const checkCandidateProfileCompletion = (user: User | null): ProfileCompl
   if (!candidateProfile.bio) missingFields.push('Bio')
   if (!candidateProfile.location) missingFields.push('Location')
   if (!candidateProfile.availability) missingFields.push('Availability')
-  if (!candidateProfile.expected_salary) missingFields.push('Expected Salary')
-  if (!candidateProfile.experience_level) missingFields.push('Experience Level')
+  if (candidateProfile.salary_expectation === null || candidateProfile.salary_expectation === undefined) missingFields.push('Expected Salary')
+  if (candidateProfile.experience_years === null || candidateProfile.experience_years === undefined) missingFields.push('Experience Level')
   
   // Check if they have at least one skill
-  if (!candidateProfile.coreSkills || candidateProfile.coreSkills.length === 0) {
+  if (!candidateProfile.skills || candidateProfile.skills.length === 0) {
     missingFields.push('Skills')
   }
   

@@ -125,8 +125,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const token = tokenManager.getToken()
     if (token) {
       try {
+        console.log('Refreshing user data...')
         const response = await authAPI.getProfile(token)
+        console.log('Profile API response:', response)
         if (response.success && response.user) {
+          console.log('Setting user data:', {
+            user: response.user,
+            hasCandidateProfile: !!response.user.candidateProfile,
+            candidateProfile: response.user.candidateProfile
+          })
           setUser(response.user as UserWithProfile)
         }
       } catch (error) {

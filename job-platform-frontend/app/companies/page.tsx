@@ -27,28 +27,52 @@ interface Company {
 
 export default function CompaniesPage() {
   const [companies, setCompanies] = useState<Company[]>([])
-  const [allCompanies, setAllCompanies] = useState<Company[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedIndustry, setSelectedIndustry] = useState("")
   const [selectedSize, setSelectedSize] = useState("")
   const [industries, setIndustries] = useState<string[]>([])
   const [sizes, setSizes] = useState<string[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalCompanies, setTotalCompanies] = useState(0)
 
-  // Load companies data on component mount
+  // Load companies data on component mount and when page changes
   useEffect(() => {
     loadCompanies()
-  }, [])
+  }, [currentPage])
 
   const loadCompanies = async () => {
     try {
       setLoading(true)
-      const response = await companiesAPI.getCompanies()
-      if (response.success) {
-        setCompanies(response.companies)
-        setAllCompanies(response.companies)
-        setIndustries(["All Industries", ...(response.filters?.industries || [])])
-        setSizes(["All Sizes", ...(response.filters?.company_sizes || [])])
+      console.log('Loading companies...')
+      
+      // Build query parameters
+      const params = new URLSearchParams()
+      params.append('page', currentPage.toString())
+      params.append('limit', '15')
+      
+      if (searchTerm) params.append('search', searchTerm)
+      if (selectedIndustry && selectedIndustry !== "All Industries") {
+        params.append('industry', selectedIndustry)
+      }
+      if (selectedSize && selectedSize !== "All Sizes") {
+        params.append('company_size', selectedSize)
+      }
+      
+      const response = await fetch(`http://localhost:5000/api/companies?${params}`)
+      const data = await response.json()
+      console.log('Companies API response:', data)
+      
+      if (data.success) {
+        console.log('Companies data:', data.companies)
+        setCompanies(data.companies)
+        setTotalPages(data.pagination?.total_pages || 1)
+        setTotalCompanies(data.pagination?.total_companies || data.companies.length)
+        setIndustries(["All Industries", ...(data.filters?.industries || [])])
+        setSizes(["All Sizes", ...(data.filters?.company_sizes || [])])
+      } else {
+        console.error('Companies API returned success: false', data)
       }
     } catch (error) {
       console.error('Failed to load companies:', error)
@@ -58,36 +82,16 @@ export default function CompaniesPage() {
   }
 
   const handleSearch = () => {
-    let filteredCompanies = allCompanies
-
-    if (searchTerm) {
-      filteredCompanies = filteredCompanies.filter(company =>
-        company.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        company.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        company.industry?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-
-    if (selectedIndustry && selectedIndustry !== "All Industries") {
-      filteredCompanies = filteredCompanies.filter(company =>
-        company.industry === selectedIndustry
-      )
-    }
-
-    if (selectedSize && selectedSize !== "All Sizes") {
-      filteredCompanies = filteredCompanies.filter(company =>
-        company.company_size === selectedSize
-      )
-    }
-
-    setCompanies(filteredCompanies)
+    setCurrentPage(1) // Reset to first page when searching
+    loadCompanies()
   }
 
   const clearFilters = () => {
     setSearchTerm("")
     setSelectedIndustry("")
     setSelectedSize("")
-    setCompanies(allCompanies)
+    setCurrentPage(1)
+    loadCompanies()
   }
 
   return (
@@ -168,76 +172,6 @@ export default function CompaniesPage() {
         </div>
       </section>
 
-      {/* Featured Companies */}
-      <section className="py-16 bg-blue-50/30">
-        <div className="container mx-auto px-4">
-          <div className="max-w-6xl mx-auto">
-            <h2 className="text-3xl font-bold text-gray-900 mb-12 text-center animate-fade-in-up">Featured Companies</h2>
-            <div className="grid md:grid-cols-2 gap-8 mb-16">
-              {loading ? (
-                <div className="col-span-2 text-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                  <p className="text-gray-600">Loading featured companies...</p>
-                </div>
-              ) : companies.length > 0 ? (
-                companies.slice(0, 2).map((company, index) => (
-                <Card key={company.id} className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-0 bg-white hover:-translate-y-2 animate-fade-in-up" style={{animationDelay: `${0.1 + index * 0.2}s`}}>
-                  <CardContent className="p-8">
-                    <div className="flex items-start justify-between mb-6">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-16 h-16 bg-blue-100 rounded-xl flex items-center justify-center group-hover:bg-primary/10 group-hover:scale-110 transition-all duration-300">
-                          <Building2 className="h-8 w-8 text-primary group-hover:text-primary transition-colors duration-300" />
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-bold text-gray-900 group-hover:text-primary transition-colors duration-300 group-hover:scale-105 transition-transform duration-300">{company.company_name}</h3>
-                          <div className="flex items-center gap-2 text-sm text-gray-500 group-hover:text-gray-700 transition-colors duration-300">
-                            <MapPin className="h-4 w-4 group-hover:text-primary transition-colors duration-300" />
-                            {company.location}
-                          </div>
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="sm" className="group-hover:scale-110 transition-transform duration-300">
-                        <Heart className="h-4 w-4 group-hover:text-primary transition-colors duration-300" />
-                      </Button>
-                    </div>
-                    <p className="text-gray-600 mb-6 line-clamp-2 group-hover:text-gray-800 transition-colors duration-300">
-                      {company.description}
-                    </p>
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-6 text-sm text-gray-500 group-hover:text-gray-700 transition-colors duration-300">
-                          <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4 group-hover:text-primary transition-colors duration-300" />
-                            {company.company_size || 'Size not specified'} employees
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                            4.8
-                          </div>
-                        </div>
-                      <div className="flex gap-3">
-                        <Button variant="outline" size="sm" asChild className="rounded-full border-gray-200 hover:bg-gray-50 group-hover:scale-105 transition-transform duration-300">
-                          <Link href={`/companies/${company.id}`}>View Profile</Link>
-                        </Button>
-                        <Button size="sm" asChild className="rounded-full bg-primary hover:bg-primary/90 group-hover:scale-105 transition-transform duration-300">
-                          <Link href={`/companies/${company.id}/jobs`}>View Jobs ({company.active_jobs_count})</Link>
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                ))
-              ) : (
-                <div className="col-span-2 text-center py-12">
-                  <h3 className="text-xl font-semibold mb-2">No companies available</h3>
-                  <p className="text-muted-foreground">
-                    Check back later for featured companies.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* All Companies */}
       <section className="py-16 bg-white">
@@ -245,7 +179,7 @@ export default function CompaniesPage() {
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center justify-between mb-12">
               <h2 className="text-3xl font-bold text-gray-900 animate-fade-in-up">
-                {companies.length} Compan{companies.length !== 1 ? 'ies' : 'y'} Found
+                {totalCompanies} Compan{totalCompanies !== 1 ? 'ies' : 'y'} Found
               </h2>
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-gray-600">Sort by:</span>
@@ -264,77 +198,137 @@ export default function CompaniesPage() {
             </div>
 
             {/* Company Listings */}
-            <div className="space-y-6">
-              {loading ? (
-                <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                  <p className="text-gray-600">Loading companies...</p>
-                </div>
-              ) : companies.length > 0 ? (
-                companies.map((company, index) => (
-                <Card key={company.id} className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-0 bg-white hover:-translate-y-2 animate-fade-in-up" style={{animationDelay: `${0.1 + index * 0.1}s`}}>
-                  <CardContent className="p-8">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-6">
-                        <div className="w-16 h-16 bg-blue-100 rounded-xl flex items-center justify-center group-hover:bg-primary/10 group-hover:scale-110 transition-all duration-300">
-                          <Building2 className="h-8 w-8 text-primary group-hover:text-primary transition-colors duration-300" />
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {companies.map((company, index) => (
+                  <Card key={company.id} className="group hover:shadow-lg transition-all duration-300 cursor-pointer border-0 bg-white hover:-translate-y-1 animate-fade-in-up" style={{animationDelay: `${0.1 + index * 0.1}s`}}>
+                    <CardContent className="p-6">
+                      {/* Company Logo/Initials */}
+                      <div className="flex items-center mb-4 group-hover:scale-105 transition-transform duration-300">
+                        <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center group-hover:bg-primary/10 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 mr-3">
+                          {company.company_logo_url ? (
+                            <img src={company.company_logo_url} alt={company.company_name} className="w-8 h-8 object-contain rounded" />
+                          ) : (
+                            <div className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-sm font-semibold">
+                              {company.company_name ? company.company_name.substring(0, 2).toUpperCase() : 'CO'}
+                            </div>
+                          )}
                         </div>
-                        <div>
-                          <h3 className="text-xl font-bold text-gray-900 group-hover:text-primary transition-colors duration-300 group-hover:scale-105 transition-transform duration-300">{company.company_name}</h3>
-                          <div className="flex items-center gap-6 text-sm text-gray-500 group-hover:text-gray-700 transition-colors duration-300">
-                            <div className="flex items-center gap-2">
-                              <MapPin className="h-4 w-4 group-hover:text-primary transition-colors duration-300" />
-                              {company.location}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Users className="h-4 w-4 group-hover:text-primary transition-colors duration-300" />
-                              {company.company_size || 'Size not specified'} employees
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                              4.8
-                            </div>
+                        <span className="text-sm text-gray-500 group-hover:text-gray-700 transition-colors duration-300">{company.industry || 'General'}</span>
+                      </div>
+                      
+                      {/* Company Name */}
+                      <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-primary transition-colors duration-300 group-hover:scale-105 transition-transform duration-300">
+                        <Link href={`/companies/${company.id}`} className="hover:text-primary transition-colors">
+                          {company.company_name}
+                        </Link>
+                      </h3>
+                      
+                      {/* Location & Size */}
+                      <div className="flex items-center text-gray-500 mb-4 group-hover:text-gray-700 transition-colors duration-300">
+                        <MapPin className="h-4 w-4 mr-1 group-hover:text-primary transition-colors duration-300" />
+                        <span className="text-sm mr-4">{company.location || 'Remote'}</span>
+                        <Users className="h-4 w-4 mr-1 group-hover:text-primary transition-colors duration-300" />
+                        <span className="text-sm">{company.company_size || 'Size not specified'}</span>
+                      </div>
+
+                      {/* Description */}
+                      {company.description && (
+                        <p className="text-gray-600 mb-4 text-sm line-clamp-2 group-hover:text-gray-800 transition-colors duration-300">
+                          {company.description}
+                        </p>
+                      )}
+
+                      {/* Bottom Section */}
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="group-hover:scale-105 transition-transform duration-300">
+                          <div className="text-xs text-gray-400 mb-1">
+                            {new Date(company.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                          </div>
+                          <div className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors duration-300">
+                            {company.active_jobs_count} active jobs
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline" className="border-primary text-primary bg-primary/5 group-hover:bg-primary/10 transition-colors duration-300">{company.industry}</Badge>
-                        <Button variant="outline" size="sm" asChild className="rounded-full border-gray-200 hover:bg-gray-50 group-hover:scale-105 transition-transform duration-300">
+
+                      {/* Action Buttons */}
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white border-blue-600 hover:border-blue-700"
+                          asChild
+                        >
                           <Link href={`/companies/${company.id}`}>
-                            View Profile
-                            <ExternalLink className="ml-2 h-4 w-4" />
+                            View Details
                           </Link>
                         </Button>
-                        <Button size="sm" asChild className="rounded-full bg-primary hover:bg-primary/90 group-hover:scale-105 transition-transform duration-300">
+                        <Button 
+                          size="sm" 
+                          className="flex-1"
+                          asChild
+                        >
                           <Link href={`/companies/${company.id}/jobs`}>
                             View Jobs ({company.active_jobs_count})
                           </Link>
                         </Button>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                ))
-              ) : (
-                <div className="text-center py-12">
-                  <h3 className="text-xl font-semibold mb-2">No companies found</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Try adjusting your search criteria or browse all available companies.
-                  </p>
-                  <Button onClick={clearFilters}>Clear Filters</Button>
-                </div>
-              )}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+            
+            {companies.length === 0 && !loading && (
+              <div className="text-center py-12">
+                <h3 className="text-xl font-semibold mb-2">No companies found</h3>
+                <p className="text-gray-600 mb-4">
+                  Try adjusting your search criteria or browse all available companies.
+                </p>
+                <Button onClick={clearFilters}>Clear Filters</Button>
+              </div>
+            )}
 
             {/* Pagination */}
-            {companies.length > 0 && (
+            {totalPages > 1 && (
               <div className="flex justify-center mt-16">
                 <div className="flex items-center space-x-3">
-                  <Button variant="outline" disabled className="rounded-full border-gray-200 hover:bg-gray-50">Previous</Button>
-                  <Button variant="outline" className="rounded-full border-gray-200 hover:bg-gray-50">1</Button>
-                  <Button variant="outline" className="rounded-full border-gray-200 hover:bg-gray-50">2</Button>
-                  <Button variant="outline" className="rounded-full border-gray-200 hover:bg-gray-50">3</Button>
-                  <Button variant="outline" className="rounded-full border-gray-200 hover:bg-gray-50">Next</Button>
+                  <Button 
+                    variant="outline" 
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                    className="rounded-full border-gray-200 hover:bg-gray-50"
+                  >
+                    Previous
+                  </Button>
+                  
+                  {/* Page numbers */}
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    const pageNum = i + 1;
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? "default" : "outline"}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className="rounded-full border-gray-200 hover:bg-gray-50"
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                  
+                  <Button 
+                    variant="outline" 
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                    className="rounded-full border-gray-200 hover:bg-gray-50"
+                  >
+                    Next
+                  </Button>
                 </div>
               </div>
             )}

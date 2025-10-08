@@ -8,7 +8,7 @@ export interface SubscriptionStatus {
   canApplyJobs: boolean
 }
 
-export const checkSubscriptionStatus = (user: User | null): SubscriptionStatus => {
+export const checkSubscriptionStatus = (user: User | null, subscription?: any): SubscriptionStatus => {
   if (!user) {
     return {
       hasActiveSubscription: false,
@@ -19,7 +19,6 @@ export const checkSubscriptionStatus = (user: User | null): SubscriptionStatus =
     }
   }
 
-  const subscription = user.subscription
   const now = new Date()
   
   if (!subscription) {
@@ -32,15 +31,30 @@ export const checkSubscriptionStatus = (user: User | null): SubscriptionStatus =
     }
   }
 
-  const isActive = subscription.status === 'active' && 
-    subscription.end_date && 
-    new Date(subscription.end_date) > now
+  // Check if subscription is active based on status and period
+  let isActive = false
+  
+  if (subscription.status === 'active' || subscription.status === 'trialing') {
+    if (subscription.current_period_end) {
+      try {
+        const endDate = new Date(subscription.current_period_end)
+        isActive = endDate > now
+      } catch (error) {
+        console.error('Error parsing subscription end date:', error)
+        // If we can't parse the date, assume it's active if status is active
+        isActive = subscription.status === 'active'
+      }
+    } else {
+      // If no end date but status is active, assume it's active
+      isActive = subscription.status === 'active'
+    }
+  }
 
   return {
     hasActiveSubscription: isActive,
-    subscriptionType: subscription.plan_name,
-    expiresAt: subscription.end_date,
-    canPostJobs: isActive && (user.role === 'employer' || user.role === 'team_member'),
+    subscriptionType: subscription.subscriptionPlan?.display_name || subscription.subscriptionPlan?.name,
+    expiresAt: subscription.current_period_end,
+    canPostJobs: isActive && (user.role === 'employer' || user.role === 'super_admin'),
     canApplyJobs: isActive && user.role === 'candidate'
   }
 }

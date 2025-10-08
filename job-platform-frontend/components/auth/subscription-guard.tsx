@@ -8,6 +8,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Crown, CreditCard, Users, Briefcase } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { getApiUrl } from '@/lib/config'
 
 interface SubscriptionGuardProps {
   children: React.ReactNode
@@ -17,8 +19,38 @@ interface SubscriptionGuardProps {
 export default function SubscriptionGuard({ children, requiredFeature }: SubscriptionGuardProps) {
   const { user, loading } = useAuth()
   const router = useRouter()
+  const [subscription, setSubscription] = useState<any>(null)
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true)
 
-  if (loading) {
+  useEffect(() => {
+    const fetchSubscription = async () => {
+      if (!user) {
+        setSubscriptionLoading(false)
+        return
+      }
+
+      try {
+        const response = await fetch(getApiUrl('/subscription/current'), {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+          }
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          setSubscription(data.subscription)
+        }
+      } catch (error) {
+        console.error('Error fetching subscription:', error)
+      } finally {
+        setSubscriptionLoading(false)
+      }
+    }
+
+    fetchSubscription()
+  }, [user])
+
+  if (loading || subscriptionLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
@@ -31,7 +63,7 @@ export default function SubscriptionGuard({ children, requiredFeature }: Subscri
     return null
   }
 
-  const subscriptionStatus = checkSubscriptionStatus(user)
+  const subscriptionStatus = checkSubscriptionStatus(user, subscription)
   
   // Check if user has access to the required feature
   const hasAccess = requiredFeature === 'post_jobs' 

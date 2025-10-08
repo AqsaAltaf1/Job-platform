@@ -139,6 +139,17 @@ export default function EditJobPage({ params }: EditJobPageProps) {
   };
 
   const handleInputChange = (field: keyof JobFormData, value: string) => {
+    // Validate salary fields
+    if (field === 'salary_min' || field === 'salary_max') {
+      const numValue = parseFloat(value);
+      const maxSalary = 99999999.99; // Maximum value for DECIMAL(10,2)
+      
+      if (value && (isNaN(numValue) || numValue < 0 || numValue > maxSalary)) {
+        showToast(`Salary must be between 0 and ${maxSalary.toLocaleString()}`, 'error');
+        return;
+      }
+    }
+    
     setFormData(prev => ({
       ...prev,
       [field]: value

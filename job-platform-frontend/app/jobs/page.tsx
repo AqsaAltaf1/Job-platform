@@ -11,6 +11,8 @@ import Link from "next/link"
 import { showToast } from '@/lib/toast'
 import { getApiUrl } from '@/lib/config'
 import { useAuth } from '@/lib/auth'
+import { checkSubscriptionStatus } from '@/lib/subscription-check'
+import { useRouter } from 'next/navigation'
 
 interface Job {
   id: string;
@@ -39,8 +41,11 @@ interface Job {
 
 export default function JobsPage() {
   const { user } = useAuth()
+  const router = useRouter()
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
+  const [subscription, setSubscription] = useState<any>(null)
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true)
   const [filterTerm, setFilterTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("")
   const [selectedType, setSelectedType] = useState("")
@@ -55,7 +60,69 @@ export default function JobsPage() {
 
   useEffect(() => {
     loadJobs()
-  }, [currentPage])
+    if (user) {
+      fetchSubscription()
+    }
+  }, [currentPage, user])
+
+  const fetchSubscription = async () => {
+    if (!user) {
+      setSubscriptionLoading(false)
+      return
+    }
+    
+    try {
+      setSubscriptionLoading(true)
+      const response = await fetch(getApiUrl('/subscription/current'), {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Fetched subscription data:', data)
+        setSubscription(data.subscription)
+      } else {
+        console.log('Failed to fetch subscription:', response.status)
+        setSubscription(null)
+      }
+    } catch (error) {
+      console.error('Error fetching subscription:', error)
+      setSubscription(null)
+    } finally {
+      setSubscriptionLoading(false)
+    }
+  }
+
+  const handleApply = (jobId: string) => {
+    if (!user) {
+      showToast.error('Please login to apply for jobs')
+      router.push('/login')
+      return
+    }
+
+    // Wait for subscription data to load
+    if (subscriptionLoading) {
+      showToast.error('Loading subscription data, please try again in a moment.')
+      return
+    }
+
+    console.log('User:', user)
+    console.log('Subscription:', subscription)
+    
+    const subscriptionStatus = checkSubscriptionStatus(user, subscription)
+    console.log('Subscription Status:', subscriptionStatus)
+    
+    if (!subscriptionStatus.canApplyJobs) {
+      showToast.error('You need an active subscription to apply for jobs. Please subscribe to continue.')
+      router.push('/pricing')
+      return
+    }
+
+    // If user has subscription, redirect to application page
+    router.push(`/jobs/${jobId}/apply`)
+  }
 
   const loadJobs = async () => {
     try {
@@ -303,7 +370,7 @@ export default function JobsPage() {
                   </h2>
                   
                   {/* Employer Actions */}
-                  {user && (user.role === 'employer' || user.role === 'team_member') && (
+                  {user && user.role === 'employer' && (
                     <div className="flex gap-3">
                       <Link href="/jobs/post">
                         <Button className="bg-primary hover:bg-primary/90">
@@ -371,7 +438,7 @@ export default function JobsPage() {
                             )}
 
                             {/* Bottom Section */}
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between mb-4">
                               <div className="group-hover:scale-105 transition-transform duration-300">
                                 <div className="text-xs text-gray-400 mb-1">
                                   {new Date(job.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
@@ -380,11 +447,34 @@ export default function JobsPage() {
                               </div>
                               <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center group-hover:bg-primary/10 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
                                 {job.employerProfile.company_logo_url ? (
-                                  <img src={job.employerProfile.company_logo_url} alt={job.employerProfile.company_name} className="w-8 h-8 object-contain" />
+                                  <img src={job.employerProfile.company_logo_url} alt={job.employerProfile.company_name} className="w-8 h-8 object-contain rounded" />
                                 ) : (
-                                  <Building2 className="h-6 w-6 text-gray-400 group-hover:text-primary transition-colors duration-300" />
+                                  <div className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-sm font-semibold">
+                                    {job.employerProfile.company_name ? job.employerProfile.company_name.substring(0, 2).toUpperCase() : 'CO'}
+                                  </div>
                                 )}
                               </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white border-blue-600 hover:border-blue-700"
+                                onClick={() => router.push(`/jobs/${job.id}`)}
+                              >
+                                View Details
+                              </Button>
+                              {user && user.role === 'candidate' && (
+                                <Button 
+                                  size="sm" 
+                                  className="flex-1"
+                                  onClick={() => handleApply(job.id)}
+                                >
+                                  Apply Job
+                                </Button>
+                              )}
                             </div>
                           </CardContent>
                         </Card>

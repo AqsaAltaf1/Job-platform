@@ -1,4 +1,4 @@
-import { User, EmployerProfile, CandidateProfile, Otp } from '../models/index.js';
+import { User, EmployerProfile, CandidateProfile, Experience, Education, Otp } from '../models/index.js';
 import { generateToken } from '../utils/jwt.js';
 import OtpService from '../services/otpService.js';
 
@@ -281,6 +281,8 @@ export const deleteUser = async (req, res) => {
 // Get current user profile
 export const getProfile = async (req, res) => {
   try {
+    console.log('Getting profile for user ID:', req.user.id);
+    
     const user = await User.findByPk(req.user.id, {
       include: [
         {
@@ -291,9 +293,32 @@ export const getProfile = async (req, res) => {
         {
           model: CandidateProfile,
           as: 'candidateProfile',
-          required: false
+          required: false,
+          include: [
+            {
+              model: Experience,
+              as: 'experiences',
+              required: false
+            },
+            {
+              model: Education,
+              as: 'educations',
+              required: false
+            }
+          ]
         }
       ]
+    });
+
+    console.log('User found:', {
+      id: user?.id,
+      email: user?.email,
+      role: user?.role,
+      hasEmployerProfile: !!user?.employerProfile,
+      hasCandidateProfile: !!user?.candidateProfile,
+      experiencesCount: user?.candidateProfile?.experiences?.length || 0,
+      educationsCount: user?.candidateProfile?.educations?.length || 0,
+      candidateProfile: user?.candidateProfile
     });
 
     res.json({

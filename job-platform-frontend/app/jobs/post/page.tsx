@@ -84,6 +84,26 @@ export default function PostJobPage() {
   }, [user]);
 
   const handleInputChange = (field: keyof JobFormData, value: string) => {
+    // Validate salary fields - only prevent database overflow
+    if (field === 'salary_min' || field === 'salary_max') {
+      // Allow empty string for clearing the field
+      if (value === '') {
+        setFormData(prev => ({
+          ...prev,
+          [field]: value
+        }));
+        return;
+      }
+      
+      const numValue = parseFloat(value);
+      const maxSalary = 99999999.99; // Maximum value for DECIMAL(10,2)
+      
+      if (!isNaN(numValue) && numValue > maxSalary) {
+        showToast(`Salary cannot exceed ${maxSalary.toLocaleString()}`, 'error');
+        return;
+      }
+    }
+    
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -395,7 +415,7 @@ export default function PostJobPage() {
                     id="salary_min"
                     type="number"
                     placeholder="50000"
-                    value={formData.salary_min}
+                    value={formData.salary_min || ''}
                     onChange={(e) => handleInputChange('salary_min', e.target.value)}
                     className="mt-1"
                   />
@@ -407,7 +427,7 @@ export default function PostJobPage() {
                     id="salary_max"
                     type="number"
                     placeholder="80000"
-                    value={formData.salary_max}
+                    value={formData.salary_max || ''}
                     onChange={(e) => handleInputChange('salary_max', e.target.value)}
                     className="mt-1"
                   />

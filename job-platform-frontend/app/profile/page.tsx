@@ -53,6 +53,8 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (user?.role === 'candidate') {
+      // Refresh user data to ensure candidateProfile is loaded
+      refreshUser()
       loadExperiences()
       loadProjects()
       loadEducations()
@@ -63,7 +65,11 @@ export default function ProfilePage() {
 
   // Debug effect to track user data changes
   useEffect(() => {
-    console.log('User data changed:', user?.candidateProfile)
+    console.log('User data changed:', {
+      user: user,
+      candidateProfile: user?.candidateProfile,
+      hasCandidateProfile: !!user?.candidateProfile
+    })
   }, [user?.candidateProfile])
 
   // Check for verification notification
