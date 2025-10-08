@@ -40,7 +40,7 @@ export default function PricingPage() {
   // Static features with icons
   const staticFeatures: { free: FeatureWithIcon[], paid: FeatureWithIcon[] } = {
     free: [
-      { text: 'Post up to 3 jobs', icon: Briefcase },
+      { text: 'Post up to 0 jobs', icon: Briefcase },
       { text: 'Basic job management', icon: Users },
       { text: 'Standard applications', icon: Check },
       { text: 'Email support', icon: Shield },
