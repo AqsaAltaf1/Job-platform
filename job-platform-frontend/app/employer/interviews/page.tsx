@@ -100,7 +100,7 @@ export default function InterviewScheduling() {
 
   useEffect(() => {
     if (!loading && user) {
-      if (user.role !== 'employer' && user.role !== 'team_member') {
+      if (user.role !== 'employer' && (user.role as any) !== 'team_member') {
         router.push('/jobs');
         return;
       }
@@ -269,7 +269,7 @@ export default function InterviewScheduling() {
     );
   }
 
-  if (!user || (user.role !== 'employer' && user.role !== 'team_member')) {
+  if (!user || (user.role !== 'employer' && (user.role as any) !== 'team_member')) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <Card className="w-96">
@@ -495,9 +495,13 @@ export default function InterviewScheduling() {
                               </span>
                             </div>
                             <div className="flex items-center gap-1">
-                              {interviewTypes.find(t => t.value === interview.type)?.icon && (
-                                <interviewTypes.find(t => t.value === interview.type)!.icon className="h-3 w-3" />
-                              )}
+                              {(() => {
+                                const interviewType = interviewTypes.find(t => t.value === interview.type);
+                                const IconComponent = interviewType?.icon;
+                                return IconComponent ? (
+                                  <IconComponent className="h-3 w-3" />
+                                ) : null;
+                              })()}
                               <span className="text-xs text-muted-foreground">
                                 {interviewTypes.find(t => t.value === interview.type)?.label}
                               </span>
