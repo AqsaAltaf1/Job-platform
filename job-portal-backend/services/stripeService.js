@@ -4,11 +4,14 @@ import Subscription from '../models/Subscription.js';
 import SubscriptionHistory from '../models/SubscriptionHistory.js';
 import User from '../models/User.js';
 import { EmployerProfile } from '../models/EmployerProfile.js';
-import { WebhookEvent } from '../models/WebhookEvent.js';
 
 class StripeService {
   constructor() {
-    this.getStripe() = null;
+    this.stripe = null;
+    // Initialize Stripe instance immediately if secret key is available
+    if (process.env.STRIPE_SECRET_KEY) {
+      this.getStripe();
+    }
   }
 
   getStripe() {
@@ -16,7 +19,7 @@ class StripeService {
       if (!process.env.STRIPE_SECRET_KEY) {
         throw new Error('STRIPE_SECRET_KEY environment variable is not set');
       }
-      this.getStripe() = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
         apiVersion: '2023-10-16',
       });
     }
@@ -68,7 +71,7 @@ class StripeService {
       }
 
       const customer = await this.createOrGetCustomer(user);
-      const priceId = billingCycle === 'yearly' ? plan.stripe_price_id_yearly : plan.stripe_price_id_monthly;
+      const priceId = plan.stripe_price_id;
 
       const session = await this.stripe.checkout.sessions.create({
         customer: customer.id,
@@ -124,7 +127,7 @@ class StripeService {
         throw new Error('New subscription plan not found');
       }
 
-      const newPriceId = billingCycle === 'yearly' ? newPlan.stripe_price_id_yearly : newPlan.stripe_price_id_monthly;
+      const newPriceId = newPlan.stripe_price_id;
 
       // Create checkout session for subscription change
       const session = await this.stripe.checkout.sessions.create({
@@ -175,7 +178,7 @@ class StripeService {
       }
 
       // Cancel in Stripe
-      const stripeSubscription = await this.stripe.subscriptions.update(
+      const stripeSubscription = await this.getStripe().subscriptions.update(
         subscription.stripe_subscription_id,
         {
           cancel_at_period_end: cancelAtPeriodEnd,
@@ -218,7 +221,7 @@ class StripeService {
       }
 
       // Resume in Stripe
-      const stripeSubscription = await this.stripe.subscriptions.update(
+      const stripeSubscription = await this.getStripe().subscriptions.update(
         subscription.stripe_subscription_id,
         {
           cancel_at_period_end: false,
@@ -273,7 +276,7 @@ class StripeService {
    */
   async createNewSubscription(userId, planId, billingCycle, session) {
     try {
-      const stripeSubscription = await this.stripe.subscriptions.retrieve(session.subscription);
+      const stripeSubscription = await this.getStripe().subscriptions.retrieve(session.subscription);
       
       const subscription = await Subscription.create({
         user_id: userId,
@@ -319,7 +322,7 @@ class StripeService {
       });
 
       // Cancel old subscription
-      await this.stripe.subscriptions.cancel(oldSubscription.stripe_subscription_id);
+      await this.getStripe().subscriptions.cancel(oldSubscription.stripe_subscription_id);
       await oldSubscription.update({ status: 'canceled', canceled_at: new Date() });
 
       // Create new subscription
@@ -356,18 +359,8 @@ class StripeService {
    * Handle webhook events
    */
   async handleWebhook(event) {
-    let webhookEvent = null;
-    
     try {
       console.log(`Processing webhook event: ${event.type} (${event.id})`);
-      
-      // Log the webhook event
-      webhookEvent = await WebhookEvent.create({
-        stripe_event_id: event.id,
-        event_type: event.type,
-        event_data: event.data,
-        processed: false
-      });
       
       switch (event.type) {
         case 'customer.subscription.created':
@@ -394,30 +387,26 @@ class StripeService {
         case 'checkout.session.completed':
           await this.handleCheckoutCompleted(event.data.object);
           break;
+        case 'plan.deleted':
+          await this.handlePlanDeleted(event.data.object);
+          break;
+        case 'product.deleted':
+          await this.handleProductDeleted(event.data.object);
+          break;
+        case 'plan.created':
+          await this.handlePlanCreated(event.data.object);
+          break;
+        case 'product.created':
+          await this.handleProductCreated(event.data.object);
+          break;
         default:
           console.log(`Unhandled event type: ${event.type}`);
       }
       
-      // Mark as processed successfully
-      if (webhookEvent) {
-        await webhookEvent.update({
-          processed: true,
-          processed_at: new Date()
-        });
-      }
+      console.log(`Successfully processed webhook event: ${event.type}`);
       
     } catch (error) {
       console.error('Handle webhook error:', error);
-      
-      // Mark as failed
-      if (webhookEvent) {
-        await webhookEvent.update({
-          processed: false,
-          processing_error: error.message,
-          processed_at: new Date()
-        });
-      }
-      
       throw error;
     }
   }
@@ -721,9 +710,134 @@ class StripeService {
       throw error;
     }
   }
+
+  /**
+   * Handle plan deleted webhook
+   */
+  async handlePlanDeleted(stripePlan) {
+    try {
+      console.log('Handling plan deleted:', stripePlan.id);
+      
+      // Find and delete the plan from our database
+      const deletedPlan = await SubscriptionPlan.destroy({
+        where: { stripe_price_id: stripePlan.id }
+      });
+      
+      if (deletedPlan > 0) {
+        console.log(`Deleted ${deletedPlan} plan(s) from database for Stripe plan: ${stripePlan.id}`);
+      } else {
+        console.log(`No plans found in database for Stripe plan: ${stripePlan.id}`);
+      }
+      
+    } catch (error) {
+      console.error('Error handling plan deleted:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Handle product deleted webhook
+   */
+  async handleProductDeleted(stripeProduct) {
+    try {
+      console.log('Handling product deleted:', stripeProduct.id);
+      
+      // Find and delete all plans associated with this product
+      const deletedPlans = await SubscriptionPlan.destroy({
+        where: { stripe_product_id: stripeProduct.id }
+      });
+      
+      if (deletedPlans > 0) {
+        console.log(`Deleted ${deletedPlans} plan(s) from database for Stripe product: ${stripeProduct.id}`);
+      } else {
+        console.log(`No plans found in database for Stripe product: ${stripeProduct.id}`);
+      }
+      
+    } catch (error) {
+      console.error('Error handling product deleted:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Handle plan created webhook
+   */
+  async handlePlanCreated(stripePlan) {
+    try {
+      console.log('Handling plan created:', stripePlan.id);
+      
+      // Check if plan already exists
+      const existingPlan = await SubscriptionPlan.findOne({
+        where: { stripe_price_id: stripePlan.id }
+      });
+      
+      if (existingPlan) {
+        console.log(`Plan already exists in database: ${stripePlan.id}`);
+        return;
+      }
+      
+      // Get product information to create better names
+      let productName = 'Subscription Plan';
+      let productDescription = '';
+      
+      try {
+        const product = await this.stripe.products.retrieve(stripePlan.product);
+        productName = product.name || 'Subscription Plan';
+        productDescription = product.description || '';
+      } catch (productError) {
+        console.log('Could not fetch product details, using defaults');
+      }
+      
+      // Create formatted names
+      const billingCycle = stripePlan.interval === 'month' ? 'Monthly' : 
+                          stripePlan.interval === 'year' ? 'Yearly' : 'One-time';
+      const planName = `${productName} (${billingCycle})`;
+      const displayName = `${productName} (${billingCycle})`;
+      
+      // Create new plan in database
+      const newPlan = await SubscriptionPlan.create({
+        stripe_price_id: stripePlan.id,
+        stripe_product_id: stripePlan.product,
+        name: planName,
+        display_name: displayName,
+        description: productDescription,
+        price: stripePlan.amount / 100, // Convert from cents
+        billing_cycle: stripePlan.interval === 'month' ? 'monthly' : 
+                      stripePlan.interval === 'year' ? 'yearly' : 'one_time',
+        is_active: stripePlan.active,
+        features: stripePlan.metadata?.features || {},
+        limits: stripePlan.metadata?.limits || {}
+      });
+      
+      console.log(`Created new plan in database: ${newPlan.id} for Stripe plan: ${stripePlan.id}`);
+      console.log(`Plan name: ${planName}, Price: $${newPlan.price}`);
+      
+    } catch (error) {
+      console.error('Error handling plan created:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Handle product created webhook
+   */
+  async handleProductCreated(stripeProduct) {
+    try {
+      console.log('Handling product created:', stripeProduct.id);
+      
+      // For now, we just log product creation
+      // Plans will be created separately when they're created in Stripe
+      console.log(`Product created: ${stripeProduct.name} (${stripeProduct.id})`);
+      
+    } catch (error) {
+      console.error('Error handling product created:', error);
+      throw error;
+    }
+  }
 }
 
 // Lazy singleton pattern to avoid initialization during module import
+
 let stripeServiceInstance = null;
 
 export default {

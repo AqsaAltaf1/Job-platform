@@ -33,7 +33,7 @@ interface SubscriptionPlan {
   description: string
   billing_cycle: 'monthly' | 'yearly' | 'one_time'
   price: number
-  features: string[]
+  features: string[] | Record<string, any>
   max_job_postings: number
   max_applications: number
   max_team_members: number
@@ -320,7 +320,7 @@ export default function PackageManagementPage() {
                         <div>
                           <p className="font-medium text-sm mb-2">Features</p>
                           <ul className="text-sm text-gray-600 space-y-1">
-                            {pkg.features.map((feature, index) => (
+                            {(Array.isArray(pkg.features) ? pkg.features : Object.values(pkg.features || {})).map((feature, index) => (
                               <li key={index} className="flex items-center gap-2">
                                 <CheckCircle className="h-3 w-3 text-green-600" />
                                 {feature}

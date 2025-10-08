@@ -79,6 +79,33 @@ export default function PricingPage() {
     fetchPlans();
   }, []);
 
+  const handleStripeCheckout = async (plan: any) => {
+    try {
+      const response = await fetch(getApiUrl('/subscription/checkout'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+        },
+        body: JSON.stringify({
+          plan_id: plan.id,
+          billing_cycle: plan.billing_cycle || 'monthly'
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        window.location.href = data.url;
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to create checkout session');
+      }
+    } catch (error) {
+      console.error('Checkout error:', error);
+      alert('Failed to start checkout process');
+    }
+  };
+
   // Create static free plan
   const freePlan = {
     id: 'free',
@@ -114,7 +141,8 @@ export default function PricingPage() {
       limitations: [],
       popular: plan.is_popular,
       cta: plan.price === 0 ? "Get Started Free" : "Subscribe",
-      href: plan.price === 0 ? "/register" : `/register?plan=${plan.id}`
+      href: plan.price === 0 ? "/register" : null, // No href for paid plans - will use onClick
+      onClick: plan.price === 0 ? null : () => handleStripeCheckout(plan)
     };
   });
 
@@ -255,13 +283,23 @@ export default function PricingPage() {
                         );
                       })}
                     </ul>
-                    <Button 
-                      className={`w-full rounded-full ${plan.popular ? 'bg-primary hover:bg-primary/90 text-white' : plan.cta === 'Subscribe' ? 'bg-primary hover:bg-primary/90 text-white' : 'border-gray-200 hover:bg-gray-50 text-gray-700'}`}
-                      variant={plan.popular ? "default" : plan.cta === 'Subscribe' ? "default" : "outline"}
-                      asChild
-                    >
-                      <Link href={plan.href} className="group-hover:scale-105 transition-transform duration-300">{plan.cta}</Link>
-                    </Button>
+                    {plan.href ? (
+                      <Button 
+                        className={`w-full rounded-full ${plan.popular ? 'bg-primary hover:bg-primary/90 text-white' : plan.cta === 'Subscribe' ? 'bg-primary hover:bg-primary/90 text-white' : 'border-gray-200 hover:bg-gray-50 text-gray-700'}`}
+                        variant={plan.popular ? "default" : plan.cta === 'Subscribe' ? "default" : "outline"}
+                        asChild
+                      >
+                        <Link href={plan.href} className="group-hover:scale-105 transition-transform duration-300">{plan.cta}</Link>
+                      </Button>
+                    ) : (
+                      <Button 
+                        className={`w-full rounded-full ${plan.popular ? 'bg-primary hover:bg-primary/90 text-white' : plan.cta === 'Subscribe' ? 'bg-primary hover:bg-primary/90 text-white' : 'border-gray-200 hover:bg-gray-50 text-gray-700'}`}
+                        variant={plan.popular ? "default" : plan.cta === 'Subscribe' ? "default" : "outline"}
+                        onClick={plan.onClick}
+                      >
+                        <span className="group-hover:scale-105 transition-transform duration-300">{plan.cta}</span>
+                      </Button>
+                    )}
                   </CardContent>
                   </Card>
                 </div>

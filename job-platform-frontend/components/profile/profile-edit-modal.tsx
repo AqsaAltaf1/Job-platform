@@ -327,7 +327,10 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
 
     // Basic validation for all users
     if (!formData.phone.trim()) {
-      errors.phone = "Phone number is required"
+      // Phone is required for candidates, optional for employers
+      if (user?.role === "candidate") {
+        errors.phone = "Phone number is required"
+      }
     } else if (!validatePhone(formData.phone)) {
       errors.phone = "Please enter a valid phone number"
     }
@@ -526,7 +529,9 @@ export function ProfileEditModal({ isOpen, onClose, onSave }: ProfileEditModalPr
             
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-3">
-                <Label htmlFor="phone" className="text-sm font-medium text-gray-700">Phone *</Label>
+                <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
+                  Phone {user?.role === "candidate" ? "*" : "(Optional)"}
+                </Label>
                 <Input
                   id="phone"
                   type="tel"

@@ -131,16 +131,15 @@ export const createSubscriptionPlan = async (req, res) => {
       }
     });
 
-    // Create subscription plan in database
-    const plan = await SubscriptionPlan.create({
-      name,
-      display_name,
+    // Create subscription plans in database (separate for monthly and yearly)
+    const monthlyPlan = await SubscriptionPlan.create({
+      name: `${name} (Monthly)`,
+      display_name: `${display_name} (Monthly)`,
       description,
-      price_monthly: parseFloat(price_monthly),
-      price_yearly: parseFloat(price_yearly),
+      billing_cycle: 'monthly',
+      price: parseFloat(price_monthly),
       stripe_product_id: stripeProduct.id,
-      stripe_price_id_monthly: stripeMonthlyPrice.id,
-      stripe_price_id_yearly: stripeYearlyPrice.id,
+      stripe_price_id: stripeMonthlyPrice.id,
       features,
       limits,
       is_popular,
@@ -148,10 +147,25 @@ export const createSubscriptionPlan = async (req, res) => {
       is_active: true
     });
 
+    const yearlyPlan = await SubscriptionPlan.create({
+      name: `${name} (Yearly)`,
+      display_name: `${display_name} (Yearly)`,
+      description,
+      billing_cycle: 'yearly',
+      price: parseFloat(price_yearly),
+      stripe_product_id: stripeProduct.id,
+      stripe_price_id: stripeYearlyPrice.id,
+      features,
+      limits,
+      is_popular,
+      sort_order: parseInt(sort_order) + 1,
+      is_active: true
+    });
+
     res.status(201).json({
       success: true,
-      message: 'Subscription plan created successfully',
-      plan
+      message: 'Subscription plans created successfully',
+      plans: [monthlyPlan, yearlyPlan]
     });
 
   } catch (error) {
@@ -178,10 +192,10 @@ export const updateSubscriptionPlan = async (req, res) => {
 
     const { plan_id } = req.params;
     const {
+      name,
       display_name,
       description,
-      price_monthly,
-      price_yearly,
+      price,
       features,
       limits,
       is_popular,
@@ -205,60 +219,12 @@ export const updateSubscriptionPlan = async (req, res) => {
       });
     }
 
-    // If prices changed, create new Stripe prices (can't update existing ones)
-    let newMonthlyPriceId = plan.stripe_price_id_monthly;
-    let newYearlyPriceId = plan.stripe_price_id_yearly;
-
-    if (price_monthly && parseFloat(price_monthly) !== parseFloat(plan.price_monthly)) {
-      const newMonthlyPrice = await stripeService.stripe.prices.create({
-        product: plan.stripe_product_id,
-        unit_amount: Math.round(parseFloat(price_monthly) * 100),
-        currency: 'usd',
-        recurring: {
-          interval: 'month'
-        },
-        metadata: {
-          plan_name: plan.name,
-          billing_cycle: 'monthly'
-        }
-      });
-      newMonthlyPriceId = newMonthlyPrice.id;
-
-      // Archive old price
-      await stripeService.stripe.prices.update(plan.stripe_price_id_monthly, {
-        active: false
-      });
-    }
-
-    if (price_yearly && parseFloat(price_yearly) !== parseFloat(plan.price_yearly)) {
-      const newYearlyPrice = await stripeService.stripe.prices.create({
-        product: plan.stripe_product_id,
-        unit_amount: Math.round(parseFloat(price_yearly) * 100),
-        currency: 'usd',
-        recurring: {
-          interval: 'year'
-        },
-        metadata: {
-          plan_name: plan.name,
-          billing_cycle: 'yearly'
-        }
-      });
-      newYearlyPriceId = newYearlyPrice.id;
-
-      // Archive old price
-      await stripeService.stripe.prices.update(plan.stripe_price_id_yearly, {
-        active: false
-      });
-    }
-
     // Update plan in database
     await plan.update({
+      name: name || plan.name,
       display_name: display_name || plan.display_name,
       description: description || plan.description,
-      price_monthly: price_monthly ? parseFloat(price_monthly) : plan.price_monthly,
-      price_yearly: price_yearly ? parseFloat(price_yearly) : plan.price_yearly,
-      stripe_price_id_monthly: newMonthlyPriceId,
-      stripe_price_id_yearly: newYearlyPriceId,
+      price: price ? parseFloat(price) : plan.price,
       features: features || plan.features,
       limits: limits || plan.limits,
       is_popular: is_popular !== undefined ? is_popular : plan.is_popular,
@@ -327,13 +293,11 @@ export const deleteSubscriptionPlan = async (req, res) => {
       active: false
     });
 
-    await stripeService.stripe.prices.update(plan.stripe_price_id_monthly, {
-      active: false
-    });
-
-    await stripeService.stripe.prices.update(plan.stripe_price_id_yearly, {
-      active: false
-    });
+    if (plan.stripe_price_id) {
+      await stripeService.stripe.prices.update(plan.stripe_price_id, {
+        active: false
+      });
+    }
 
     // Soft delete by deactivating
     await plan.update({ is_active: false });

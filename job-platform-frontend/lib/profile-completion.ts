@@ -77,11 +77,11 @@ export const checkEmployerProfileCompletion = (user: User | null): ProfileComple
 
   const missingFields: string[] = []
   
-  // Check basic profile fields
+  // Check basic profile fields (phone is optional for employers)
   if (!user.first_name) missingFields.push('First Name')
   if (!user.last_name) missingFields.push('Last Name')
   if (!user.email) missingFields.push('Email')
-  if (!user.phone) missingFields.push('Phone')
+  // Phone is optional for employers - removed from required fields
   
   // Check employer profile fields
   const employerProfile = user.employerProfile
@@ -113,7 +113,7 @@ export const checkEmployerProfileCompletion = (user: User | null): ProfileComple
   if (!employerProfile.company_website) missingFields.push('Company Website')
   if (!employerProfile.company_location) missingFields.push('Company Location')
 
-  const totalFields = 10 // Total number of required fields
+  const totalFields = 9 // Total number of required fields (phone removed for employers)
   const completedFields = totalFields - missingFields.length
   const completionPercentage = Math.round((completedFields / totalFields) * 100)
 

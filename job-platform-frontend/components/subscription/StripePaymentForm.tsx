@@ -70,72 +70,8 @@ const PaymentForm = ({ plan, billingCycle, onSuccess, onCancel }: StripePaymentF
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!stripe || !elements) {
-      return;
-    }
-
-    const cardElement = elements.getElement(CardElement);
-    if (!cardElement) {
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      // Create payment method
-      const { error: paymentMethodError, paymentMethod } = await stripe.createPaymentMethod({
-        type: 'card',
-        card: cardElement,
-        billing_details: {
-          name: customerInfo.name,
-          email: customerInfo.email,
-          address: customerInfo.address
-        }
-      });
-
-      if (paymentMethodError) {
-        throw new Error(paymentMethodError.message);
-      }
-
-      // Create subscription on backend
-      const response = await fetch(getApiUrl('/subscription/create'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          plan_id: plan.id,
-          billing_cycle: billingCycle,
-          payment_method_id: paymentMethod.id,
-          customer_info: customerInfo
-        })
-      });
-
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to create subscription');
-      }
-
-      // Handle 3D Secure authentication if needed
-      if (result.client_secret) {
-        const { error: confirmError } = await stripe.confirmCardPayment(result.client_secret);
-        
-        if (confirmError) {
-          throw new Error(confirmError.message);
-        }
-      }
-
-      toast.success('Subscription created successfully!');
-      onSuccess();
-
-    } catch (error: any) {
-      console.error('Payment error:', error);
-      toast.error(error.message || 'Payment failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    // Redirect to reason page instead of processing payment
+    window.location.href = '/subscription/reason';
   };
 
   const cardElementOptions = {

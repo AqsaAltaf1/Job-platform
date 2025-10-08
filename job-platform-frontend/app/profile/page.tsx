@@ -876,7 +876,7 @@ export default function ProfilePage() {
                     <TabsTrigger value="experience">Experience</TabsTrigger>
                     <TabsTrigger value="projects">Projects</TabsTrigger>
                     <TabsTrigger value="education">Education</TabsTrigger>
-                    <TabsTrigger value="skills">Skills & Competencies</TabsTrigger>
+                    <TabsTrigger value="skills">Skills</TabsTrigger>
                     <TabsTrigger value="narrative">Narrative</TabsTrigger>
                     <TabsTrigger value="customization">Portfolio</TabsTrigger>
                   </TabsList>

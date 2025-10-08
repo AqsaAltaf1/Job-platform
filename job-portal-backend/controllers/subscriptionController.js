@@ -467,7 +467,7 @@ export const createSubscription = async (req, res) => {
     }
 
     // Create subscription
-    const priceId = billing_cycle === 'monthly' ? plan.stripe_price_id_monthly : plan.stripe_price_id_yearly;
+    const priceId = plan.stripe_price_id;
     
     try {
       const stripeSubscription = await stripeServiceModule.getInstance().stripe.subscriptions.create({
