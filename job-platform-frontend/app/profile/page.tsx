@@ -338,6 +338,7 @@ export default function ProfilePage() {
   }
 
   const handleSave = async () => {
+    console.log('Main handleSave function called - this should NOT be called for endorsement invitations')
     try {
       // Reload user data first to get the latest profile information
       await reloadUserData()
@@ -1368,7 +1369,14 @@ export default function ProfilePage() {
               onClose={handleCloseModals}
               skillId={selectedSkill?.id || ''}
               skillName={selectedSkill?.name || ''}
-              onSave={handleSave}
+              onSave={() => {
+                // Only reload enhanced skills for endorsement updates, not full profile
+                // No success message needed as the endorsement modal handles its own success message
+                console.log('PeerEndorsementModal onSave called - reloading enhanced skills only')
+                if (user?.role === 'candidate') {
+                  loadEnhancedSkills()
+                }
+              }}
             />
 
             <ReviewerInvitationModal

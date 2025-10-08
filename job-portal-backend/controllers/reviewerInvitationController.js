@@ -4,6 +4,7 @@ import biasReductionService from '../services/biasReductionService.js';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import sgMail from '@sendgrid/mail';
+import { sendEmail } from '../utils/emailService.js';
 import dotenv from 'dotenv';
 import { Op } from 'sequelize';
 
@@ -58,22 +59,31 @@ export const createReviewerInvitation = async (req, res) => {
       console.log('Type of skills_to_review:', typeof existingInvitation.skills_to_review);
       
       // Check if this skill is already included in the existing invitation
-      try {
-        const existingSkills = existingInvitation.skills_to_review ? 
-          JSON.parse(existingInvitation.skills_to_review) : [];
-        console.log('Parsed existing skills:', existingSkills);
-        const hasSkill = skills_to_review.some(skillId => existingSkills.includes(skillId));
-        
-        if (hasSkill) {
-          return res.status(400).json({ 
-            error: `An invitation has already been sent to ${reviewer_email} for this skill and is still pending. Please wait for them to respond or choose a different email address.` 
-          });
+      let existingSkills = [];
+      
+      if (existingInvitation.skills_to_review) {
+        // Handle both array and JSON string formats
+        if (Array.isArray(existingInvitation.skills_to_review)) {
+          existingSkills = existingInvitation.skills_to_review;
+        } else if (typeof existingInvitation.skills_to_review === 'string') {
+          try {
+            existingSkills = JSON.parse(existingInvitation.skills_to_review);
+          } catch (parseError) {
+            console.error('Error parsing existing invitation skills:', parseError);
+            console.error('Raw skills_to_review value:', existingInvitation.skills_to_review);
+            // If we can't parse, assume it's a different invitation and allow the new one to proceed
+            existingSkills = [];
+          }
         }
-      } catch (parseError) {
-        console.error('Error parsing existing invitation skills:', parseError);
-        console.error('Raw skills_to_review value:', existingInvitation.skills_to_review);
-        // If we can't parse the existing skills, assume it's a different invitation
-        // and allow the new one to proceed
+      }
+      
+      console.log('Existing skills:', existingSkills);
+      const hasSkill = skills_to_review.some(skillId => existingSkills.includes(skillId));
+      
+      if (hasSkill) {
+        return res.status(400).json({ 
+          error: `An invitation has already been sent to ${reviewer_email} for this skill and is still pending. Please wait for them to respond or choose a different email address.` 
+        });
       }
     }
 
@@ -114,10 +124,28 @@ export const createReviewerInvitation = async (req, res) => {
     try {
       const invitationLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/review-skills/${invitationToken}`;
       
-      const msg = {
+      const emailData = {
         to: reviewer_email,
-        from: process.env.SENDGRID_FROM_EMAIL || 'noreply@example.com',
         subject: `Skill Endorsement Request from ${candidateProfile.first_name} ${candidateProfile.last_name}`,
+        text: `Hello ${reviewer_name},
+
+${candidateProfile.first_name} ${candidateProfile.last_name} has requested your endorsement for their professional skills.
+
+They would like you to review and endorse their skills to help validate their professional capabilities.
+
+What you need to do:
+1. Click the link below to access the endorsement form
+2. Review the skills they've listed
+3. Provide your honest assessment and endorsement
+4. Submit your feedback
+
+Endorsement Link: ${invitationLink}
+
+Important: This invitation will expire on ${expiresAt.toLocaleDateString()}.
+
+If you have any questions or concerns, please contact ${candidateProfile.first_name} directly.
+
+This is an automated message. Please do not reply to this email.`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #1e40af;">Skill Endorsement Request</h2>
@@ -149,7 +177,7 @@ export const createReviewerInvitation = async (req, res) => {
         `,
       };
 
-      await sgMail.send(msg);
+      await sendEmail(emailData);
       console.log('Endorsement invitation email sent successfully');
     } catch (emailError) {
       console.error('Error sending invitation email:', emailError);

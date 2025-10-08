@@ -380,21 +380,21 @@ export default function CandidateDashboard() {
                 <Eye className="h-6 w-6 text-primary" />
               </div>
             </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
         {/* Applied Jobs */}
         <Card className="hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
+                  <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Applied Jobs</p>
                 <p className="text-3xl font-bold text-gray-900">{dashboardStats.appliedJobs}</p>
-              </div>
+                        </div>
               <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
                 <Briefcase className="h-6 w-6 text-primary" />
-              </div>
-            </div>
+                          </div>
+                        </div>
           </CardContent>
         </Card>
 
@@ -405,11 +405,11 @@ export default function CandidateDashboard() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Invitations</p>
                 <p className="text-3xl font-bold text-gray-900">{dashboardStats.invitations}</p>
-              </div>
+                      </div>
               <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
                 <Mail className="h-6 w-6 text-primary" />
-              </div>
-            </div>
+                      </div>
+                    </div>
           </CardContent>
         </Card>
 
@@ -420,13 +420,13 @@ export default function CandidateDashboard() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Profile Reviews</p>
                 <p className="text-3xl font-bold text-gray-900">{dashboardStats.profileReviews}</p>
-              </div>
+                        </div>
               <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
                 <Star className="h-6 w-6 text-primary" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+                      </div>
+                      </div>
+                  </CardContent>
+                </Card>
       </div>
 
       {/* Charts Section */}
@@ -473,8 +473,8 @@ export default function CandidateDashboard() {
               <span>500</span>
               <span>600</span>
             </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
         {/* Application Status Pie Chart */}
         <Card className="hover:shadow-lg transition-shadow">
@@ -544,10 +544,10 @@ export default function CandidateDashboard() {
                       {dashboardStats.applicationStatus.rejected + dashboardStats.applicationStatus.accepted + dashboardStats.applicationStatus.interview + dashboardStats.applicationStatus.pending}
                     </p>
                     <p className="text-sm text-gray-600">Total</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+                          </div>
+                          </div>
+                        </div>
+                      </div>
             
             {/* Legend */}
             <div className="grid grid-cols-2 gap-4 mt-6">
@@ -558,16 +558,16 @@ export default function CandidateDashboard() {
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-green-500 rounded-full"></div>
                 <span className="text-sm text-gray-600">Accepted ({dashboardStats.applicationStatus.accepted})</span>
-              </div>
+                              </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-primary rounded-full"></div>
                 <span className="text-sm text-gray-600">Interview ({dashboardStats.applicationStatus.interview})</span>
-              </div>
+                            </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-orange-500 rounded-full"></div>
                 <span className="text-sm text-gray-600">Pending ({dashboardStats.applicationStatus.pending})</span>
-              </div>
-            </div>
+                      </div>
+                    </div>
           </CardContent>
         </Card>
 
@@ -582,10 +582,10 @@ export default function CandidateDashboard() {
             </CardHeader>
             <CardContent>
               <TransparencyDashboard />
-            </CardContent>
-          </Card>
+                  </CardContent>
+                </Card>
         </div>
-      </div>
+            </div>
     </div>
   );
 }
