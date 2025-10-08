@@ -111,7 +111,7 @@ export default function CandidateProfileViewPage() {
       setError(null)
       
       const token = localStorage.getItem('jwt_token')
-      const response = await fetch(`http://localhost:5000/api/candidates/${params.id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/candidates/${params.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',

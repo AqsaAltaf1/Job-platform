@@ -44,7 +44,7 @@ export default function PeerEndorsementModal({ isOpen, onClose, skillId, skillNa
     try {
       setLoading(true);
       const token = localStorage.getItem('jwt_token');
-      const response = await fetch(`http://localhost:5000/api/skills/${skillId}/endorsements`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/skills/${skillId}/endorsements`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -68,7 +68,7 @@ export default function PeerEndorsementModal({ isOpen, onClose, skillId, skillNa
       const token = localStorage.getItem('jwt_token');
       
       // Get the current user's profile ID
-      const response = await fetch('http://localhost:5000/api/auth/profile', {
+      const response = await fetch('${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/auth/profile', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -87,7 +87,7 @@ export default function PeerEndorsementModal({ isOpen, onClose, skillId, skillNa
       }
 
       // Get pending invitations for this candidate
-      const invitationsResponse = await fetch(`http://localhost:5000/api/candidates/${candidateId}/invitations`, {
+      const invitationsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/candidates/${candidateId}/invitations`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -159,7 +159,7 @@ export default function PeerEndorsementModal({ isOpen, onClose, skillId, skillNa
       const token = localStorage.getItem('jwt_token');
 
       // Get the current user's profile ID from the token or context
-      const response = await fetch('http://localhost:5000/api/auth/profile', {
+      const response = await fetch('${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/auth/profile', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -179,7 +179,7 @@ export default function PeerEndorsementModal({ isOpen, onClose, skillId, skillNa
       }
 
       // Send invitation
-      const invitationResponse = await fetch(`http://localhost:5000/api/candidates/${candidateId}/invitations`, {
+      const invitationResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/candidates/${candidateId}/invitations`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -82,7 +82,7 @@ export function EducationModal({ isOpen, onClose, onSave, education }: Education
     }
 
     try {
-      const url = education ? `http://localhost:5000/api/educations/${education.id}` : 'http://localhost:5000/api/educations'
+      const url = education ? `process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/educations/${education.id}` : 'process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/educations'
       const method = education ? 'PUT' : 'POST'
       
       // Prepare data for submission

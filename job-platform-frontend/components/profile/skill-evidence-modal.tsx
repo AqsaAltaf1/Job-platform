@@ -46,7 +46,7 @@ export default function SkillEvidenceModal({ isOpen, onClose, skillId, skillName
     try {
       setLoading(true);
       const token = localStorage.getItem('jwt_token');
-      const response = await fetch(`http://localhost:5000/api/skills/${skillId}/evidence`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/skills/${skillId}/evidence`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -158,8 +158,8 @@ export default function SkillEvidenceModal({ isOpen, onClose, skillId, skillName
       };
 
       const url = editingEvidence 
-        ? `http://localhost:5000/api/evidence/${editingEvidence.id}`
-        : `http://localhost:5000/api/skills/${skillId}/evidence`;
+        ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/evidence/${editingEvidence.id}`
+        : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/skills/${skillId}/evidence`;
       
       const method = editingEvidence ? 'PUT' : 'POST';
 
@@ -206,7 +206,7 @@ export default function SkillEvidenceModal({ isOpen, onClose, skillId, skillName
       setLoading(true);
       const token = localStorage.getItem('jwt_token');
       
-      const response = await fetch(`http://localhost:5000/api/evidence/${evidenceId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/evidence/${evidenceId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

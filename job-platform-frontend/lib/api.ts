@@ -1,5 +1,5 @@
 // Simple API client to connect frontend with backend
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 // Generic fetch function
 async function fetchAPI<T>(endpoint: string): Promise<T> {

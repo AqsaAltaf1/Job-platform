@@ -77,7 +77,7 @@ export function ProjectModal({ isOpen, onClose, onSave, project }: ProjectModalP
     }
 
     try {
-      const url = project ? `http://localhost:5000/api/projects/${project.id}` : 'http://localhost:5000/api/projects'
+      const url = project ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/projects/${project.id}` : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/projects`
       const method = project ? 'PUT' : 'POST'
       
       const response = await fetch(url, {

@@ -42,7 +42,7 @@ export default function ReviewerInvitationModal({ isOpen, onClose, candidateId, 
     try {
       setLoading(true);
       const token = localStorage.getItem('jwt_token');
-      const response = await fetch(`http://localhost:5000/api/candidates/${candidateId}/invitations`, {
+      const response = await fetch(`process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/candidates/${candidateId}/invitations`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -63,7 +63,7 @@ export default function ReviewerInvitationModal({ isOpen, onClose, candidateId, 
   const loadSkills = async () => {
     try {
       const token = localStorage.getItem('jwt_token');
-      const response = await fetch(`http://localhost:5000/api/candidates/${candidateId}/skills`, {
+      const response = await fetch(`process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/candidates/${candidateId}/skills`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -84,7 +84,7 @@ export default function ReviewerInvitationModal({ isOpen, onClose, candidateId, 
       setLoading(true);
       const token = localStorage.getItem('jwt_token');
 
-      const response = await fetch(`http://localhost:5000/api/candidates/${candidateId}/invitations`, {
+      const response = await fetch(`process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/candidates/${candidateId}/invitations`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -125,7 +125,7 @@ export default function ReviewerInvitationModal({ isOpen, onClose, candidateId, 
       setLoading(true);
       const token = localStorage.getItem('jwt_token');
       
-      const response = await fetch(`http://localhost:5000/api/invitations/${invitationId}`, {
+      const response = await fetch(`process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'/invitations/${invitationId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -74,7 +74,7 @@ export default function VerificationPage() {
       addLog(`🌍 Using country: ${userCountry}${!user?.candidateProfile?.country ? ' (default)' : ''}`);
       addLog(`📅 Using date of birth: ${userDateOfBirth}${!user?.candidateProfile?.date_of_birth ? ' (default)' : ''}`);
       
-      const sessionResponse = await fetch('http://localhost:5000/api/verification/create-session', {
+      const sessionResponse = await fetch('${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/verification/create-session', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

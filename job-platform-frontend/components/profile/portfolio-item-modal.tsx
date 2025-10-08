@@ -117,7 +117,7 @@ export default function PortfolioItemModal({ isOpen, onClose, onSave, item, savi
         formData.append('image', file)
         
         const token = localStorage.getItem('jwt_token')
-        const response = await fetch('http://localhost:5000/api/upload/portfolio-image', {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/upload/portfolio-image`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`

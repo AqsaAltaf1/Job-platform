@@ -61,7 +61,7 @@ export default function ReviewSkillsPage({ params }: { params: { token: string }
   const loadInvitation = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:5000/api/invitations/${params.token}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/invitations/${params.token}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -102,7 +102,7 @@ export default function ReviewSkillsPage({ params }: { params: { token: string }
       setSubmitting(true);
       setError(null);
 
-      const response = await fetch(`http://localhost:5000/api/review/${params.token}/feedback`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/review/${params.token}/feedback`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
