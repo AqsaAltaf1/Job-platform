@@ -102,7 +102,7 @@ export default function EmployerDashboard() {
       setLoadingStats(true)
       
       // Fetch real data from multiple API endpoints
-      const token = localStorage.getItem('token')
+      const token = localStorage.getItem('jwt_token')
       const headers = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'

@@ -1,81 +1,128 @@
-import { User, CandidateProfile, EnhancedSkill, Experience, Education, Project } from '../models/index.js'
-import { Op } from 'sequelize'
+import { User, CandidateProfile, Experience, Education, Project, CandidateRating, JobApplication } from '../models/index.js';
+import { Op } from 'sequelize';
 
-// Get all candidates (for employers to browse)
-const getCandidates = async (req, res) => {
+/**
+ * Get all candidates with their basic information
+ */
+export const getCandidates = async (req, res) => {
   try {
-    console.log('Fetching candidates...')
-    console.log('User from token:', req.user)
-    
-    // First, let's get all candidate users without any includes to see if they exist
-    const allUsers = await User.findAll({
-      where: {
-        role: 'candidate'
-      }
-    })
-    
-    console.log(`Found ${allUsers.length} users with candidate role`)
-    console.log('Candidate users:', allUsers.map(u => ({ id: u.id, email: u.email, is_active: u.is_active })))
-    
-    // Now get active candidates
-    const candidates = await User.findAll({
-      where: {
-        role: 'candidate',
-        is_active: true
-      },
+    const { page = 1, limit = 15, search, location, experience, availability } = req.query;
+    const offset = (page - 1) * limit;
+
+    // Build where conditions
+    const whereConditions = {
+      role: 'candidate',
+      is_active: true
+    };
+
+    // Search filter
+    if (search) {
+      whereConditions[Op.or] = [
+        { first_name: { [Op.iLike]: `%${search}%` } },
+        { last_name: { [Op.iLike]: `%${search}%` } },
+        { email: { [Op.iLike]: `%${search}%` } }
+      ];
+    }
+
+    const candidates = await User.findAndCountAll({
+      where: whereConditions,
       include: [
         {
           model: CandidateProfile,
-          required: false
+          as: 'candidateProfile',
+          required: true,
+          where: {
+            ...(location && location !== "All Locations" ? { location: { [Op.iLike]: `%${location}%` } } : {}),
+            ...(availability && availability !== "All Availability" ? { availability: availability } : {}),
+            ...(experience && experience !== "All Experience" ? getExperienceFilter(experience) : {})
+          }
         }
       ],
-      order: [['created_at', 'DESC']]
-    })
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      order: [['created_at', 'DESC']],
+      distinct: true
+    });
 
-    console.log(`Found ${candidates.length} active candidates with profiles`)
+    // Get unique locations for filters
+    const locations = await CandidateProfile.findAll({
+      attributes: ['location'],
+      where: { 
+        location: { [Op.ne]: null },
+        is_active: true 
+      },
+      group: ['location'],
+      raw: true
+    });
+
+    // Get unique availabilities for filters
+    const availabilities = await CandidateProfile.findAll({
+      attributes: ['availability'],
+      where: { 
+        availability: { [Op.ne]: null },
+        is_active: true 
+      },
+      group: ['availability'],
+      raw: true
+    });
 
     res.json({
       success: true,
-      data: {
-        candidates: candidates,
-        pagination: {
-          current_page: 1,
-          per_page: candidates.length,
-          total: candidates.length,
-          total_pages: 1
-        }
+      candidates: candidates.rows.map(candidate => ({
+        id: candidate.id,
+        first_name: candidate.first_name,
+        last_name: candidate.last_name,
+        email: candidate.email,
+        phone: candidate.phone,
+        location: candidate.candidateProfile?.location,
+        availability: candidate.candidateProfile?.availability,
+        bio: candidate.candidateProfile?.bio,
+        profile_picture_url: candidate.candidateProfile?.profile_picture_url,
+        experience_years: candidate.candidateProfile?.experience_years,
+        salary_expectation: candidate.candidateProfile?.salary_expectation,
+        skills: candidate.candidateProfile?.skills || [],
+        created_at: candidate.created_at
+      })),
+      pagination: {
+        current_page: parseInt(page),
+        total_pages: Math.ceil(candidates.count / limit),
+        total_candidates: candidates.count,
+        per_page: parseInt(limit)
+      },
+      filters: {
+        locations: locations.map(l => l.location).filter(Boolean),
+        availabilities: availabilities.map(a => a.availability).filter(Boolean)
       }
-    })
+    });
+
   } catch (error) {
-    console.error('Error fetching candidates:', error)
+    console.error('Get candidates error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch candidates',
-      details: error.message
-    })
+      error: 'Failed to fetch candidates'
+    });
   }
-}
+};
 
-// Get candidate profile by ID (for employers to view detailed profile)
-const getCandidateProfile = async (req, res) => {
+/**
+ * Get a single candidate by ID with detailed information
+ */
+export const getCandidateProfile = async (req, res) => {
   try {
-    const { id } = req.params
+    const { id } = req.params;
 
     const candidate = await User.findOne({
-      where: {
-        id,
+      where: { 
+        id: id,
         role: 'candidate',
-        is_active: true
+        is_active: true 
       },
       include: [
         {
           model: CandidateProfile,
+          as: 'candidateProfile',
+          required: true,
           include: [
-            {
-              model: EnhancedSkill,
-              as: 'coreSkills',
-              required: false
-            },
             {
               model: Experience,
               as: 'experiences',
@@ -95,131 +142,174 @@ const getCandidateProfile = async (req, res) => {
               order: [['created_at', 'DESC']]
             }
           ]
-        }
+        },
       ]
-    })
+    });
 
     if (!candidate) {
       return res.status(404).json({
         success: false,
         error: 'Candidate not found'
-      })
+      });
     }
+
+    // Get ratings for this candidate through job applications
+    const ratings = await CandidateRating.findAll({
+      include: [
+        {
+          model: JobApplication,
+          as: 'application',
+          where: { candidate_id: id },
+          required: true
+        },
+        {
+          model: User,
+          as: 'rater',
+          attributes: ['first_name', 'last_name'],
+          required: false
+        }
+      ],
+      order: [['created_at', 'DESC']]
+    });
 
     res.json({
       success: true,
       data: {
-        candidate
+        candidate: {
+          id: candidate.id,
+          first_name: candidate.first_name,
+          last_name: candidate.last_name,
+          email: candidate.email,
+          phone: candidate.phone,
+          created_at: candidate.created_at,
+          candidateProfile: candidate.candidateProfile,
+          experiences: candidate.candidateProfile?.experiences || [],
+          educations: candidate.candidateProfile?.educations || [],
+          projects: candidate.candidateProfile?.projects || [],
+          ratings: ratings.map(rating => ({
+            id: rating.id,
+            rating: rating.overall_rating,
+            review: rating.overall_comments,
+            reviewer_name: rating.rater ? `${rating.rater.first_name} ${rating.rater.last_name}` : 'Anonymous',
+            created_at: rating.created_at
+          }))
+        }
       }
-    })
+    });
+
   } catch (error) {
-    console.error('Error fetching candidate profile:', error)
+    console.error('Get candidate profile error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch candidate profile'
-    })
+    });
   }
-}
+};
 
-// Get candidate statistics (for employers dashboard)
-const getCandidateStats = async (req, res) => {
+/**
+ * Get candidate statistics
+ */
+export const getCandidateStats = async (req, res) => {
   try {
     const totalCandidates = await User.count({
-      where: {
-        role: 'candidate',
-        is_active: true
-      }
-    })
+      where: { role: 'candidate', is_active: true }
+    });
 
     const candidatesWithProfiles = await User.count({
-      where: {
-        role: 'candidate',
-        is_active: true
-      },
+      where: { role: 'candidate', is_active: true },
       include: [
         {
           model: CandidateProfile,
+          as: 'candidateProfile',
           required: true
         }
       ]
-    })
+    });
 
-    const recentCandidates = await User.count({
-      where: {
-        role: 'candidate',
+    const recentlyJoined = await User.count({
+      where: { 
+        role: 'candidate', 
         is_active: true,
         created_at: {
           [Op.gte]: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
         }
       }
-    })
+    });
 
     res.json({
       success: true,
-      data: {
-        totalCandidates,
-        candidatesWithProfiles,
-        recentCandidates
+      stats: {
+        total_candidates: totalCandidates,
+        candidates_with_profiles: candidatesWithProfiles,
+        recently_joined: recentlyJoined,
+        profile_completion_rate: totalCandidates > 0 ? (candidatesWithProfiles / totalCandidates * 100).toFixed(1) : 0
       }
-    })
+    });
+
   } catch (error) {
-    console.error('Error fetching candidate stats:', error)
+    console.error('Get candidate stats error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch candidate statistics'
-    })
+    });
   }
-}
+};
 
-// Test endpoint to check database directly
-const testCandidates = async (req, res) => {
+/**
+ * Test endpoint for candidates (no authentication required)
+ */
+export const testCandidates = async (req, res) => {
   try {
-    console.log('Testing candidates endpoint...')
-    
-    // Get all users regardless of role
-    const allUsers = await User.findAll()
-    console.log(`Total users in database: ${allUsers.length}`)
-    
-    // Get all candidate users
-    const candidateUsers = await User.findAll({
-      where: {
-        role: 'candidate'
-      }
-    })
-    console.log(`Users with candidate role: ${candidateUsers.length}`)
-    
-    // Get active candidate users
-    const activeCandidates = await User.findAll({
-      where: {
-        role: 'candidate',
-        is_active: true
-      }
-    })
-    console.log(`Active candidate users: ${activeCandidates.length}`)
-    
+    const candidates = await User.findAll({
+      where: { role: 'candidate', is_active: true },
+      include: [
+        {
+          model: CandidateProfile,
+          as: 'candidateProfile',
+          required: false
+        }
+      ],
+      limit: 5,
+      order: [['created_at', 'DESC']]
+    });
+
     res.json({
       success: true,
-      data: {
-        totalUsers: allUsers.length,
-        candidateUsers: candidateUsers.length,
-        activeCandidates: activeCandidates.length,
-        allUsers: allUsers.map(u => ({ id: u.id, email: u.email, role: u.role, is_active: u.is_active })),
-        candidateUsers: candidateUsers.map(u => ({ id: u.id, email: u.email, role: u.role, is_active: u.is_active }))
-      }
-    })
+      message: 'Test endpoint working',
+      candidates: candidates.map(candidate => ({
+        id: candidate.id,
+        first_name: candidate.first_name,
+        last_name: candidate.last_name,
+        email: candidate.email,
+        has_profile: !!candidate.candidateProfile
+      }))
+    });
+
   } catch (error) {
-    console.error('Error in test endpoint:', error)
+    console.error('Test candidates error:', error);
     res.status(500).json({
       success: false,
-      error: 'Test failed',
-      details: error.message
-    })
+      error: 'Test endpoint failed'
+    });
   }
-}
+};
 
-export {
-  getCandidates,
-  getCandidateProfile,
-  getCandidateStats,
-  testCandidates
+/**
+ * Helper function to build experience filter
+ */
+function getExperienceFilter(experience) {
+  switch (experience) {
+    case '0-1':
+      return { experience_years: { [Op.between]: [0, 1] } };
+    case '2-3':
+      return { experience_years: { [Op.between]: [2, 3] } };
+    case '4-5':
+      return { experience_years: { [Op.between]: [4, 5] } };
+    case '6-10':
+      return { experience_years: { [Op.between]: [6, 10] } };
+    case '10+':
+      return { experience_years: { [Op.gte]: 10 } };
+    default:
+      return {};
+  }
 }

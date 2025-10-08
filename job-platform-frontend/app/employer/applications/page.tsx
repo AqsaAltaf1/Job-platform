@@ -104,7 +104,7 @@ export default function ApplicationPipeline() {
 
   const loadJobs = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('jwt_token');
       const response = await fetch(getApiUrl('/employer/jobs'), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -121,7 +121,7 @@ export default function ApplicationPipeline() {
   const loadApplications = async () => {
     try {
       setLoadingApplications(true);
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('jwt_token');
       const response = await fetch(getApiUrl('/employer/all-applications'), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -184,7 +184,7 @@ export default function ApplicationPipeline() {
   const updateApplicationStatus = async (applicationId: string, newStatus: string, notes?: string) => {
     try {
       setUpdating(true);
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('jwt_token');
       const response = await fetch(getApiUrl(`/applications/${applicationId}/status`), {
         method: 'PUT',
         headers: {

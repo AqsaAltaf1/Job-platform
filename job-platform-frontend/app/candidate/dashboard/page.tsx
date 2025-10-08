@@ -143,7 +143,7 @@ export default function CandidateDashboard() {
     try {
       const response = await fetch(getApiUrl('/candidate/applications'), {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
         }
       });
       
@@ -165,7 +165,7 @@ export default function CandidateDashboard() {
     try {
       const response = await fetch(getApiUrl('/candidate/saved-jobs'), {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
         }
       });
       
@@ -190,7 +190,7 @@ export default function CandidateDashboard() {
       // Fetch dashboard statistics from API
       const response = await fetch(getApiUrl('/candidate/dashboard-stats'), {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
         }
       });
       
@@ -262,7 +262,7 @@ export default function CandidateDashboard() {
       const response = await fetch(getApiUrl(`/jobs/${jobId}/save`), {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
         }
       });
 
@@ -284,7 +284,7 @@ export default function CandidateDashboard() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
         },
         body: JSON.stringify({ notes })
       });
@@ -309,7 +309,7 @@ export default function CandidateDashboard() {
       const response = await fetch(getApiUrl(`/applications/${applicationId}/withdraw`), {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
         }
       });
 
