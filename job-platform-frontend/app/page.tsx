@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Briefcase, Users, Search, CheckCircle, MapPin, Clock, DollarSign, Building2, ArrowLeft, ArrowRight, Star, TrendingUp, Code, Settings } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { getJobsWithCompany } from "@/lib/mock-data"
 import { useAuth } from "@/lib/auth"
 import { useEffect, useState } from "react"
@@ -171,10 +172,13 @@ export default function HomePage() {
             {/* Right Side - Banner Image */}
             <div className="relative animate-fade-in-right flex items-start justify-center h-full">
               {/* Banner Image */}
-                <img 
+                <Image 
                   src="/banner.png" 
                   alt="Job Portal Banner" 
+                  width={498}
+                  height={350}
                   className="w-full h-auto max-h-full object-contain rounded-2xl"
+                  priority={false}
                 />
             </div>
           </div>
