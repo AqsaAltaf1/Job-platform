@@ -166,7 +166,7 @@ export default function CandidateProfilePage() {
   }
 
   // Show access denied for non-employers
-  if (user?.role !== "employer" && user?.role !== "team_member") {
+  if (user?.role !== "employer" && (user?.role as any) !== "team_member") {
     return (
       <AuthGuard>
         <div className="flex justify-center items-center min-h-screen">
@@ -534,7 +534,7 @@ export default function CandidateProfilePage() {
             </div>
           </div>
         </div>
+      </div>
       </AuthGuard>
     )
-  )
 }
