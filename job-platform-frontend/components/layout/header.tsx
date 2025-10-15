@@ -35,6 +35,7 @@ export function Header() {
     { name: "Companies", href: "/companies", hideForRoles: ["employer", "team_member"] },
     { name: "Candidates", href: "/candidates", showForRoles: ["employer", "team_member"] },
     { name: "Pipeline", href: "/employer/kanban", showForRoles: ["employer", "team_member"] },
+    { name: "Dashboard", href: "/candidate/dashboard", showForRoles: ["candidate"] },
     { name: "Pricing", href: "/pricing" },
     { name: "Subscription", href: "/subscription/manage", showForRoles: ["employer", "candidate"] },
   ]
@@ -109,12 +110,21 @@ export function Header() {
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard">
-                        <User className="mr-2 h-4 w-4" />
-                        Dashboard
-                      </Link>
-                    </DropdownMenuItem>
+                    {user.role === "candidate" ? (
+                      <DropdownMenuItem asChild>
+                        <Link href="/candidate/dashboard">
+                          <User className="mr-2 h-4 w-4" />
+                          Candidate Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem asChild>
+                        <Link href="/dashboard">
+                          <User className="mr-2 h-4 w-4" />
+                          Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem asChild>
                       <Link href="/profile">
                         <User className="mr-2 h-4 w-4" />

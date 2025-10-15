@@ -3,9 +3,16 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import NotificationBell from '@/components/notifications/NotificationBell';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { 
   Briefcase, 
   Calendar, 
@@ -25,7 +32,17 @@ import {
   FileText,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Settings,
+  Bell,
+  Shield,
+  UserCheck,
+  Plus,
+  EyeOff,
+  MoreHorizontal,
+  Building2,
+  Award,
+  MessageSquare
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getApiUrl } from '@/lib/config';
@@ -83,6 +100,41 @@ interface DashboardStats {
   };
 }
 
+interface VerifiedWorkHistory {
+  id: string;
+  company: string;
+  role: string;
+  startDate: string;
+  endDate?: string;
+  duration: string;
+  isVerified: boolean;
+  verifiedBy?: string;
+  verifiedAt?: string;
+}
+
+interface Reference {
+  id: string;
+  referrerName: string;
+  referrerEmail: string;
+  referrerPosition: string;
+  referrerCompany: string;
+  relationship: 'colleague' | 'manager' | 'client' | 'peer' | 'other';
+  keyCompetencies: string[];
+  isVisible: boolean;
+  endorsementText?: string;
+  rating?: number;
+  status: 'pending' | 'completed' | 'declined';
+  createdAt: string;
+}
+
+interface ReferenceTemplate {
+  id: string;
+  name: string;
+  description: string;
+  message: string;
+  skills: string[];
+}
+
 const statusColors = {
   pending: 'bg-yellow-100 text-yellow-800',
   reviewing: 'bg-blue-100 text-blue-800',
@@ -105,6 +157,9 @@ export default function CandidateDashboard() {
   const { user, loading } = useAuth();
   const [applications, setApplications] = useState<Application[]>([]);
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
+  const [verifiedWorkHistory, setVerifiedWorkHistory] = useState<VerifiedWorkHistory[]>([]);
+  const [references, setReferences] = useState<Reference[]>([]);
+  const [referenceTemplates, setReferenceTemplates] = useState<ReferenceTemplate[]>([]);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
     profileViews: 0,
     appliedJobs: 0,
@@ -121,14 +176,28 @@ export default function CandidateDashboard() {
   const [loadingApplications, setLoadingApplications] = useState(true);
   const [loadingSavedJobs, setLoadingSavedJobs] = useState(true);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [loadingWorkHistory, setLoadingWorkHistory] = useState(true);
+  const [loadingReferences, setLoadingReferences] = useState(true);
   const [editingNotes, setEditingNotes] = useState<string | null>(null);
   const [notesText, setNotesText] = useState('');
+  const [showRequestReferenceModal, setShowRequestReferenceModal] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<ReferenceTemplate | null>(null);
+  const [customMessage, setCustomMessage] = useState('');
+  const [referrerEmail, setReferrerEmail] = useState('');
+  const [referrerName, setReferrerName] = useState('');
+  const [referrerPosition, setReferrerPosition] = useState('');
+  const [referrerCompany, setReferrerCompany] = useState('');
+  const [profileCompletion, setProfileCompletion] = useState(0);
 
   useEffect(() => {
     if (user && user.role === 'candidate') {
       fetchApplications();
       fetchSavedJobs();
       fetchDashboardStats();
+      fetchVerifiedWorkHistory();
+      fetchReferences();
+      fetchReferenceTemplates();
+      calculateProfileCompletion();
     }
   }, [user]);
 
@@ -149,7 +218,7 @@ export default function CandidateDashboard() {
       
       if (response.ok) {
         const data = await response.json();
-        setApplications(data.data.applications || []);
+        setApplications(data.applications || []);
       } else {
         throw new Error('Failed to fetch applications');
       }
@@ -257,6 +326,166 @@ export default function CandidateDashboard() {
     }
   };
 
+  const fetchVerifiedWorkHistory = async () => {
+    try {
+      setLoadingWorkHistory(true);
+      const response = await fetch(getApiUrl('/candidate/verified-work-history'), {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setVerifiedWorkHistory(data.workHistory || []);
+      } else {
+        // Mock data for now
+        setVerifiedWorkHistory([
+          {
+            id: '1',
+            company: 'Tech Corp',
+            role: 'Senior Software Engineer',
+            startDate: '2022-01-01',
+            endDate: '2024-01-01',
+            duration: '2 years',
+            isVerified: true,
+            verifiedBy: 'HR Department',
+            verifiedAt: '2024-01-15'
+          },
+          {
+            id: '2',
+            company: 'StartupXYZ',
+            role: 'Full Stack Developer',
+            startDate: '2020-06-01',
+            endDate: '2021-12-31',
+            duration: '1.5 years',
+            isVerified: false
+          }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error fetching verified work history:', error);
+      toast.error('Failed to load work history');
+    } finally {
+      setLoadingWorkHistory(false);
+    }
+  };
+
+  const fetchReferences = async () => {
+    try {
+      setLoadingReferences(true);
+      const response = await fetch(getApiUrl('/candidate/references'), {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setReferences(data.references || []);
+      } else {
+        // Mock data for now
+        setReferences([
+          {
+            id: '1',
+            referrerName: 'John Smith',
+            referrerEmail: 'john@techcorp.com',
+            referrerPosition: 'Engineering Manager',
+            referrerCompany: 'Tech Corp',
+            relationship: 'manager',
+            keyCompetencies: ['Leadership', 'Technical Skills', 'Problem Solving'],
+            isVisible: true,
+            endorsementText: 'Excellent team player with strong technical skills.',
+            rating: 5,
+            status: 'completed',
+            createdAt: '2024-01-01'
+          },
+          {
+            id: '2',
+            referrerName: 'Sarah Johnson',
+            referrerEmail: 'sarah@startup.com',
+            referrerPosition: 'Product Manager',
+            referrerCompany: 'StartupXYZ',
+            relationship: 'colleague',
+            keyCompetencies: ['Communication', 'Project Management'],
+            isVisible: false,
+            status: 'pending',
+            createdAt: '2024-01-15'
+          }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error fetching references:', error);
+      toast.error('Failed to load references');
+    } finally {
+      setLoadingReferences(false);
+    }
+  };
+
+  const fetchReferenceTemplates = async () => {
+    try {
+      const response = await fetch(getApiUrl('/candidate/reference-templates'), {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setReferenceTemplates(data.templates || []);
+      } else {
+        // Mock templates
+        setReferenceTemplates([
+          {
+            id: '1',
+            name: 'Technical Skills',
+            description: 'For technical roles and engineering positions',
+            message: 'I would like to request a reference for my technical skills and engineering capabilities.',
+            skills: ['Programming', 'System Design', 'Problem Solving']
+          },
+          {
+            id: '2',
+            name: 'Leadership & Management',
+            description: 'For leadership and management positions',
+            message: 'I would like to request a reference for my leadership and management abilities.',
+            skills: ['Team Leadership', 'Project Management', 'Strategic Thinking']
+          },
+          {
+            id: '3',
+            name: 'General Professional',
+            description: 'For general professional roles',
+            message: 'I would like to request a reference for my professional work and collaboration skills.',
+            skills: ['Communication', 'Collaboration', 'Work Ethic']
+          }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error fetching reference templates:', error);
+    }
+  };
+
+  const calculateProfileCompletion = () => {
+    if (!user?.candidateProfile) {
+      setProfileCompletion(0);
+      return;
+    }
+
+    const profile = user.candidateProfile;
+    let completedFields = 0;
+    const totalFields = 8;
+
+    if (profile.bio) completedFields++;
+    if (profile.location) completedFields++;
+    if (profile.availability) completedFields++;
+    if (profile.salary_expectation !== null && profile.salary_expectation !== undefined) completedFields++;
+    if (profile.experience_years !== null && profile.experience_years !== undefined) completedFields++;
+    if (profile.skills && profile.skills.length > 0) completedFields++;
+    if (profile.experiences && profile.experiences.length > 0) completedFields++;
+    if (profile.educations && profile.educations.length > 0) completedFields++;
+
+    setProfileCompletion(Math.round((completedFields / totalFields) * 100));
+  };
+
   const unsaveJob = async (jobId: string) => {
     try {
       const response = await fetch(getApiUrl(`/jobs/${jobId}/save`), {
@@ -342,6 +571,112 @@ export default function CandidateDashboard() {
     return 'Not specified';
   };
 
+  const toggleReferenceVisibility = async (referenceId: string, isVisible: boolean) => {
+    try {
+      const response = await fetch(getApiUrl(`/candidate/references/${referenceId}/visibility`), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+        },
+        body: JSON.stringify({ isVisible })
+      });
+
+      if (response.ok) {
+        setReferences(references.map(ref => 
+          ref.id === referenceId ? { ...ref, isVisible } : ref
+        ));
+        toast.success(`Reference ${isVisible ? 'made visible' : 'hidden'} successfully`);
+      } else {
+        const errorData = await response.json();
+        if (errorData.message === 'Cannot toggle visibility for pending references') {
+          toast.info('Visibility can only be toggled for completed references');
+        } else {
+          throw new Error(errorData.message || 'Failed to update reference visibility');
+        }
+      }
+    } catch (error) {
+      console.error('Error updating reference visibility:', error);
+      toast.error('Failed to update reference visibility');
+    }
+  };
+
+  const removeReference = async (referenceId: string) => {
+    try {
+      const response = await fetch(getApiUrl(`/candidate/references/${referenceId}`), {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+        }
+      });
+
+      if (response.ok) {
+        setReferences(references.filter(ref => ref.id !== referenceId));
+        toast.success('Reference removed successfully');
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to remove reference');
+      }
+    } catch (error) {
+      console.error('Error removing reference:', error);
+      toast.error('Failed to remove reference');
+    }
+  };
+
+  const sendReferenceRequest = async () => {
+    if (!selectedTemplate || !referrerEmail || !referrerName) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    // Check if a reference request already exists for this email
+    const existingReference = references.find(ref => 
+      ref.referrerEmail.toLowerCase() === referrerEmail.toLowerCase()
+    );
+
+    if (existingReference) {
+      toast.error('A reference request has already been sent to this email address');
+      return;
+    }
+
+    try {
+      const response = await fetch(getApiUrl('/candidate/references/request'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+        },
+        body: JSON.stringify({
+          referrerEmail,
+          referrerName,
+          referrerPosition,
+          referrerCompany,
+          templateId: selectedTemplate.id,
+          customMessage: customMessage || selectedTemplate.message,
+          skills: selectedTemplate.skills
+        })
+      });
+
+      if (response.ok) {
+        toast.success('Reference request sent successfully');
+        setShowRequestReferenceModal(false);
+        setReferrerEmail('');
+        setReferrerName('');
+        setReferrerPosition('');
+        setReferrerCompany('');
+        setCustomMessage('');
+        setSelectedTemplate(null);
+        fetchReferences(); // Refresh references list
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to send reference request');
+      }
+    } catch (error) {
+      console.error('Error sending reference request:', error);
+      toast.error(error.message || 'Failed to send reference request');
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
   }
@@ -362,217 +697,430 @@ export default function CandidateDashboard() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* Header with Profile Completion Bar */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Dashboard Overview</h1>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {/* Profile Views */}
-        <Card className="hover:shadow-lg transition-shadow">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-3xl font-bold">Candidate Dashboard</h1>
+          <div className="flex items-center gap-4">
+            <NotificationBell />
+            <Button variant="outline" size="sm">
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
+            </Button>
+          </div>
+        </div>
+        
+        {/* Profile Completion Bar */}
+        <Card>
           <CardContent className="p-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="text-sm font-medium text-gray-600">Profile Views</p>
-                <p className="text-3xl font-bold text-gray-900">{dashboardStats.profileViews.toLocaleString()}</p>
+                <h3 className="text-lg font-semibold">Profile Completion</h3>
+                <p className="text-sm text-muted-foreground">
+                  Complete your profile to increase your visibility to employers
+                </p>
               </div>
-              <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                <Eye className="h-6 w-6 text-primary" />
+              <div className="text-right">
+                <span className="text-2xl font-bold text-primary">{profileCompletion}%</span>
+                <p className="text-sm text-muted-foreground">Complete</p>
               </div>
             </div>
-              </CardContent>
-            </Card>
-
-        {/* Applied Jobs */}
-        <Card className="hover:shadow-lg transition-shadow">
-                  <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Applied Jobs</p>
-                <p className="text-3xl font-bold text-gray-900">{dashboardStats.appliedJobs}</p>
-                        </div>
-              <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                <Briefcase className="h-6 w-6 text-primary" />
-                          </div>
-                        </div>
+            <Progress value={profileCompletion} className="h-2" />
+            {profileCompletion < 100 && (
+              <div className="mt-4">
+                <Link href="/profile">
+                  <Button size="sm">
+                    <Edit className="h-4 w-4 mr-2" />
+                    Complete Profile
+                  </Button>
+                </Link>
+              </div>
+            )}
           </CardContent>
         </Card>
-
-        {/* Invitations */}
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Invitations</p>
-                <p className="text-3xl font-bold text-gray-900">{dashboardStats.invitations}</p>
-                      </div>
-              <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                <Mail className="h-6 w-6 text-primary" />
-                      </div>
-                    </div>
-          </CardContent>
-        </Card>
-
-        {/* Profile Reviews */}
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Profile Reviews</p>
-                <p className="text-3xl font-bold text-gray-900">{dashboardStats.profileReviews}</p>
-                        </div>
-              <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                <Star className="h-6 w-6 text-primary" />
-                      </div>
-                      </div>
-                  </CardContent>
-                </Card>
       </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Profile Views Chart */}
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-primary" />
-                <CardTitle className="text-lg font-semibold">MY PROFILE VIEWS</CardTitle>
-              </div>
-              <Select defaultValue="6months">
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1month" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Last Month</SelectItem>
-                  <SelectItem value="3months" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Last 3 Months</SelectItem>
-                  <SelectItem value="6months" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Last 6 Months</SelectItem>
-                  <SelectItem value="1year" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Last Year</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 flex items-end justify-between gap-2">
-              {dashboardStats.profileViewsData.map((data, index) => (
-                <div key={data.month} className="flex flex-col items-center gap-2 flex-1">
-                  <div 
-                    className="w-full bg-primary rounded-t-sm transition-all duration-300 hover:bg-primary/80"
-                    style={{ height: `${(data.views / 600) * 200}px` }}
-                  ></div>
-                  <span className="text-xs text-gray-600">{data.month}</span>
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* Left Column - Verified Work History */}
+        <div className="lg:col-span-2 space-y-6">
+          
+          {/* Verified Work History Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Verified Work History
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingWorkHistory ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
-              ))}
-            </div>
-            <div className="mt-4 flex justify-between text-xs text-gray-500">
-              <span>0</span>
-              <span>100</span>
-              <span>200</span>
-              <span>300</span>
-              <span>400</span>
-              <span>500</span>
-              <span>600</span>
-            </div>
-              </CardContent>
-            </Card>
-
-        {/* Application Status Pie Chart */}
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-primary" />
-                <CardTitle className="text-lg font-semibold">APPLICATION STATUS</CardTitle>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-center h-64">
-              <div className="relative w-48 h-48">
-                {/* Pie Chart SVG */}
-                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                  {/* Rejected - Red */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    fill="none"
-                    stroke="#ef4444"
-                    strokeWidth="20"
-                    strokeDasharray={`${(dashboardStats.applicationStatus.rejected / 40) * 251.2} 251.2`}
-                    strokeDashoffset="0"
-                  />
-                  {/* Accepted - Green */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    fill="none"
-                    stroke="#22c55e"
-                    strokeWidth="20"
-                    strokeDasharray={`${(dashboardStats.applicationStatus.accepted / 40) * 251.2} 251.2`}
-                    strokeDashoffset={`-${(dashboardStats.applicationStatus.rejected / 40) * 251.2}`}
-                  />
-                  {/* Interview - Primary Blue */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    fill="none"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth="20"
-                    strokeDasharray={`${(dashboardStats.applicationStatus.interview / 40) * 251.2} 251.2`}
-                    strokeDashoffset={`-${((dashboardStats.applicationStatus.rejected + dashboardStats.applicationStatus.accepted) / 40) * 251.2}`}
-                  />
-                  {/* Pending - Orange */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    fill="none"
-                    stroke="#f97316"
-                    strokeWidth="20"
-                    strokeDasharray={`${(dashboardStats.applicationStatus.pending / 40) * 251.2} 251.2`}
-                    strokeDashoffset={`-${((dashboardStats.applicationStatus.rejected + dashboardStats.applicationStatus.accepted + dashboardStats.applicationStatus.interview) / 40) * 251.2}`}
-                  />
-                </svg>
-                
-                {/* Center Text */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-gray-900">
-                      {dashboardStats.applicationStatus.rejected + dashboardStats.applicationStatus.accepted + dashboardStats.applicationStatus.interview + dashboardStats.applicationStatus.pending}
-                    </p>
-                    <p className="text-sm text-gray-600">Total</p>
+              ) : verifiedWorkHistory.length > 0 ? (
+                <div className="space-y-4">
+                  {verifiedWorkHistory.map((work) => (
+                    <div key={work.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Building2 className="h-4 w-4 text-muted-foreground" />
+                            <h4 className="font-semibold">{work.company}</h4>
+                            {work.isVerified && (
+                              <Badge variant="secondary" className="bg-green-100 text-green-800">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Verified
+                              </Badge>
+                            )}
                           </div>
+                          <p className="text-sm text-muted-foreground mb-1">{work.role}</p>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {work.startDate} - {work.endDate || 'Present'}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {work.duration}
+                            </span>
                           </div>
+                          {work.isVerified && work.verifiedBy && (
+                            <p className="text-xs text-green-600 mt-2">
+                              Verified by {work.verifiedBy} on {work.verifiedAt}
+                            </p>
+                          )}
                         </div>
-                      </div>
-            
-            {/* Legend */}
-            <div className="grid grid-cols-2 gap-4 mt-6">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-red-500 rounded-full"></div>
-                <span className="text-sm text-gray-600">Rejected ({dashboardStats.applicationStatus.rejected})</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-green-500 rounded-full"></div>
-                <span className="text-sm text-gray-600">Accepted ({dashboardStats.applicationStatus.accepted})</span>
-                              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-primary rounded-full"></div>
-                <span className="text-sm text-gray-600">Interview ({dashboardStats.applicationStatus.interview})</span>
-                            </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-orange-500 rounded-full"></div>
-                <span className="text-sm text-gray-600">Pending ({dashboardStats.applicationStatus.pending})</span>
+                        <Button variant="outline" size="sm">
+                          <Edit className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
-          </CardContent>
-        </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Work History</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Add your work experience to build trust with employers
+                  </p>
+                  <Link href="/profile">
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Work Experience
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* Transparency Dashboard Section */}
-        <div className="col-span-full">
+          {/* References Section */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <UserCheck className="h-5 w-5" />
+                  References
+                </CardTitle>
+                <Dialog open={showRequestReferenceModal} onOpenChange={setShowRequestReferenceModal}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Request New Reference
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Request New Reference</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-6">
+                      {/* Template Selection */}
+                      <div>
+                        <Label>Reference Template</Label>
+                        <Select onValueChange={(value) => {
+                          const template = referenceTemplates.find(t => t.id === value);
+                          setSelectedTemplate(template || null);
+                        }}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose a template" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {referenceTemplates.map((template) => (
+                              <SelectItem key={template.id} value={template.id}>
+                                <div>
+                                  <div className="font-medium">{template.name}</div>
+                                  <div className="text-sm text-muted-foreground">{template.description}</div>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Referrer Information */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="referrerName">Referrer Name *</Label>
+                          <Input
+                            id="referrerName"
+                            value={referrerName}
+                            onChange={(e) => setReferrerName(e.target.value)}
+                            placeholder="John Smith"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="referrerEmail">Email Address *</Label>
+                          <Input
+                            id="referrerEmail"
+                            type="email"
+                            value={referrerEmail}
+                            onChange={(e) => setReferrerEmail(e.target.value)}
+                            placeholder="john@company.com"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="referrerPosition">Position</Label>
+                          <Input
+                            id="referrerPosition"
+                            value={referrerPosition}
+                            onChange={(e) => setReferrerPosition(e.target.value)}
+                            placeholder="Engineering Manager"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="referrerCompany">Company</Label>
+                          <Input
+                            id="referrerCompany"
+                            value={referrerCompany}
+                            onChange={(e) => setReferrerCompany(e.target.value)}
+                            placeholder="Tech Corp"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Custom Message */}
+                      <div>
+                        <Label htmlFor="customMessage">Custom Message</Label>
+                        <Textarea
+                          id="customMessage"
+                          value={customMessage}
+                          onChange={(e) => setCustomMessage(e.target.value)}
+                          placeholder={selectedTemplate?.message || "Enter your custom message..."}
+                          rows={4}
+                        />
+                      </div>
+
+                      {/* Skills to Review */}
+                      {selectedTemplate && (
+                        <div>
+                          <Label>Skills to Review</Label>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {selectedTemplate.skills.map((skill) => (
+                              <Badge key={skill} variant="secondary">
+                                {skill}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setShowRequestReferenceModal(false)}>
+                          Cancel
+                        </Button>
+                        <Button onClick={sendReferenceRequest}>
+                          Send Request
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingReferences ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : references.length > 0 ? (
+                <div className="space-y-4">
+                  {references.map((reference) => (
+                    <div key={reference.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-semibold">{reference.referrerName}</h4>
+                            <Badge variant={reference.status === 'completed' ? 'default' : 'secondary'}>
+                              {reference.status}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {reference.referrerPosition} at {reference.referrerCompany}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Relationship: {reference.relationship}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
+                            {reference.status === 'completed' ? (
+                              <>
+                                <Switch
+                                  checked={reference.isVisible}
+                                  onCheckedChange={(checked) => toggleReferenceVisibility(reference.id, checked)}
+                                />
+                                <span className="text-sm">
+                                  {reference.isVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                                </span>
+                              </>
+                            ) : (
+                              <div className="flex items-center gap-1 opacity-50" title="Visibility can only be toggled for completed references">
+                                <Switch
+                                  checked={false}
+                                  disabled={true}
+                                />
+                                <span className="text-sm">
+                                  <EyeOff className="h-4 w-4" />
+                                </span>
+                                <span className="text-xs text-muted-foreground">Pending</span>
+                              </div>
+                            )}
+                          </div>
+                          <Button variant="outline" size="sm" onClick={() => removeReference(reference.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      {reference.keyCompetencies.length > 0 && (
+                        <div className="mb-3">
+                          <p className="text-sm font-medium mb-2">Key Competencies:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {reference.keyCompetencies.map((competency) => (
+                              <Badge key={competency} variant="outline" className="text-xs">
+                                {competency}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {reference.endorsementText && (
+                        <div className="bg-gray-50 rounded p-3">
+                          <p className="text-sm italic">"{reference.endorsementText}"</p>
+                          {reference.rating && (
+                            <div className="flex items-center gap-1 mt-2">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`h-4 w-4 ${i < reference.rating! ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <UserCheck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No References Yet</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Request references from colleagues and managers to build credibility
+                  </p>
+                  <Button onClick={() => setShowRequestReferenceModal(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Request Your First Reference
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column - Quick Stats */}
+        <div className="space-y-6">
+          
+          {/* Quick Stats */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Stats</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Profile Views</span>
+                </div>
+                <span className="font-semibold">{dashboardStats.profileViews}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Briefcase className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Applications</span>
+                </div>
+                <span className="font-semibold">{dashboardStats.appliedJobs}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <UserCheck className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">References</span>
+                </div>
+                <span className="font-semibold">{references.length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Award className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Verified Work</span>
+                </div>
+                <span className="font-semibold">
+                  {verifiedWorkHistory.filter(w => w.isVerified).length}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Recent Activity */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Activity</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                  <div>
+                    <p className="text-sm">Profile viewed by 3 employers</p>
+                    <p className="text-xs text-muted-foreground">2 hours ago</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                  <div>
+                    <p className="text-sm">New reference completed</p>
+                    <p className="text-xs text-muted-foreground">1 day ago</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
+                  <div>
+                    <p className="text-sm">Application status updated</p>
+                    <p className="text-xs text-muted-foreground">3 days ago</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Transparency Dashboard */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -582,10 +1130,10 @@ export default function CandidateDashboard() {
             </CardHeader>
             <CardContent>
               <TransparencyDashboard />
-                  </CardContent>
-                </Card>
+            </CardContent>
+          </Card>
         </div>
-            </div>
+      </div>
     </div>
   );
 }

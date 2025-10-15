@@ -4,12 +4,14 @@ import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 import { Analytics } from "@vercel/analytics/next"
 import { AuthProvider } from "@/lib/auth"
+import { NotificationProvider } from "@/lib/notifications/NotificationContext"
 import { Header } from "@/components/layout/header"
 import { Banner } from "@/components/layout/banner"
 import { Footer } from "@/components/layout/footer"
 import { ProfileModalWrapper } from "@/components/profile/profile-modal-wrapper"
 import { Suspense } from "react"
 import { HotToastToaster } from "@/components/ui/hot-toaster"
+import { Toaster } from "@/components/ui/sonner"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -32,18 +34,21 @@ export default function RootLayout({
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <Suspense fallback={<div>Loading...</div>}>
           <AuthProvider>
-            <div className="min-h-screen flex flex-col">
-              <Header />
-              <Banner />
-              <main className="flex-1">
-                {children}
-              </main>
-              <Footer />
-              <ProfileModalWrapper />
-            </div>
+            <NotificationProvider>
+              <div className="min-h-screen flex flex-col">
+                <Header />
+                <Banner />
+                <main className="flex-1">
+                  {children}
+                </main>
+                <Footer />
+                <ProfileModalWrapper />
+              </div>
+            </NotificationProvider>
           </AuthProvider>
         </Suspense>
         <HotToastToaster />
+        <Toaster />
         <Analytics />
       </body>
     </html>

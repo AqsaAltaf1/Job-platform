@@ -212,10 +212,10 @@ export default function ReviewSkillsPage({ params }: { params: { token: string }
         {/* Header */}
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle className="text-2xl text-center">Skill Endorsement Request</CardTitle>
+            <CardTitle className="text-2xl text-center">Professional Reference Request</CardTitle>
             <div className="text-center">
               <p className="text-gray-600">
-                You've been invited to endorse the skills of{' '}
+                You've been invited to provide a professional reference for{' '}
                 <span className="font-semibold">{candidate.first_name} {candidate.last_name}</span>
               </p>
               <p className="text-sm text-gray-500 mt-2">
@@ -225,7 +225,7 @@ export default function ReviewSkillsPage({ params }: { params: { token: string }
           </CardHeader>
         </Card>
 
-        {/* Skills to Review */}
+        {/* Professional Reference Form */}
         <div className="space-y-6">
           {skillsToReview.map((skill) => {
             const endorsement = endorsements.find(e => e.skill_id === skill.id);
@@ -236,7 +236,7 @@ export default function ReviewSkillsPage({ params }: { params: { token: string }
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle className="text-xl">{skill.name}</CardTitle>
+                      <CardTitle className="text-xl">Reference for {skill.name}</CardTitle>
                       <div className="flex items-center gap-2 mt-2">
                         <Badge className={getLevelColor(skill.level)}>
                           {skill.level}

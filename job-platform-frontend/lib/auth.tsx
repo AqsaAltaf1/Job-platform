@@ -9,13 +9,14 @@ import { authAPI, tokenManager, RegisterData } from "./auth-api"
 
 interface AuthContextType {
   user: UserWithProfile | null
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
-  register: (userData: RegisterData) => Promise<{ success: boolean; error?: string }>
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string; user?: UserWithProfile }>
+  register: (userData: RegisterData) => Promise<{ success: boolean; error?: string; requiresOtp?: boolean; expiresAt?: string; user?: UserWithProfile }>
   logout: () => void
   loading: boolean
   showProfileModal: boolean
   setShowProfileModal: (show: boolean) => void
   refreshUser: () => Promise<void>
+  setUser: (user: UserWithProfile | null) => void
 }
 
 
@@ -142,7 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  return <AuthContext.Provider value={{ user, login, register, logout, loading, showProfileModal, setShowProfileModal, refreshUser }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, login, register, logout, loading, showProfileModal, setShowProfileModal, refreshUser, setUser }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
