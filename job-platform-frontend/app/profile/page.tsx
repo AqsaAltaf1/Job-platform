@@ -75,6 +75,30 @@ export default function ProfilePage() {
     }
   }, [user?.id, user?.role, dataLoaded]) // Only depend on user ID and role, not the entire user object
 
+  // Log profile view for transparency
+  useEffect(() => {
+    if (user?.id && user?.role === 'candidate') {
+      const logProfileView = async () => {
+        try {
+          await fetch(`/api/references/profile-view/${user.id}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              viewer_type: 'candidate',
+              viewer_id: user.id
+            })
+          });
+        } catch (error) {
+          console.error('Error logging profile view:', error);
+        }
+      };
+      
+      logProfileView();
+    }
+  }, [user?.id, user?.role]);
+
   // Debug effect to track user data changes
   useEffect(() => {
     console.log('User data changed:', {

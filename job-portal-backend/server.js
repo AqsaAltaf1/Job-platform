@@ -288,6 +288,7 @@ import stripeRoutes from './routes/stripeRoutes.js';
 
 // Import Reference routes
 import referenceRoutes from './routes/referenceRoutes.js';
+import verifiedEmploymentRoutes from './routes/verifiedEmploymentRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -600,6 +601,9 @@ app.use('/api/stripe', stripeRoutes);
 
 // Reference Routes
 app.use('/api/references', referenceRoutes);
+
+// Verified Employment Routes
+app.use('/api/verified-employment', verifiedEmploymentRoutes);
 
 // Start server
 app.listen(PORT, async () => {

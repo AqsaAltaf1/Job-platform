@@ -42,12 +42,14 @@ import {
   MoreHorizontal,
   Building2,
   Award,
-  MessageSquare
+  MessageSquare,
+  RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getApiUrl } from '@/lib/config';
 import Link from 'next/link';
 import TransparencyDashboard from '@/components/profile/transparency-dashboard';
+import RecentActivity from '@/components/dashboard/recent-activity';
 
 interface Job {
   id: string;
@@ -101,15 +103,18 @@ interface DashboardStats {
 }
 
 interface VerifiedWorkHistory {
-  id: string;
-  company: string;
-  role: string;
-  startDate: string;
-  endDate?: string;
-  duration: string;
-  isVerified: boolean;
-  verifiedBy?: string;
-  verifiedAt?: string;
+  id: number;
+  company_name: string;
+  title: string;
+  start_date: string;
+  end_date?: string | null;
+  verification_status: 'NOT_VERIFIED' | 'PENDING' | 'VERIFIED' | 'DECLINED' | 'EXPIRED';
+  verifier_name?: string | null;
+  verifier_contact_email?: string | null;
+  verified_at?: string | null;
+  review_token?: string | null;
+  review_token_expires_at?: string | null;
+  responsibilities?: string | null;
 }
 
 interface Reference {
@@ -121,6 +126,7 @@ interface Reference {
   relationship: 'colleague' | 'manager' | 'client' | 'peer' | 'other';
   keyCompetencies: string[];
   isVisible: boolean;
+  isOutdated?: boolean;
   endorsementText?: string;
   rating?: number;
   status: 'pending' | 'completed' | 'declined';
@@ -158,6 +164,18 @@ export default function CandidateDashboard() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
   const [verifiedWorkHistory, setVerifiedWorkHistory] = useState<VerifiedWorkHistory[]>([]);
+  const [showAddVerifiedEmployment, setShowAddVerifiedEmployment] = useState(false);
+  const [veCompany, setVeCompany] = useState('');
+  const [veTitle, setVeTitle] = useState('');
+  const [veStartDate, setVeStartDate] = useState('');
+  const [veEndDate, setVeEndDate] = useState('');
+  const [veEmploymentType, setVeEmploymentType] = useState('');
+  const [veResponsibilities, setVeResponsibilities] = useState('');
+  const [veVerifierEmail, setVeVerifierEmail] = useState('');
+  const [veVerifierName, setVeVerifierName] = useState('');
+  const [creatingVE, setCreatingVE] = useState(false);
+  const [editingVE, setEditingVE] = useState<VerifiedWorkHistory | null>(null);
+  const [showEditVE, setShowEditVE] = useState(false);
   const [references, setReferences] = useState<Reference[]>([]);
   const [referenceTemplates, setReferenceTemplates] = useState<ReferenceTemplate[]>([]);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
@@ -329,7 +347,7 @@ export default function CandidateDashboard() {
   const fetchVerifiedWorkHistory = async () => {
     try {
       setLoadingWorkHistory(true);
-      const response = await fetch(getApiUrl('/candidate/verified-work-history'), {
+      const response = await fetch(getApiUrl('/verified-employment'), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
         }
@@ -337,39 +355,182 @@ export default function CandidateDashboard() {
       
       if (response.ok) {
         const data = await response.json();
-        setVerifiedWorkHistory(data.workHistory || []);
+        setVerifiedWorkHistory(data.data || []);
       } else {
-        // Mock data for now
-        setVerifiedWorkHistory([
-          {
-            id: '1',
-            company: 'Tech Corp',
-            role: 'Senior Software Engineer',
-            startDate: '2022-01-01',
-            endDate: '2024-01-01',
-            duration: '2 years',
-            isVerified: true,
-            verifiedBy: 'HR Department',
-            verifiedAt: '2024-01-15'
-          },
-          {
-            id: '2',
-            company: 'StartupXYZ',
-            role: 'Full Stack Developer',
-            startDate: '2020-06-01',
-            endDate: '2021-12-31',
-            duration: '1.5 years',
-            isVerified: false
-          }
-        ]);
+        throw new Error('Failed to fetch verified work history');
       }
-    } catch (error) {
-      console.error('Error fetching verified work history:', error);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      console.error('Error fetching verified work history:', e);
       toast.error('Failed to load work history');
     } finally {
       setLoadingWorkHistory(false);
     }
   };
+
+  const createVerifiedEmployment = async () => {
+    if (!veCompany || !veTitle || !veStartDate) {
+      toast.error('Please fill in company, title, and start date');
+      return;
+    }
+    if (veEndDate && new Date(veEndDate) < new Date(veStartDate)) {
+      toast.error('End date cannot be before start date');
+      return;
+    }
+    try {
+      setCreatingVE(true);
+      const response = await fetch(getApiUrl('/verified-employment'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+        },
+        body: JSON.stringify({
+          company_name: veCompany,
+          title: veTitle,
+          employment_type: veEmploymentType || undefined,
+          start_date: veStartDate,
+          end_date: veEndDate || undefined,
+          responsibilities: veResponsibilities || undefined,
+          verifier_contact_email: veVerifierEmail || undefined,
+          verifier_name: veVerifierName || undefined,
+        })
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to create record');
+      }
+      toast.success('Verified employment record created');
+      setShowAddVerifiedEmployment(false);
+      setVeCompany('');
+      setVeTitle('');
+      setVeStartDate('');
+      setVeEndDate('');
+      setVeEmploymentType('');
+      setVeResponsibilities('');
+      setVeVerifierEmail('');
+      setVeVerifierName('');
+      fetchVerifiedWorkHistory();
+    } catch (e:any) {
+      console.error(e);
+      toast.error(e.message || 'Failed to create record');
+    } finally {
+      setCreatingVE(false);
+    }
+  };
+
+  const requestEmploymentReview = async (id: number) => {
+    try {
+      // Find the work record to get verifier email
+      const workRecord = verifiedWorkHistory.find(w => w.id === id);
+      if (!workRecord) {
+        toast.error('Work record not found');
+        return;
+      }
+
+      if (!workRecord.verifier_contact_email) {
+        toast.error('Please add verifier email in the edit modal before requesting review');
+        return;
+      }
+
+      const response = await fetch(getApiUrl(`/verified-employment/${id}/request`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+        },
+        body: JSON.stringify({
+          verifier_contact_email: workRecord.verifier_contact_email,
+          verifier_name: workRecord.verifier_name
+        })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        toast.success('Verification email sent to employer');
+        if (data.data?.review_url) {
+          toast.message('Share this link with your verifier', {
+            description: data.data.review_url,
+          });
+        }
+        fetchVerifiedWorkHistory();
+      } else if (response.status === 409) {
+        toast.info('A review request is already active for this employment. Please wait until it expires.');
+      } else {
+        throw new Error(data.error || 'Failed to request review');
+      }
+    } catch (e:any) {
+      console.error(e);
+      toast.error(e.message || 'Failed to request review');
+    }
+  };
+
+  const deleteVerifiedEmployment = async (id: number) => {
+    try {
+      const res = await fetch(getApiUrl(`/verified-employment/${id}`), {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('jwt_token')}` }
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(()=>({}));
+        throw new Error(err.error || 'Failed to delete record')
+      }
+      toast.success('Verified employment removed')
+      setVerifiedWorkHistory(verifiedWorkHistory.filter(w => w.id !== id))
+    } catch (e:any) {
+      toast.error(e.message)
+    }
+  }
+
+  const openEditVE = (work: VerifiedWorkHistory) => {
+    setEditingVE(work)
+    setVeCompany(work.company_name)
+    setVeTitle(work.title)
+    setVeStartDate(work.start_date)
+    setVeEndDate(work.end_date || '')
+    setVeResponsibilities(work.responsibilities || '')
+    setVeVerifierEmail(work.verifier_contact_email || '')
+    setVeVerifierName(work.verifier_name || '')
+    setShowEditVE(true)
+  }
+
+  const saveEditVE = async () => {
+    if (!editingVE) return
+    if (!veCompany || !veTitle || !veStartDate) {
+      toast.error('Please fill in company, title, and start date')
+      return
+    }
+    if (veEndDate && new Date(veEndDate) < new Date(veStartDate)) {
+      toast.error('End date cannot be before start date')
+      return
+    }
+    try {
+      const res = await fetch(getApiUrl(`/verified-employment/${editingVE.id}`), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+        },
+        body: JSON.stringify({
+          company_name: veCompany,
+          title: veTitle,
+          start_date: veStartDate,
+          end_date: veEndDate || null,
+          employment_type: veEmploymentType || undefined,
+          responsibilities: veResponsibilities || undefined,
+          verifier_contact_email: veVerifierEmail || undefined,
+          verifier_name: veVerifierName || undefined,
+        })
+      })
+      const data = await res.json().catch(()=>({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to update record')
+      toast.success('Verified employment updated')
+      setShowEditVE(false)
+      setEditingVE(null)
+      fetchVerifiedWorkHistory()
+    } catch (e:any) {
+      toast.error(e.message)
+    }
+  }
 
   const fetchReferences = async () => {
     try {
@@ -623,6 +784,53 @@ export default function CandidateDashboard() {
     }
   };
 
+  const requestReferenceUpdate = async (referenceId: string) => {
+    try {
+      const response = await fetch(getApiUrl(`/references/${referenceId}/request-update`), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+        }
+      });
+
+      if (response.ok) {
+        toast.success('Update request sent to referrer');
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to send update request');
+      }
+    } catch (error) {
+      console.error('Error requesting reference update:', error);
+      toast.error('Failed to send update request');
+    }
+  };
+
+  const toggleReferenceOutdated = async (referenceId: string, isOutdated: boolean) => {
+    try {
+      const response = await fetch(getApiUrl(`/references/${referenceId}/outdated`), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+        },
+        body: JSON.stringify({ is_outdated: isOutdated })
+      });
+
+      if (response.ok) {
+        setReferences(references.map(ref => 
+          ref.id === referenceId ? { ...ref, isOutdated } : ref
+        ));
+        toast.success(`Reference marked as ${isOutdated ? 'outdated' : 'current'}`);
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update reference status');
+      }
+    } catch (error) {
+      console.error('Error toggling reference outdated status:', error);
+      toast.error('Failed to update reference status');
+    }
+  };
+
   const sendReferenceRequest = async () => {
     if (!selectedTemplate || !referrerEmail || !referrerName) {
       toast.error('Please fill in all required fields');
@@ -671,9 +879,9 @@ export default function CandidateDashboard() {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to send reference request');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending reference request:', error);
-      toast.error(error.message || 'Failed to send reference request');
+      toast.error(error?.message || 'Failed to send reference request');
     }
   };
 
@@ -749,10 +957,150 @@ export default function CandidateDashboard() {
           {/* Verified Work History Section */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Verified Work History
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  Verified Work History
+                </CardTitle>
+                <Dialog open={showAddVerifiedEmployment} onOpenChange={setShowAddVerifiedEmployment}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Verified Employment
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Add Verified Employment</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="veCompany">Company *</Label>
+                          <Input id="veCompany" value={veCompany} onChange={e=>setVeCompany(e.target.value)} placeholder="Tech Corp" />
+                        </div>
+                        <div>
+                          <Label htmlFor="veTitle">Title *</Label>
+                          <Input id="veTitle" value={veTitle} onChange={e=>setVeTitle(e.target.value)} placeholder="Senior Software Engineer" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="veStart">Start Date *</Label>
+                          <Input id="veStart" type="date" value={veStartDate} onChange={e=>setVeStartDate(e.target.value)} />
+                        </div>
+                        <div>
+                          <Label htmlFor="veEnd">End Date</Label>
+                          <Input id="veEnd" type="date" value={veEndDate} onChange={e=>setVeEndDate(e.target.value)} />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="veType">Employment Type</Label>
+                          <Input id="veType" value={veEmploymentType} onChange={e=>setVeEmploymentType(e.target.value)} placeholder="full-time, contract..." />
+                        </div>
+                        <div>
+                          <Label htmlFor="veVerifierEmail">Verifier Email *</Label>
+                          <Input id="veVerifierEmail" type="email" value={veVerifierEmail} onChange={e=>setVeVerifierEmail(e.target.value)} placeholder="hr@company.com" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="veVerifierName">Verifier Name</Label>
+                          <Input id="veVerifierName" value={veVerifierName} onChange={e=>setVeVerifierName(e.target.value)} placeholder="HR Manager" />
+                        </div>
+                        <div>
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="veResp">Responsibilities</Label>
+                        <Textarea id="veResp" value={veResponsibilities} onChange={e=>setVeResponsibilities(e.target.value)} rows={3} placeholder="Brief description of your responsibilities" />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={()=>setShowAddVerifiedEmployment(false)}>Cancel</Button>
+                        <Button onClick={createVerifiedEmployment} disabled={creatingVE}>{creatingVE ? 'Saving...' : 'Save'}</Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Edit Verified Employment Modal */}
+                <Dialog open={showEditVE} onOpenChange={setShowEditVE}>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Edit Verified Employment</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="editCompany">Company *</Label>
+                          <Input id="editCompany" value={veCompany} onChange={e=>setVeCompany(e.target.value)} disabled={editingVE?.review_token ? true : false} />
+                        </div>
+                        <div>
+                          <Label htmlFor="editTitle">Title *</Label>
+                          <Input id="editTitle" value={veTitle} onChange={e=>setVeTitle(e.target.value)} disabled={editingVE?.review_token ? true : false} />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="editStart">Start Date *</Label>
+                          <Input id="editStart" type="date" value={veStartDate} onChange={e=>setVeStartDate(e.target.value)} disabled={editingVE?.review_token ? true : false} />
+                        </div>
+                        <div>
+                          <Label htmlFor="editEnd">End Date</Label>
+                          <Input id="editEnd" type="date" value={veEndDate} onChange={e=>setVeEndDate(e.target.value)} disabled={editingVE?.review_token ? true : false} />
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="editResp">Responsibilities</Label>
+                        <Textarea id="editResp" value={veResponsibilities} onChange={e=>setVeResponsibilities(e.target.value)} rows={3} disabled={editingVE?.review_token ? true : false} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="editVerifierEmail">Verifier Email</Label>
+                          <Input id="editVerifierEmail" type="email" value={veVerifierEmail} onChange={e=>setVeVerifierEmail(e.target.value)} placeholder="manager@company.com" disabled={editingVE?.review_token ? true : false} />
+                        </div>
+                        <div>
+                          <Label htmlFor="editVerifierName">Verifier Name</Label>
+                          <Input id="editVerifierName" value={veVerifierName} onChange={e=>setVeVerifierName(e.target.value)} placeholder="John Smith" disabled={editingVE?.review_token ? true : false} />
+                        </div>
+                      </div>
+                      {editingVE && editingVE.review_token && (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                          <div className="flex items-center gap-2 text-yellow-800">
+                            <Mail className="h-4 w-4" />
+                            <span className="text-sm font-medium">Verification email already sent</span>
+                          </div>
+                          <p className="text-xs text-yellow-700 mt-1">
+                            A verification request has been sent to the verifier. You cannot edit this record until the verification is complete.
+                          </p>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center">
+                        <div className="flex gap-2">
+                          <Button variant="outline" onClick={()=>setShowEditVE(false)}>Cancel</Button>
+                          <Button onClick={saveEditVE} disabled={editingVE?.review_token ? true : false}>
+                            Save Changes
+                          </Button>
+                        </div>
+                        {editingVE && editingVE.verification_status === 'NOT_VERIFIED' && !editingVE.review_token && (
+                          <Button 
+                            variant="default" 
+                            onClick={() => {
+                              setShowEditVE(false);
+                              requestEmploymentReview(editingVE.id);
+                            }}
+                            className="bg-blue-600 hover:bg-blue-700"
+                          >
+                            <Mail className="h-4 w-4 mr-2" />
+                            Request Review
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </CardHeader>
             <CardContent>
               {loadingWorkHistory ? (
@@ -767,34 +1115,76 @@ export default function CandidateDashboard() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             <Building2 className="h-4 w-4 text-muted-foreground" />
-                            <h4 className="font-semibold">{work.company}</h4>
-                            {work.isVerified && (
+                            <h4 className="font-semibold">{work.company_name}</h4>
+                            {work.verification_status === 'VERIFIED' ? (
                               <Badge variant="secondary" className="bg-green-100 text-green-800">
                                 <CheckCircle className="h-3 w-3 mr-1" />
                                 Verified
                               </Badge>
+                            ) : work.verification_status === 'DECLINED' ? (
+                              <Badge variant="secondary" className="bg-red-100 text-red-800">
+                                <XCircle className="h-3 w-3 mr-1" />
+                                Declined
+                              </Badge>
+                            ) : work.verification_status === 'PENDING' || (work.verification_status === 'NOT_VERIFIED' && work.review_token) ? (
+                              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                                <Clock className="h-3 w-3 mr-1" />
+                                Pending
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="bg-gray-100 text-gray-800">
+                                <AlertCircle className="h-3 w-3 mr-1" />
+                                Not Verified
+                              </Badge>
                             )}
                           </div>
-                          <p className="text-sm text-muted-foreground mb-1">{work.role}</p>
+                          <p className="text-sm text-muted-foreground mb-1">{work.title}</p>
                           <div className="flex items-center gap-4 text-sm text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
-                              {work.startDate} - {work.endDate || 'Present'}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {work.duration}
+                              {work.start_date} - {work.end_date || 'Present'}
                             </span>
                           </div>
-                          {work.isVerified && work.verifiedBy && (
+                          {work.verification_status === 'VERIFIED' && work.verifier_name && (
                             <p className="text-xs text-green-600 mt-2">
-                              Verified by {work.verifiedBy} on {work.verifiedAt}
+                              Verified by {work.verifier_name}{work.verified_at ? ` on ${work.verified_at}` : ''}
                             </p>
                           )}
                         </div>
-                        <Button variant="outline" size="sm">
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-2">
+                          {work.verification_status === 'NOT_VERIFIED' && !work.review_token && (
+                            <Button variant="outline" size="sm" onClick={() => requestEmploymentReview(work.id)}>
+                              <Mail className="h-4 w-4 mr-1" />
+                              Request Review
+                            </Button>
+                          )}
+                          {work.verification_status === 'NOT_VERIFIED' && !work.review_token && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openEditVE(work)}
+                              title="Edit"
+                              aria-label="Edit verified employment"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {work.verification_status === 'NOT_VERIFIED' && work.review_token && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground" title="Cannot edit after verification email is sent">
+                              <Mail className="h-4 w-4" />
+                              <span>Verification email sent - Cannot edit</span>
+                            </div>
+                          )}
+                          {work.verification_status === 'PENDING' && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Clock className="h-4 w-4" />
+                              <span>Awaiting verification</span>
+                            </div>
+                          )}
+                          <Button variant="outline" size="sm" className="text-red-600" onClick={() => deleteVerifiedEmployment(work.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -806,12 +1196,10 @@ export default function CandidateDashboard() {
                   <p className="text-muted-foreground mb-4">
                     Add your work experience to build trust with employers
                   </p>
-                  <Link href="/profile">
-                    <Button>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Work Experience
-                    </Button>
-                  </Link>
+                  <Button onClick={() => setShowAddVerifiedEmployment(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Verified Employment
+                  </Button>
                 </div>
               )}
             </CardContent>
@@ -968,6 +1356,28 @@ export default function CandidateDashboard() {
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
+                          {reference.status === 'completed' && (
+                            <>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => requestReferenceUpdate(reference.id)}
+                                title="Request referrer to update this reference"
+                              >
+                                <RefreshCw className="h-4 w-4" />
+                              </Button>
+                              <div className="flex items-center gap-1">
+                                <Switch
+                                  checked={reference.isOutdated || false}
+                                  onCheckedChange={(checked) => toggleReferenceOutdated(reference.id, checked)}
+                                  title="Mark as outdated to redact text"
+                                />
+                                <span className="text-xs text-muted-foreground">
+                                  {reference.isOutdated ? 'Outdated' : 'Current'}
+                                </span>
+                              </div>
+                            </>
+                          )}
                           <div className="flex items-center gap-1">
                             {reference.status === 'completed' ? (
                               <>
@@ -992,7 +1402,7 @@ export default function CandidateDashboard() {
                               </div>
                             )}
                           </div>
-                          <Button variant="outline" size="sm" onClick={() => removeReference(reference.id)}>
+                          <Button variant="outline" size="sm" className="text-red-600" onClick={() => removeReference(reference.id)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -1013,16 +1423,29 @@ export default function CandidateDashboard() {
 
                       {reference.endorsementText && (
                         <div className="bg-gray-50 rounded p-3">
-                          <p className="text-sm italic">"{reference.endorsementText}"</p>
-                          {reference.rating && (
-                            <div className="flex items-center gap-1 mt-2">
-                              {[...Array(5)].map((_, i) => (
-                                <Star
-                                  key={i}
-                                  className={`h-4 w-4 ${i < reference.rating! ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
-                                />
-                              ))}
+                          {reference.isOutdated ? (
+                            <div className="text-center py-4">
+                              <p className="text-sm text-muted-foreground italic">
+                                "This reference has been marked as outdated and the text has been redacted."
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-2">
+                                Contact the referrer to request an updated reference.
+                              </p>
                             </div>
+                          ) : (
+                            <>
+                              <p className="text-sm italic">"{reference.endorsementText}"</p>
+                              {reference.rating && (
+                                <div className="flex items-center gap-1 mt-2">
+                                  {[...Array(5)].map((_, i) => (
+                                    <Star
+                                      key={i}
+                                      className={`h-4 w-4 ${i < reference.rating! ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
                       )}
@@ -1082,7 +1505,7 @@ export default function CandidateDashboard() {
                   <span className="text-sm">Verified Work</span>
                 </div>
                 <span className="font-semibold">
-                  {verifiedWorkHistory.filter(w => w.isVerified).length}
+                  {verifiedWorkHistory.filter(w => w.verification_status === 'VERIFIED').length}
                 </span>
               </div>
             </CardContent>
@@ -1090,33 +1513,8 @@ export default function CandidateDashboard() {
 
           {/* Recent Activity */}
           <Card>
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                  <div>
-                    <p className="text-sm">Profile viewed by 3 employers</p>
-                    <p className="text-xs text-muted-foreground">2 hours ago</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
-                  <div>
-                    <p className="text-sm">New reference completed</p>
-                    <p className="text-xs text-muted-foreground">1 day ago</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
-                  <div>
-                    <p className="text-sm">Application status updated</p>
-                    <p className="text-xs text-muted-foreground">3 days ago</p>
-                  </div>
-                </div>
-              </div>
+            <CardContent className="pt-6">
+              <RecentActivity />
             </CardContent>
           </Card>
 
