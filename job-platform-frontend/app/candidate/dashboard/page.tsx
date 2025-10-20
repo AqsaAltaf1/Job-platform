@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import NotificationBell from '@/components/notifications/NotificationBell';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -218,6 +217,25 @@ export default function CandidateDashboard() {
       calculateProfileCompletion();
     }
   }, [user]);
+
+  // Set up polling for live updates (every 30 seconds to avoid too many requests)
+  useEffect(() => {
+    if (user && user.role === 'candidate') {
+      console.log('🔄 Setting up dashboard polling...');
+      const interval = setInterval(() => {
+        console.log('🔄 Polling dashboard data...');
+        fetchApplications();
+        fetchVerifiedWorkHistory();
+        fetchReferences();
+        fetchDashboardStats();
+      }, 30000); // Increased to 30 seconds
+
+      return () => {
+        console.log('🔄 Clearing dashboard polling...');
+        clearInterval(interval);
+      };
+    }
+  }, [user?.id]); // Only depend on user ID, not entire user object
 
   // Update dashboard stats when applications change
   useEffect(() => {
@@ -910,7 +928,20 @@ export default function CandidateDashboard() {
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-3xl font-bold">Candidate Dashboard</h1>
           <div className="flex items-center gap-4">
-            <NotificationBell />
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                console.log('🔄 Manual refresh triggered');
+                fetchApplications();
+                fetchVerifiedWorkHistory();
+                fetchReferences();
+                fetchDashboardStats();
+              }}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
             <Button variant="outline" size="sm">
               <Settings className="h-4 w-4 mr-2" />
               Settings

@@ -1,534 +1,975 @@
-"use client"
+'use client';
 
-import { useState, useEffect } from "react"
-import { AuthGuard } from "@/components/auth/auth-guard"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useAuth } from "@/lib/auth"
-import { jobsApi } from "@/lib/jobs"
-import type { JobWithCompany } from "@/lib/types"
-import Link from "next/link"
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  Plus, 
-  Settings, 
-  Briefcase, 
-  User, 
-  Eye, 
-  Mail, 
+  Search, 
+  Filter, 
   Star, 
-  Users, 
-  FileText,
-  TrendingUp,
+  MapPin, 
+  Briefcase, 
+  Award,
+  Eye,
+  User,
+  Building,
+  Calendar,
   CheckCircle,
   XCircle,
-  AlertCircle,
   Clock,
+  Shield,
+  Users,
+  TrendingUp,
   BarChart3,
-  Kanban
-} from "lucide-react"
-import { getApiUrl } from "@/lib/config"
-import { toast } from "sonner"
+  AlertTriangle,
+  FileText,
+  Download,
+  Mail,
+  Phone,
+  ExternalLink,
+  RefreshCw
+} from 'lucide-react';
+import { getApiUrl } from '@/lib/config';
+import { useAuth } from '@/lib/auth';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
-interface DashboardStats {
-  totalJobs: number;
-  activeJobs: number;
-  totalApplications: number;
-  hiredCandidates: number;
-  jobViewsData: Array<{ month: string; views: number }>;
-  applicationStatus: {
-    pending: number;
-    reviewing: number;
-    shortlisted: number;
-    hired: number;
+interface Candidate {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  location?: string;
+  profile_picture?: string;
+  candidate_profile?: {
+    bio?: string;
+    skills?: string[];
+    experience_years?: number;
+    current_title?: string;
+    current_company?: string;
+    industry?: string;
+    job_type_preference?: string;
+  };
+  references?: Array<{
+    id: string;
+    reviewer_name: string;
+    overall_rating: number;
+    work_quality_rating: number;
+    communication_rating: number;
+    reliability_rating: number;
+    teamwork_rating: number;
+    reference_text: string;
+    strengths: string;
+    would_recommend: boolean;
+    would_hire_again: boolean;
+    is_public: boolean;
+    is_verified: boolean;
+    created_at: string;
+  }>;
+  verified_employments?: Array<{
+    id: string;
+    company_name: string;
+    title: string;
+    start_date: string;
+    end_date?: string;
+    verification_status: string;
+    verified_at?: string;
+  }>;
+  profile_views: number;
+  last_active: string;
+  average_rating: number;
+  compliance_score?: number;
+  diversity_metrics?: {
+    gender?: string;
+    ethnicity?: string;
+    age_range?: string;
+    disability_status?: string;
   };
 }
 
+interface DashboardStats {
+  total_candidates: number;
+  verified_candidates: number;
+  avg_rating: number;
+  top_skills: Array<{ skill: string; count: number }>;
+  industry_breakdown: Array<{ industry: string; count: number }>;
+  compliance_alerts: number;
+}
+
+interface SearchFilters {
+  search: string;
+  competencies: string[];
+  roleType: string[];
+  performanceTags: string[];
+  minRating: number;
+  maxRating: number;
+  experienceRange: [number, number];
+  location: string;
+  industry: string[];
+  verifiedOnly: boolean;
+  complianceFilter: string;
+}
+
+const COMPETENCIES = [
+  'Leadership',
+  'Communication',
+  'Problem Solving',
+  'Teamwork',
+  'Technical Skills',
+  'Project Management',
+  'Analytical Thinking',
+  'Creativity',
+  'Adaptability',
+  'Time Management',
+  'Customer Service',
+  'Sales',
+  'Marketing',
+  'Data Analysis',
+  'Software Development'
+];
+
+const ROLE_TYPES = [
+  'Executive',
+  'Senior Management',
+  'Middle Management',
+  'Individual Contributor',
+  'Entry Level',
+  'Intern',
+  'Consultant',
+  'Freelancer'
+];
+
+const PERFORMANCE_TAGS = [
+  'High Performer',
+  'Team Player',
+  'Innovative',
+  'Reliable',
+  'Fast Learner',
+  'Detail Oriented',
+  'Strategic Thinker',
+  'Results Driven',
+  'Collaborative',
+  'Self Motivated'
+];
+
+const COMPLIANCE_FILTERS = [
+  'All Candidates',
+  'Compliant Only',
+  'Needs Review',
+  'High Risk'
+];
+
 export default function EmployerDashboard() {
-  const { user } = useAuth()
-  const [recentJobs, setRecentJobs] = useState<JobWithCompany[]>([])
-  const [loading, setLoading] = useState(true)
-  const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
-    totalJobs: 0,
-    activeJobs: 0,
-    totalApplications: 0,
-    hiredCandidates: 0,
-    jobViewsData: [],
-    applicationStatus: {
-      pending: 0,
-      reviewing: 0,
-      shortlisted: 0,
-      hired: 0
-    }
-  })
-  const [loadingStats, setLoadingStats] = useState(true)
-  const [timeRange, setTimeRange] = useState("6months")
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [filteredCandidates, setFilteredCandidates] = useState<Candidate[]>([]);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [showFilters, setShowFilters] = useState(false);
+  
+  const [filters, setFilters] = useState<SearchFilters>({
+    search: '',
+    competencies: [],
+    roleType: [],
+    performanceTags: [],
+    minRating: 1,
+    maxRating: 5,
+    experienceRange: [0, 20],
+    location: '',
+    industry: [],
+    verifiedOnly: false,
+    complianceFilter: 'All Candidates'
+  });
 
   useEffect(() => {
-    loadDashboardData()
-    if (user?.role === "employer" || (user?.role as any) === "team_member" || user?.role === "super_admin") {
-      fetchDashboardStats()
-    }
-  }, [user])
-
-  // Refetch dashboard stats when time range changes
-  useEffect(() => {
-    if (user?.role === "employer" || (user?.role as any) === "team_member" || user?.role === "super_admin") {
-      fetchDashboardStats()
-    }
-  }, [timeRange])
-
-  const loadDashboardData = async () => {
-    if (!user) return
-
-    try {
-      let jobs: JobWithCompany[] = []
-
-      if (user.role === "employer" || (user.role as any) === "team_member") {
-        // Load jobs posted by this employer
-        jobs = await jobsApi.getJobs({ posted_by: user.id })
-      }
-
-      setRecentJobs(jobs)
-    } catch (error) {
-      console.error("Failed to load dashboard data:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchDashboardStats = async () => {
-    try {
-      setLoadingStats(true)
+    // Check authentication and role
+    if (!authLoading) {
+      console.log('Auth check - user:', user);
+      console.log('Auth check - user role:', user?.role);
       
-      // Fetch real data from multiple API endpoints
-      const token = localStorage.getItem('jwt_token')
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-
-      // Fetch jobs data
-      const jobsResponse = await fetch(getApiUrl('/employer/jobs'), { headers })
-      let jobs = []
-      if (jobsResponse.ok) {
-        const jobsData = await jobsResponse.json()
-        jobs = jobsData.data?.jobs || []
-      }
-
-      // Fetch applications data
-      const applicationsResponse = await fetch(getApiUrl('/employer/applications'), { headers })
-      let applications = []
-      if (applicationsResponse.ok) {
-        const applicationsData = await applicationsResponse.json()
-        applications = applicationsData.data?.applications || []
-      }
-
-      // Calculate application status
-      const applicationStatus = {
-        pending: applications.filter((app: any) => app.status === 'pending').length,
-        reviewing: applications.filter((app: any) => app.status === 'reviewing').length,
-        shortlisted: applications.filter((app: any) => app.status === 'shortlisted').length,
-        hired: applications.filter((app: any) => app.status === 'hired').length
-      }
-
-      // Generate job views data based on jobs timeline
-      const currentDate = new Date()
-      const jobViewsData = []
-      for (let i = 5; i >= 0; i--) {
-        const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1)
-        const monthName = date.toLocaleDateString('en-US', { month: 'short' })
-        
-        // Calculate views based on jobs in that month
-        const monthJobs = jobs.filter((job: any) => {
-          const jobDate = new Date(job.created_at)
-          return jobDate.getMonth() === date.getMonth() && jobDate.getFullYear() === date.getFullYear()
-        }).length
-        
-        // Estimate views based on jobs (typically 50-100 views per job)
-        const baseViews = Math.floor(Math.random() * 20) + 10 // 10-30 base views per month
-        const jobViews = monthJobs > 0 ? Math.max(monthJobs * 50, 0) : 0
-        const views = baseViews + jobViews
-        
-        jobViewsData.push({ month: monthName, views })
-      }
-
-      const realStats: DashboardStats = {
-        totalJobs: jobs.length,
-        activeJobs: jobs.filter((job: any) => job.status === 'active').length,
-        totalApplications: applications.length,
-        hiredCandidates: applicationStatus.hired,
-        jobViewsData,
-        applicationStatus
+      if (!user) {
+        // User not logged in, redirect to login
+        console.log('No user, redirecting to login');
+        router.push('/login');
+        return;
       }
       
-      setDashboardStats(realStats)
-    } catch (error) {
-      console.error('Error fetching dashboard stats:', error)
-      toast.error('Failed to load dashboard statistics')
-      
-      // Set empty data instead of mock data
-      const emptyStats: DashboardStats = {
-        totalJobs: 0,
-        activeJobs: 0,
-        totalApplications: 0,
-        hiredCandidates: 0,
-        jobViewsData: [
-          { month: 'Jan', views: 0 },
-          { month: 'Feb', views: 0 },
-          { month: 'Mar', views: 0 },
-          { month: 'Apr', views: 0 },
-          { month: 'May', views: 0 },
-          { month: 'Jun', views: 0 }
-        ],
-        applicationStatus: {
-          pending: 0,
-          reviewing: 0,
-          shortlisted: 0,
-          hired: 0
+      if (user.role !== 'employer' && (user.role as any) !== 'team_member') {
+        // User doesn't have employer access, redirect to appropriate dashboard
+        console.log('User role not employer, redirecting to appropriate dashboard');
+        if (user.role === 'candidate') {
+          router.push('/candidate/dashboard');
+        } else {
+          router.push('/dashboard');
         }
+        return;
       }
       
-      setDashboardStats(emptyStats)
-    } finally {
-      setLoadingStats(false)
+      // User is authenticated and has employer access, fetch data
+      console.log('User has employer access, fetching data');
+      fetchDashboardData();
     }
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
+    applyFilters();
+  }, [candidates, filters]);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      console.log('Fetching dashboard data...');
+      
+      const [candidatesResponse, statsResponse] = await Promise.all([
+        fetch(`${getApiUrl()}/employer/candidates`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+          }
+        }),
+        fetch(`${getApiUrl()}/employer/dashboard-stats`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+          }
+        })
+      ]);
+
+      console.log('Candidates response status:', candidatesResponse.status);
+      console.log('Stats response status:', statsResponse.status);
+
+      if (candidatesResponse.ok) {
+        const candidatesData = await candidatesResponse.json();
+        console.log('Candidates data:', candidatesData);
+        if (candidatesData.success) {
+          setCandidates(candidatesData.data || []);
+          console.log('Set candidates:', candidatesData.data?.length || 0);
+        }
+      } else {
+        const errorData = await candidatesResponse.json();
+        console.error('Candidates API error:', errorData);
+      }
+
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json();
+        console.log('Stats data:', statsData);
+        if (statsData.success) {
+          setDashboardStats(statsData.data);
+        }
+      } else {
+        const errorData = await statsResponse.json();
+        console.error('Stats API error:', errorData);
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      toast.error('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchDashboardData();
+    setRefreshing(false);
+    toast.success('Dashboard refreshed');
+  };
+
+  const applyFilters = () => {
+    let filtered = [...candidates];
+
+    // Search filter
+    if (filters.search.trim()) {
+      const query = filters.search.toLowerCase();
+      filtered = filtered.filter(candidate => 
+        candidate.first_name.toLowerCase().includes(query) ||
+        candidate.last_name.toLowerCase().includes(query) ||
+        candidate.candidate_profile?.current_title?.toLowerCase().includes(query) ||
+        candidate.candidate_profile?.current_company?.toLowerCase().includes(query) ||
+        candidate.candidate_profile?.skills?.some(skill => skill.toLowerCase().includes(query))
+      );
+    }
+
+    // Competencies filter
+    if (filters.competencies.length > 0) {
+      filtered = filtered.filter(candidate => 
+        filters.competencies.some(competency => 
+          candidate.candidate_profile?.skills?.some(skill => 
+            skill.toLowerCase().includes(competency.toLowerCase())
+          )
+        )
+      );
+    }
+
+    // Role type filter
+    if (filters.roleType.length > 0) {
+      filtered = filtered.filter(candidate => 
+        filters.roleType.some(role => 
+          candidate.candidate_profile?.current_title?.toLowerCase().includes(role.toLowerCase())
+        )
+      );
+    }
+
+    // Performance tags filter (based on reference strengths)
+    if (filters.performanceTags.length > 0) {
+      filtered = filtered.filter(candidate => 
+        candidate.references?.some(ref => 
+          filters.performanceTags.some(tag => 
+            ref.strengths?.toLowerCase().includes(tag.toLowerCase())
+          )
+        )
+      );
+    }
+
+    // Rating filter
+    filtered = filtered.filter(candidate => {
+      const avgRating = candidate.average_rating || 0;
+      return avgRating >= filters.minRating && avgRating <= filters.maxRating;
+    });
+
+    // Experience filter
+    filtered = filtered.filter(candidate => {
+      const experience = candidate.candidate_profile?.experience_years || 0;
+      return experience >= filters.experienceRange[0] && experience <= filters.experienceRange[1];
+    });
+
+    // Location filter
+    if (filters.location) {
+      filtered = filtered.filter(candidate => 
+        candidate.location?.toLowerCase().includes(filters.location.toLowerCase())
+      );
+    }
+
+    // Industry filter
+    if (filters.industry.length > 0) {
+      filtered = filtered.filter(candidate => 
+        filters.industry.includes(candidate.candidate_profile?.industry || '')
+      );
+    }
+
+    // Verified only filter
+    if (filters.verifiedOnly) {
+      filtered = filtered.filter(candidate => 
+        candidate.references?.some(ref => ref.is_verified) ||
+        candidate.verified_employments?.some(emp => emp.verification_status === 'VERIFIED')
+      );
+    }
+
+    // Compliance filter
+    if (filters.complianceFilter !== 'All Candidates') {
+      filtered = filtered.filter(candidate => {
+        const complianceScore = candidate.compliance_score || 0;
+        switch (filters.complianceFilter) {
+          case 'Compliant Only':
+            return complianceScore >= 80;
+          case 'Needs Review':
+            return complianceScore >= 60 && complianceScore < 80;
+          case 'High Risk':
+            return complianceScore < 60;
+          default:
+            return true;
+        }
+      });
+    }
+
+    setFilteredCandidates(filtered);
+  };
+
+  const handleFilterChange = (filterType: keyof SearchFilters, value: any) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterType]: value
+    }));
+  };
+
+  const toggleArrayFilter = (filterType: 'competencies' | 'roleType' | 'performanceTags' | 'industry', value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterType]: prev[filterType].includes(value)
+        ? prev[filterType].filter(item => item !== value)
+        : [...prev[filterType], value]
+    }));
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      search: '',
+      competencies: [],
+      roleType: [],
+      performanceTags: [],
+      minRating: 1,
+      maxRating: 5,
+      experienceRange: [0, 20],
+      location: '',
+      industry: [],
+      verifiedOnly: false,
+      complianceFilter: 'All Candidates'
+    });
+  };
+
+  const getComplianceBadge = (score: number) => {
+    if (score >= 80) {
+      return <Badge className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />Compliant</Badge>;
+    } else if (score >= 60) {
+      return <Badge className="bg-yellow-100 text-yellow-800"><AlertTriangle className="h-3 w-3 mr-1" />Review</Badge>;
+    } else {
+      return <Badge className="bg-red-100 text-red-800"><XCircle className="h-3 w-3 mr-1" />Risk</Badge>;
+    }
+  };
+
+  const getRatingStars = (rating: number) => {
+    return [...Array(5)].map((_, i) => (
+      <Star
+        key={i}
+        className={`h-4 w-4 ${
+          i < Math.floor(rating)
+            ? 'text-yellow-400 fill-current'
+            : 'text-gray-300'
+        }`}
+      />
+    ));
+  };
+
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="animate-pulse space-y-6">
+            <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-32 bg-gray-200 rounded"></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  // Show new dashboard design for employers
-  if (user?.role === "employer" || (user?.role as any) === "team_member" || user?.role === "super_admin") {
+  // Redirect if user doesn't have access
+  if (!user || (user.role !== 'employer' && (user.role as any) !== 'team_member')) {
+    return null; // Will redirect via useEffect
+  }
+
+  // Show loading while fetching dashboard data
+  if (loading) {
     return (
-      <AuthGuard>
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Dashboard Overview</h1>
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="animate-pulse space-y-6">
+            <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-32 bg-gray-200 rounded"></div>
+              ))}
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              <div className="lg:col-span-1 space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="h-32 bg-gray-200 rounded"></div>
+                ))}
+              </div>
+              <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="h-64 bg-gray-200 rounded"></div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+    );
+  }
 
-          {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {/* Total Jobs */}
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                    <p className="text-sm font-medium text-gray-600">Total Jobs</p>
-                    {loadingStats ? (
-                      <div className="h-8 w-16 bg-gray-200 animate-pulse rounded"></div>
-                    ) : (
-                      <p className="text-3xl font-bold text-gray-900">{dashboardStats.totalJobs}</p>
-                    )}
-              </div>
-                  <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                    <Briefcase className="h-6 w-6 text-primary" />
-              </div>
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto p-6">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Employer Dashboard</h1>
+              <p className="text-gray-600">Unified view of verified candidates with compliance monitoring</p>
             </div>
-          </CardContent>
-        </Card>
+            <Button onClick={handleRefresh} disabled={refreshing}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+        </div>
 
-            {/* Active Jobs */}
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                    <p className="text-sm font-medium text-gray-600">Active Jobs</p>
-                    {loadingStats ? (
-                      <div className="h-8 w-16 bg-gray-200 animate-pulse rounded"></div>
-                    ) : (
-                      <p className="text-3xl font-bold text-gray-900">{dashboardStats.activeJobs}</p>
-                    )}
-              </div>
-                  <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                    <Eye className="h-6 w-6 text-primary" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-            {/* Total Applications */}
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                    <p className="text-sm font-medium text-gray-600">Total Applications</p>
-                    {loadingStats ? (
-                      <div className="h-8 w-16 bg-gray-200 animate-pulse rounded"></div>
-                    ) : (
-                      <p className="text-3xl font-bold text-gray-900">{dashboardStats.totalApplications}</p>
-                    )}
-              </div>
-                  <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                    <FileText className="h-6 w-6 text-primary" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-            {/* Hired Candidates */}
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                    <p className="text-sm font-medium text-gray-600">Hired Candidates</p>
-                    {loadingStats ? (
-                      <div className="h-8 w-16 bg-gray-200 animate-pulse rounded"></div>
-                    ) : (
-                      <p className="text-3xl font-bold text-gray-900">{dashboardStats.hiredCandidates}</p>
-                    )}
-              </div>
-                  <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                    <CheckCircle className="h-6 w-6 text-primary" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-          {/* Quick Actions */}
-          <div className="mb-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Stats Cards */}
+        {dashboardStats && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2">Application Pipeline</h3>
-                      <p className="text-gray-600">
-                        Manage job applications with drag-and-drop Kanban boards
-                      </p>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <Users className="h-8 w-8 text-blue-600" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Total Candidates</p>
+                    <p className="text-2xl font-bold text-gray-900">{dashboardStats.total_candidates}</p>
                   </div>
-                    <Link href="/employer/kanban">
-                      <Button className="flex items-center gap-2">
-                        <Kanban className="h-4 w-4" />
-                        View Pipeline
-                      </Button>
-                    </Link>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <CheckCircle className="h-8 w-8 text-green-600" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Verified Candidates</p>
+                    <p className="text-2xl font-bold text-gray-900">{dashboardStats.verified_candidates}</p>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <Star className="h-8 w-8 text-yellow-600" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Avg Rating</p>
+                    <p className="text-2xl font-bold text-gray-900">{dashboardStats.avg_rating.toFixed(1)}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <Shield className="h-8 w-8 text-red-600" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Compliance Alerts</p>
+                    <p className="text-2xl font-bold text-gray-900">{dashboardStats.compliance_alerts}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="candidates">Candidates</TabsTrigger>
+            <TabsTrigger value="compliance">Compliance</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Top Skills */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Top Skills in Pool</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {dashboardStats?.top_skills?.slice(0, 10).map((skill, index) => (
+                    <div key={index} className="flex items-center justify-between py-2">
+                      <span className="text-sm font-medium">{skill.skill}</span>
+                      <Badge variant="secondary">{skill.count}</Badge>
+                    </div>
+                  ))}
                 </CardContent>
               </Card>
-                  
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2">Advanced Analytics & Insights</h3>
-                      <p className="text-gray-600">
-                        Access comprehensive candidate comparison tools, team fit analysis, and DEI metrics
-                      </p>
-                  </div>
-                    <Link href="/employer/analytics">
-                      <Button className="flex items-center gap-2">
-                        <BarChart3 className="h-4 w-4" />
-                        View Analytics
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-            </div>
-          </div>
 
-          {/* Charts Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Job Views Chart */}
-            <Card className="hover:shadow-lg transition-shadow">
+              {/* Industry Breakdown */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Industry Distribution</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {dashboardStats?.industry_breakdown?.slice(0, 8).map((industry, index) => (
+                    <div key={index} className="flex items-center justify-between py-2">
+                      <span className="text-sm font-medium">{industry.industry}</span>
+                      <Badge variant="outline">{industry.count}</Badge>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="candidates" className="space-y-6">
+            {/* Search and Filters */}
+            <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-primary" />
-                    <CardTitle className="text-lg font-semibold">JOB VIEWS</CardTitle>
-                  </div>
-                  <Select value={timeRange} onValueChange={setTimeRange}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1month" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Last Month</SelectItem>
-                      <SelectItem value="3months" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Last 3 Months</SelectItem>
-                      <SelectItem value="6months" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Last 6 Months</SelectItem>
-                      <SelectItem value="1year" className="hover:bg-primary hover:text-white focus:bg-primary focus:text-white">Last Year</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <CardTitle>Search & Filter Candidates</CardTitle>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowFilters(!showFilters)}
+                  >
+                    <Filter className="h-4 w-4 mr-2" />
+                    {showFilters ? 'Hide' : 'Show'} Filters
+                  </Button>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="h-64 flex items-end justify-between gap-2">
-                  {dashboardStats.jobViewsData.map((data, index) => {
-                    const maxViews = Math.max(...dashboardStats.jobViewsData.map(d => d.views), 1)
-                    return (
-                      <div key={data.month} className="flex flex-col items-center gap-2 flex-1">
-                        <div 
-                          className="w-full bg-primary rounded-t-sm transition-all duration-300 hover:bg-primary/80"
-                          style={{ height: `${(data.views / maxViews) * 200}px` }}
-                        ></div>
-                        <span className="text-xs text-gray-600">{data.month}</span>
+              <CardContent className="space-y-4">
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <Input
+                    placeholder="Search by name, title, company, or skills..."
+                    value={filters.search}
+                    onChange={(e) => handleFilterChange('search', e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+
+                {/* Filters */}
+                {showFilters && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4 border-t">
+                    {/* Competencies */}
+                    <div>
+                      <Label className="text-sm font-medium mb-3 block">Competencies</Label>
+                      <div className="space-y-2 max-h-32 overflow-y-auto">
+                        {COMPETENCIES.map(competency => (
+                          <div key={competency} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`comp-${competency}`}
+                              checked={filters.competencies.includes(competency)}
+                              onCheckedChange={() => toggleArrayFilter('competencies', competency)}
+                            />
+                            <Label htmlFor={`comp-${competency}`} className="text-sm">{competency}</Label>
+                          </div>
+                        ))}
                       </div>
-                    )
-                  })}
-                </div>
-                <div className="mt-4 flex justify-between text-xs text-gray-500">
-                  <span>0</span>
-                  <span>{Math.ceil(Math.max(...dashboardStats.jobViewsData.map(d => d.views), 1) * 0.25)}</span>
-                  <span>{Math.ceil(Math.max(...dashboardStats.jobViewsData.map(d => d.views), 1) * 0.5)}</span>
-                  <span>{Math.ceil(Math.max(...dashboardStats.jobViewsData.map(d => d.views), 1) * 0.75)}</span>
-                  <span>{Math.max(...dashboardStats.jobViewsData.map(d => d.views), 1)}</span>
-                </div>
+                    </div>
+
+                    {/* Role Types */}
+                    <div>
+                      <Label className="text-sm font-medium mb-3 block">Role Types</Label>
+                      <div className="space-y-2 max-h-32 overflow-y-auto">
+                        {ROLE_TYPES.map(role => (
+                          <div key={role} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`role-${role}`}
+                              checked={filters.roleType.includes(role)}
+                              onCheckedChange={() => toggleArrayFilter('roleType', role)}
+                            />
+                            <Label htmlFor={`role-${role}`} className="text-sm">{role}</Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Performance Tags */}
+                    <div>
+                      <Label className="text-sm font-medium mb-3 block">Performance Tags</Label>
+                      <div className="space-y-2 max-h-32 overflow-y-auto">
+                        {PERFORMANCE_TAGS.map(tag => (
+                          <div key={tag} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`perf-${tag}`}
+                              checked={filters.performanceTags.includes(tag)}
+                              onCheckedChange={() => toggleArrayFilter('performanceTags', tag)}
+                            />
+                            <Label htmlFor={`perf-${tag}`} className="text-sm">{tag}</Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Rating Range */}
+                    <div>
+                      <Label className="text-sm font-medium mb-3 block">
+                        Rating: {filters.minRating} - {filters.maxRating}
+                      </Label>
+                      <div className="space-y-2">
+                        <Slider
+                          value={[filters.minRating, filters.maxRating]}
+                          onValueChange={(value) => {
+                            handleFilterChange('minRating', value[0]);
+                            handleFilterChange('maxRating', value[1]);
+                          }}
+                          max={5}
+                          min={1}
+                          step={0.5}
+                          className="w-full"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Experience Range */}
+                    <div>
+                      <Label className="text-sm font-medium mb-3 block">
+                        Experience: {filters.experienceRange[0]} - {filters.experienceRange[1]} years
+                      </Label>
+                      <Slider
+                        value={filters.experienceRange}
+                        onValueChange={(value) => handleFilterChange('experienceRange', value)}
+                        max={20}
+                        min={0}
+                        step={1}
+                        className="w-full"
+                      />
+                    </div>
+
+                    {/* Compliance Filter */}
+                    <div>
+                      <Label className="text-sm font-medium mb-3 block">Compliance Status</Label>
+                      <Select value={filters.complianceFilter} onValueChange={(value) => handleFilterChange('complianceFilter', value)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {COMPLIANCE_FILTERS.map(filter => (
+                            <SelectItem key={filter} value={filter}>{filter}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Quick Filters */}
+                    <div className="md:col-span-2 lg:col-span-3">
+                      <div className="flex items-center space-x-4">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="verified-only"
+                            checked={filters.verifiedOnly}
+                            onCheckedChange={(checked) => handleFilterChange('verifiedOnly', checked)}
+                          />
+                          <Label htmlFor="verified-only" className="text-sm">Verified candidates only</Label>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={clearFilters}>
+                          Clear All Filters
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* Application Status Pie Chart */}
-            <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-primary" />
-                    <CardTitle className="text-lg font-semibold">APPLICATION STATUS</CardTitle>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-center h-64">
-                  <div className="relative w-48 h-48">
-                    {/* Pie Chart SVG */}
-                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                      {(() => {
-                        const total = dashboardStats.applicationStatus.pending + 
-                                     dashboardStats.applicationStatus.reviewing + 
-                                     dashboardStats.applicationStatus.shortlisted + 
-                                     dashboardStats.applicationStatus.hired
-                        
-                        if (total === 0) {
-                          return (
-                            <circle
-                              cx="50"
-                              cy="50"
-                              r="40"
-                              fill="none"
-                              stroke="#e5e7eb"
-                              strokeWidth="20"
-                              strokeDasharray="251.2 251.2"
-                              strokeDashoffset="0"
-                            />
-                          )
-                        }
-                        
-                        const circumference = 251.2
-                        let offset = 0
-                        
-                        return (
-                          <>
-                            {/* Pending - Yellow */}
-                            {dashboardStats.applicationStatus.pending > 0 && (
-                              <circle
-                                cx="50"
-                                cy="50"
-                                r="40"
-                                fill="none"
-                                stroke="#f59e0b"
-                                strokeWidth="20"
-                                strokeDasharray={`${(dashboardStats.applicationStatus.pending / total) * circumference} ${circumference}`}
-                                strokeDashoffset={-offset}
-                              />
-                            )}
-                            {offset += (dashboardStats.applicationStatus.pending / total) * circumference}
-                            
-                            {/* Reviewing - Blue */}
-                            {dashboardStats.applicationStatus.reviewing > 0 && (
-                              <circle
-                                cx="50"
-                                cy="50"
-                                r="40"
-                                fill="none"
-                                stroke="#3b82f6"
-                                strokeWidth="20"
-                                strokeDasharray={`${(dashboardStats.applicationStatus.reviewing / total) * circumference} ${circumference}`}
-                                strokeDashoffset={-offset}
-                              />
-                            )}
-                            {offset += (dashboardStats.applicationStatus.reviewing / total) * circumference}
-                            
-                            {/* Shortlisted - Purple */}
-                            {dashboardStats.applicationStatus.shortlisted > 0 && (
-                              <circle
-                                cx="50"
-                                cy="50"
-                                r="40"
-                                fill="none"
-                                stroke="#8b5cf6"
-                                strokeWidth="20"
-                                strokeDasharray={`${(dashboardStats.applicationStatus.shortlisted / total) * circumference} ${circumference}`}
-                                strokeDashoffset={-offset}
-                              />
-                            )}
-                            {offset += (dashboardStats.applicationStatus.shortlisted / total) * circumference}
-                            
-                            {/* Hired - Green */}
-                            {dashboardStats.applicationStatus.hired > 0 && (
-                              <circle
-                                cx="50"
-                                cy="50"
-                                r="40"
-                                fill="none"
-                                stroke="#22c55e"
-                                strokeWidth="20"
-                                strokeDasharray={`${(dashboardStats.applicationStatus.hired / total) * circumference} ${circumference}`}
-                                strokeDashoffset={-offset}
-                              />
-                            )}
-                          </>
-                        )
-                      })()}
-                    </svg>
-                    
-                    {/* Center Text */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="text-center">
-                        <p className="text-2xl font-bold text-gray-900">
-                          {dashboardStats.applicationStatus.pending + dashboardStats.applicationStatus.reviewing + dashboardStats.applicationStatus.shortlisted + dashboardStats.applicationStatus.hired}
-                        </p>
-                        <p className="text-sm text-gray-600">Total</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Legend */}
-                <div className="grid grid-cols-2 gap-4 mt-6">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-yellow-500 rounded-full"></div>
-                    <span className="text-sm text-gray-600">Pending ({dashboardStats.applicationStatus.pending})</span>
-                </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
-                    <span className="text-sm text-gray-600">Reviewing ({dashboardStats.applicationStatus.reviewing})</span>
-                        </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-purple-500 rounded-full"></div>
-                    <span className="text-sm text-gray-600">Shortlisted ({dashboardStats.applicationStatus.shortlisted})</span>
-                      </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-green-500 rounded-full"></div>
-                    <span className="text-sm text-gray-600">Hired ({dashboardStats.applicationStatus.hired})</span>
-                    </div>
-                </div>
-            </CardContent>
-          </Card>
-          </div>
-                </div>
-      </AuthGuard>
-    )
-  }
+            {/* Results */}
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-gray-600">
+                {filteredCandidates.length} candidate{filteredCandidates.length !== 1 ? 's' : ''} found
+              </p>
+            </div>
 
-  // Show access denied for other roles
-  return (
-    <AuthGuard>
-      <div className="flex justify-center items-center min-h-screen">
-        <Card className="w-96">
-          <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">
-              Access denied. This dashboard is only available for employers and team members.
-            </p>
-            </CardContent>
-          </Card>
+            {filteredCandidates.length === 0 ? (
+              <Card>
+                <CardContent className="text-center py-12">
+                  <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No candidates found</h3>
+                  <p className="text-gray-600">Try adjusting your search criteria or filters</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {filteredCandidates.map((candidate) => (
+                  <Card
+                    key={candidate.id}
+                    className="cursor-pointer hover:shadow-lg transition-shadow duration-200"
+                    onClick={() => window.location.href = `/employer/candidates/${candidate.id}`}
+                  >
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                            {candidate.profile_picture ? (
+                              <img
+                                src={candidate.profile_picture}
+                                alt={`${candidate.first_name} ${candidate.last_name}`}
+                                className="w-12 h-12 rounded-full object-cover"
+                              />
+                            ) : (
+                              <User className="h-6 w-6 text-gray-500" />
+                            )}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-lg">
+                              {candidate.first_name} {candidate.last_name}
+                            </h3>
+                            <p className="text-sm text-gray-600">
+                              {candidate.candidate_profile?.current_title}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {candidate.candidate_profile?.current_company}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* Compliance Badge */}
+                        {candidate.compliance_score !== undefined && (
+                          <div className="flex flex-col space-y-1">
+                            {getComplianceBadge(candidate.compliance_score)}
+                          </div>
+                        )}
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="space-y-3">
+                      {/* Rating */}
+                      {candidate.average_rating > 0 && (
+                        <div className="flex items-center space-x-2">
+                          <div className="flex items-center">
+                            {getRatingStars(candidate.average_rating)}
+                          </div>
+                          <span className="text-sm text-gray-600">
+                            {candidate.average_rating.toFixed(1)} ({candidate.references?.length || 0} reviews)
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Location */}
+                      {candidate.location && (
+                        <div className="flex items-center text-sm text-gray-600">
+                          <MapPin className="h-4 w-4 mr-1" />
+                          {candidate.location}
+                        </div>
+                      )}
+
+                      {/* Experience */}
+                      {candidate.candidate_profile?.experience_years && (
+                        <div className="flex items-center text-sm text-gray-600">
+                          <Briefcase className="h-4 w-4 mr-1" />
+                          {candidate.candidate_profile.experience_years} years experience
+                        </div>
+                      )}
+
+                      {/* Verified Badges */}
+                      <div className="flex flex-wrap gap-1">
+                        {candidate.references?.some(ref => ref.is_verified) && (
+                          <Badge variant="outline" className="text-xs text-green-600 border-green-200">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Verified Ref
+                          </Badge>
+                        )}
+                        {candidate.verified_employments?.some(emp => emp.verification_status === 'VERIFIED') && (
+                          <Badge variant="outline" className="text-xs text-blue-600 border-blue-200">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Verified Work
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Top Skills */}
+                      {candidate.candidate_profile?.skills && candidate.candidate_profile.skills.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {candidate.candidate_profile.skills.slice(0, 3).map((skill, index) => (
+                            <Badge key={index} variant="secondary" className="text-xs">
+                              {skill}
+                            </Badge>
+                          ))}
+                          {candidate.candidate_profile.skills.length > 3 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{candidate.candidate_profile.skills.length - 3} more
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="compliance" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Shield className="h-5 w-5 mr-2" />
+                  Compliance & Privacy Guardrails
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="font-semibold mb-3">Fair Hiring Practices</h4>
+                    <ul className="space-y-2 text-sm text-gray-600">
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                        Blind resume screening enabled
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                        Bias detection in reference reviews
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                        Standardized evaluation criteria
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                        Diversity metrics tracking
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-3">Privacy Protection</h4>
+                    <ul className="space-y-2 text-sm text-gray-600">
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                        GDPR compliant data handling
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                        Encrypted candidate data storage
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                        Audit trail for all profile views
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                        Candidate consent management
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="border-t pt-6">
+                  <h4 className="font-semibold mb-3">Compliance Alerts</h4>
+                  <div className="space-y-3">
+                    {(dashboardStats?.compliance_alerts || 0) > 0 ? (
+                      <div className="flex items-center p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <AlertTriangle className="h-5 w-5 text-yellow-600 mr-3" />
+                        <div>
+                          <p className="font-medium text-yellow-800">
+                            {dashboardStats?.compliance_alerts || 0} candidates need compliance review
+                          </p>
+                          <p className="text-sm text-yellow-700">
+                            Some candidates may have incomplete verification or require additional documentation.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <CheckCircle className="h-5 w-5 text-green-600 mr-3" />
+                        <div>
+                          <p className="font-medium text-green-800">
+                            All candidates are compliant
+                          </p>
+                          <p className="text-sm text-green-700">
+                            No compliance issues detected in your candidate pool.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
-    </AuthGuard>
-  )
+  );
 }

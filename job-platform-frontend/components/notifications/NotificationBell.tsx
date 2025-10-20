@@ -29,6 +29,13 @@ const NotificationBell: React.FC = () => {
     clearAllNotifications 
   } = useNotifications();
 
+  // Debug logging
+  useEffect(() => {
+    console.log('🔔 NotificationBell - notifications:', notifications);
+    console.log('🔔 NotificationBell - unreadCount:', unreadCount);
+    console.log('🔔 NotificationBell - loading:', loading);
+  }, [notifications, unreadCount, loading]);
+
   // Trigger ring animation when new notifications arrive
   useEffect(() => {
     if (unreadCount > previousUnreadCount && previousUnreadCount > 0) {
@@ -88,6 +95,12 @@ const NotificationBell: React.FC = () => {
         return '🎯';
       case 'profile_view':
         return '👁️';
+      case 'reference_completed':
+        return '👥';
+      case 'work_history_verified':
+        return '✅';
+      case 'work_history_declined':
+        return '❌';
       default:
         return 'ℹ️';
     }
@@ -109,6 +122,12 @@ const NotificationBell: React.FC = () => {
         return 'text-orange-600';
       case 'profile_view':
         return 'text-indigo-600';
+      case 'reference_completed':
+        return 'text-green-600';
+      case 'work_history_verified':
+        return 'text-green-600';
+      case 'work_history_declined':
+        return 'text-red-600';
       default:
         return 'text-gray-600';
     }
@@ -121,7 +140,9 @@ const NotificationBell: React.FC = () => {
   };
 
   const handleNotificationClick = async (notification: Notification) => {
+    console.log('🔔 Notification clicked:', notification.id, 'read:', notification.read);
     if (!notification.read) {
+      console.log('🔔 Marking notification as read...');
       await markAsRead(notification.id);
     }
     setIsOpen(false);
@@ -132,7 +153,9 @@ const NotificationBell: React.FC = () => {
   };
 
   const handleClearAll = async () => {
+    console.log('🔔 Clear All button clicked');
     await clearAllNotifications();
+    console.log('🔔 Clear All completed');
   };
 
   return (
@@ -161,6 +184,7 @@ const NotificationBell: React.FC = () => {
             {unreadCount > 99 ? '99+' : unreadCount}
           </Badge>
         )}
+        
         
         {/* Ring animation overlay */}
         {isRinging && (
@@ -222,11 +246,13 @@ const NotificationBell: React.FC = () => {
               {loading ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                  <p className="ml-2 text-sm text-muted-foreground">Loading notifications...</p>
                 </div>
               ) : notifications.length === 0 ? (
                 <div className="text-center py-8">
                   <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <p className="text-muted-foreground">No notifications yet</p>
+                  <p className="text-xs text-muted-foreground mt-2">Check console for debugging info</p>
                 </div>
               ) : (
                 <ScrollArea className="h-96">

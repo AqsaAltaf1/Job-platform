@@ -6,7 +6,7 @@ import { getApiUrl } from '@/lib/config';
 
 export interface Notification {
   id: string;
-  type: 'info' | 'success' | 'warning' | 'error' | 'reference' | 'application' | 'interview' | 'profile_view';
+  type: 'info' | 'success' | 'warning' | 'error' | 'reference' | 'application' | 'interview' | 'profile_view' | 'reference_completed' | 'work_history_verified' | 'work_history_declined';
   title: string;
   message: string;
   read: boolean;
@@ -50,9 +50,16 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     try {
       setLoading(true);
       const token = localStorage.getItem('jwt_token');
-      if (!token) return;
+      if (!token) {
+        console.log('🔔 No JWT token found');
+        return;
+      }
 
-      const response = await fetch(getApiUrl('/api/notifications'), {
+      console.log('🔔 Fetching notifications...');
+      console.log('🔔 API URL:', getApiUrl('/notifications'));
+      console.log('🔔 Token exists:', !!token);
+      console.log('🔔 Token preview:', token ? token.substring(0, 20) + '...' : 'No token');
+      const response = await fetch(getApiUrl('/notifications'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -61,10 +68,19 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
       if (response.ok) {
         const data = await response.json();
+        console.log('🔔 Notifications response:', data);
+        console.log('🔔 Number of notifications:', data.notifications?.length || 0);
+        if (data.notifications && data.notifications.length > 0) {
+          console.log('🔔 First notification:', data.notifications[0]);
+        }
         setNotifications(data.notifications || []);
+      } else {
+        const errorText = await response.text();
+        console.error('🔔 Failed to fetch notifications:', response.status, response.statusText, errorText);
+        console.error('🔔 Response headers:', response.headers);
       }
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      console.error('🔔 Error fetching notifications:', error);
     } finally {
       setLoading(false);
     }
@@ -72,10 +88,14 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
   const markAsRead = async (notificationId: string) => {
     try {
+      console.log('🔔 Marking notification as read:', notificationId);
       const token = localStorage.getItem('jwt_token');
-      if (!token) return;
+      if (!token) {
+        console.log('🔔 No token found for markAsRead');
+        return;
+      }
 
-      const response = await fetch(getApiUrl(`/api/notifications/${notificationId}/read`), {
+      const response = await fetch(getApiUrl(`/notifications/${notificationId}/read`), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -84,6 +104,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       });
 
       if (response.ok) {
+        console.log('🔔 Successfully marked notification as read');
         setNotifications(prev => 
           prev.map(notification => 
             notification.id === notificationId 
@@ -91,9 +112,11 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
               : notification
           )
         );
+      } else {
+        console.error('🔔 Failed to mark notification as read:', response.status, response.statusText);
       }
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      console.error('🔔 Error marking notification as read:', error);
     }
   };
 
@@ -102,7 +125,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       const token = localStorage.getItem('jwt_token');
       if (!token) return;
 
-      const response = await fetch(getApiUrl('/api/notifications/mark-all-read'), {
+      const response = await fetch(getApiUrl('/notifications/mark-all-read'), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -125,7 +148,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       const token = localStorage.getItem('jwt_token');
       if (!token) return;
 
-      const response = await fetch(getApiUrl(`/api/notifications/${notificationId}`), {
+      const response = await fetch(getApiUrl(`/notifications/${notificationId}`), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -173,6 +196,15 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       case 'interview':
         toast.info(notification.title, { description: notification.message });
         break;
+      case 'reference_completed':
+        toast.success(notification.title, { description: notification.message });
+        break;
+      case 'work_history_verified':
+        toast.success(notification.title, { description: notification.message });
+        break;
+      case 'work_history_declined':
+        toast.warning(notification.title, { description: notification.message });
+        break;
       default:
         toast(notification.title, { description: notification.message });
     }
@@ -180,10 +212,14 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
   const clearAllNotifications = async () => {
     try {
+      console.log('🔔 Clearing all notifications...');
       const token = localStorage.getItem('jwt_token');
-      if (!token) return;
+      if (!token) {
+        console.log('🔔 No token found for clearAllNotifications');
+        return;
+      }
 
-      const response = await fetch(getApiUrl('/api/notifications/clear-all'), {
+      const response = await fetch(getApiUrl('/notifications/clear-all'), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -192,25 +228,52 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       });
 
       if (response.ok) {
+        console.log('🔔 Successfully cleared all notifications');
         setNotifications([]);
+      } else {
+        console.error('🔔 Failed to clear notifications:', response.status, response.statusText);
       }
     } catch (error) {
-      console.error('Error clearing all notifications:', error);
+      console.error('🔔 Error clearing all notifications:', error);
     }
   };
 
   // Fetch notifications on mount
   useEffect(() => {
+    console.log('🔔 NotificationProvider mounted, fetching notifications...');
     fetchNotifications();
+    
+    // Test API connectivity
+    setTimeout(async () => {
+      try {
+        console.log('🔔 Testing API connectivity...');
+        const testResponse = await fetch(getApiUrl('/notifications'), {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        console.log('🔔 Test API response status:', testResponse.status);
+        const testData = await testResponse.text();
+        console.log('🔔 Test API response:', testData);
+      } catch (error) {
+        console.error('🔔 Test API error:', error);
+      }
+    }, 1000);
   }, []);
 
-  // Set up polling for new notifications (every 30 seconds)
+  // Set up polling for new notifications (every 20 seconds for live updates)
   useEffect(() => {
+    console.log('🔔 Setting up notification polling...');
     const interval = setInterval(() => {
+      console.log('🔔 Polling for notifications...');
       fetchNotifications();
-    }, 30000);
+    }, 20000); // Increased to 20 seconds
 
-    return () => clearInterval(interval);
+    return () => {
+      console.log('🔔 Clearing notification polling...');
+      clearInterval(interval);
+    };
   }, []);
 
   const value: NotificationContextType = {

@@ -48,6 +48,20 @@ export default function RecentActivity() {
     fetchRecentActivity();
   }, []);
 
+  // Set up polling for live updates (every 45 seconds to avoid too many requests)
+  useEffect(() => {
+    console.log('🔄 Setting up recent activity polling...');
+    const interval = setInterval(() => {
+      console.log('🔄 Polling recent activity...');
+      fetchRecentActivity();
+    }, 45000); // Increased to 45 seconds
+
+    return () => {
+      console.log('🔄 Clearing recent activity polling...');
+      clearInterval(interval);
+    };
+  }, []);
+
   const fetchRecentActivity = async (isRefresh = false) => {
     try {
       if (isRefresh) {
@@ -132,15 +146,17 @@ export default function RecentActivity() {
       // Process references
       if (referencesResponse.status === 'fulfilled' && referencesResponse.value.ok) {
         const referencesData = await referencesResponse.value.json();
+        console.log('📊 References data:', referencesData);
         if (referencesData.success && referencesData.data) {
           referencesData.data.slice(0, 2).forEach((ref: any) => {
+            console.log('📊 Reference:', ref);
             if (ref.status === 'completed') {
               activities.push({
                 id: `ref_${ref.id}`,
                 type: 'reference_completed',
                 title: 'Reference completed',
                 description: `${ref.reviewer_name} completed your reference request`,
-                timestamp: ref.created_at,
+                timestamp: ref.created_at || ref.updated_at,
                 metadata: {
                   reference_name: ref.reviewer_name
                 }
@@ -200,6 +216,7 @@ export default function RecentActivity() {
   };
 
   const handleRefresh = () => {
+    console.log('🔄 Manual refresh of recent activity triggered');
     fetchRecentActivity(true);
   };
 

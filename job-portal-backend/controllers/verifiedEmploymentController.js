@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { VerifiedEmployment, CandidateProfile, User } from '../models/index.js';
+import { VerifiedEmployment, CandidateProfile, User, Notification } from '../models/index.js';
 import { sendEmail } from '../utils/emailService.js';
 
 const REVIEW_TOKEN_TTL_HOURS = 168; // 7 days
@@ -73,6 +73,26 @@ export const deleteVerifiedEmployment = async (req, res) => {
     if (record.candidate_profile_id !== req.user.candidateProfile?.id) {
       return res.status(403).json({ success: false, error: 'Unauthorized' });
     }
+    // Delete associated notifications
+    try {
+      const { Notification } = await import('../models/index.js');
+      await Notification.destroy({
+        where: {
+          user_id: req.user.id,
+          type: ['work_history_verified', 'work_history_declined'],
+          data: {
+            [require('sequelize').Op.contains]: {
+              company_name: record.company_name,
+              title: record.title
+            }
+          }
+        }
+      });
+      console.log('🗑️ Deleted associated notifications for work history:', record.company_name);
+    } catch (notificationError) {
+      console.error('Error deleting associated notifications:', notificationError);
+    }
+    
     await record.destroy();
     return res.json({ success: true });
   } catch (error) {
@@ -252,6 +272,40 @@ export const submitReviewByToken = async (req, res) => {
       review_token_expires_at: null,
     };
     await record.update(updates);
+    
+    // Create notification for the candidate
+    try {
+      console.log('🔔 Creating work history notification for candidate profile:', record.candidate_profile_id);
+      const candidateProfile = await CandidateProfile.findByPk(record.candidate_profile_id, {
+        include: [{ model: User, as: 'user' }]
+      });
+      
+      if (candidateProfile && candidateProfile.user) {
+        console.log('🔔 Found candidate user:', candidateProfile.user.id);
+        const notification = await Notification.create({
+          user_id: candidateProfile.user.id,
+          type: verified ? 'work_history_verified' : 'work_history_declined',
+          title: verified ? 'Work History Verified!' : 'Work History Declined',
+          message: verified 
+            ? `Your employment at ${record.company_name} as ${record.title} has been verified!`
+            : `Your employment verification request for ${record.company_name} was declined.`,
+          data: {
+            company_name: record.company_name,
+            title: record.title,
+            verification_status: verified ? 'VERIFIED' : 'DECLINED',
+            verified_at: verified ? new Date() : null
+          },
+          is_read: false
+        });
+        console.log('✅ Work history notification created successfully:', notification.id);
+      } else {
+        console.log('❌ Could not find candidate profile or user for notification');
+      }
+    } catch (notificationError) {
+      console.error('❌ Error creating work history notification:', notificationError);
+      // Don't fail the main request if notification creation fails
+    }
+    
     return res.json({ success: true });
   } catch (error) {
     console.error('Error submitting review by token:', error);

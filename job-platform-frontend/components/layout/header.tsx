@@ -13,13 +13,26 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useAuth } from "@/lib/auth"
 import { User, Settings, LogOut, Briefcase, Menu, X, Edit } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import NotificationBell from "@/components/notifications/NotificationBell"
 
 export function Header() {
   const { user, logout, setShowProfileModal } = useAuth()
   const router = useRouter()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const pathname = usePathname()
+
+  // Debug user role
+  useEffect(() => {
+    if (user) {
+      console.log('🔔 Header - User role:', user.role);
+      if (user.role === "candidate") {
+        console.log('🔔 Header - Showing notification bell for candidate');
+      } else {
+        console.log('🔔 Header - Not showing notification bell for role:', user.role);
+      }
+    }
+  }, [user]);
 
   const handleLogout = () => {
     logout()
@@ -87,6 +100,13 @@ export function Header() {
           <div className="flex items-center space-x-4">
             {user ? (
               <div className="flex items-center space-x-4">
+                {/* Notification Bell - Only for candidates */}
+                {user.role === "candidate" && (
+                  <div className="flex items-center gap-2">
+                    <NotificationBell />
+                  </div>
+                )}
+                
                 {(user.role === "employer" || user.role === "super_admin") && (
                   <Button variant="outline" size="sm" asChild>
                     <Link href="/jobs/post">Post A Job</Link>

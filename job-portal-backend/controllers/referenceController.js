@@ -259,6 +259,30 @@ const submitReference = async (req, res) => {
       completed_at: new Date()
     });
 
+    // Create notification for the candidate
+    try {
+      console.log('🔔 Creating reference notification for candidate:', invitation.candidate_id);
+      const { Notification } = await import('../models/index.js');
+      const notification = await Notification.create({
+        user_id: invitation.candidate_id,
+        type: 'reference_completed',
+        title: 'New Reference Received!',
+        message: `${invitation.reviewer_name} has submitted a reference for you.`,
+        data: {
+          reference_id: reference.id,
+          reviewer_name: invitation.reviewer_name,
+          reviewer_email: invitation.reviewer_email,
+          overall_rating: reference.overall_rating,
+          completed_at: new Date()
+        },
+        is_read: false
+      });
+      console.log('✅ Reference notification created successfully:', notification.id);
+    } catch (notificationError) {
+      console.error('❌ Error creating reference notification:', notificationError);
+      // Don't fail the main request if notification creation fails
+    }
+
     // Send confirmation email to candidate (don't fail if email fails)
     try {
       await sendReferenceConfirmationEmail(invitation, reference);
