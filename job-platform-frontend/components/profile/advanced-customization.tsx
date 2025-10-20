@@ -30,6 +30,11 @@ import {
   Star,
   Award
 } from 'lucide-react'
+
+// Create ImageIcon component since it's not available in lucide-react
+const ImageIcon = ({ className }: { className?: string }) => (
+  <Image className={className} />
+)
 import { showToast } from '@/lib/toast'
 import { getApiUrl } from '@/lib/config'
 import PortfolioItemModal from './portfolio-item-modal'
@@ -95,10 +100,10 @@ export default function AdvancedCustomization() {
   })
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       fetchCustomizationData()
     }
-  }, [user])
+  }, [user?.id]) // Only depend on user ID to prevent unnecessary re-fetches
 
   const fetchCustomizationData = async () => {
     try {
@@ -345,12 +350,22 @@ export default function AdvancedCustomization() {
                       src={item.thumbnail_url}
                       alt={item.title}
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Hide broken images and show placeholder instead
+                        e.currentTarget.style.display = 'none'
+                        const placeholder = e.currentTarget.nextElementSibling as HTMLElement
+                        if (placeholder) {
+                          placeholder.style.display = 'flex'
+                        }
+                      }}
                     />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-400">
-                      <ImageIcon className="h-12 w-12" />
-                    </div>
-                  )}
+                  ) : null}
+                  <div 
+                    className="w-full h-full flex items-center justify-center text-gray-400"
+                    style={{ display: item.thumbnail_url ? 'none' : 'flex' }}
+                  >
+                    <ImageIcon className="h-12 w-12" />
+                  </div>
                 </div>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-2">

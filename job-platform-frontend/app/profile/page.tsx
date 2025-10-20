@@ -50,18 +50,30 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("experience")
   const [verificationStatus, setVerificationStatus] = useState<any>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [dataLoaded, setDataLoaded] = useState(false)
 
   useEffect(() => {
-    if (user?.role === 'candidate') {
+    if (user?.role === 'candidate' && !dataLoaded) {
       // Refresh user data to ensure candidateProfile is loaded
-      refreshUser()
-      loadExperiences()
-      loadProjects()
-      loadEducations()
-      loadEnhancedSkills()
-      loadVerificationStatus()
+      const loadAllData = async () => {
+        try {
+          await Promise.all([
+            refreshUser(),
+            loadExperiences(),
+            loadProjects(),
+            loadEducations(),
+            loadEnhancedSkills(),
+            loadVerificationStatus()
+          ])
+          setDataLoaded(true)
+        } catch (error) {
+          console.error('Error loading profile data:', error)
+          setDataLoaded(true) // Set to true even on error to prevent infinite loading
+        }
+      }
+      loadAllData()
     }
-  }, [user])
+  }, [user?.id, user?.role, dataLoaded]) // Only depend on user ID and role, not the entire user object
 
   // Debug effect to track user data changes
   useEffect(() => {
@@ -70,7 +82,7 @@ export default function ProfilePage() {
       candidateProfile: user?.candidateProfile,
       hasCandidateProfile: !!user?.candidateProfile
     })
-  }, [user?.candidateProfile])
+  }, [user?.candidateProfile?.id]) // Only depend on candidateProfile ID to prevent infinite loops
 
   // Check for verification notification
   useEffect(() => {
@@ -375,7 +387,7 @@ export default function ProfilePage() {
     }
   }
 
-  if (loading) {
+  if (loading || (user?.role === 'candidate' && !dataLoaded)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

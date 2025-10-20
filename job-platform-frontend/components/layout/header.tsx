@@ -1,6 +1,6 @@
 "use client"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -19,6 +19,7 @@ export function Header() {
   const { user, logout, setShowProfileModal } = useAuth()
   const router = useRouter()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const pathname = usePathname()
 
   const handleLogout = () => {
     logout()
@@ -69,7 +70,7 @@ export function Header() {
                   <Link
                     key={item.name}
                     href={item.href}
-                    className="text-sm font-medium hover:text-primary transition-colors"
+                    className={`text-sm font-medium hover:text-primary transition-colors ${pathname && (pathname === item.href || pathname.startsWith(item.href + "/")) ? "text-primary" : ""}`}
                   >
                     {item.name}
                   </Link>
@@ -200,7 +201,7 @@ export function Header() {
                   <Link
                     key={item.name}
                     href={item.href}
-                    className="block px-4 py-2 text-sm font-medium hover:text-primary transition-colors"
+                    className={`block px-4 py-2 text-sm font-medium hover:text-primary transition-colors ${pathname && (pathname === item.href || pathname.startsWith(item.href + "/")) ? "text-primary" : ""}`}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     {item.name}
