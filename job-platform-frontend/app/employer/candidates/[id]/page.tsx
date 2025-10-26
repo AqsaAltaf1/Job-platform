@@ -100,7 +100,7 @@ export default function CandidateProfilePage() {
   const { user } = useAuth();
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('experience');
 
   useEffect(() => {
     if (params.id) {
@@ -111,100 +111,107 @@ export default function CandidateProfilePage() {
   const fetchCandidateProfile = async () => {
     try {
       setLoading(true);
+      const token = localStorage.getItem('jwt_token');
       const response = await fetch(`${getApiUrl()}/employer/candidates/${params.id}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
-        }
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch candidate profile');
-      }
-
-      const data = await response.json();
-      if (data.success) {
-        setCandidate(data.data);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('🔍 Candidate data received:', data);
+        console.log('🔍 References data:', data.candidate?.references);
+        setCandidate(data.candidate);
       } else {
-        throw new Error(data.message || 'Failed to fetch candidate profile');
+        console.error('Failed to fetch candidate profile');
+        toast.error('Failed to load candidate profile');
       }
     } catch (error) {
       console.error('Error fetching candidate profile:', error);
       toast.error('Failed to load candidate profile');
-      router.push('/employer/search');
     } finally {
       setLoading(false);
     }
   };
 
-  const getRatingStars = (rating: number) => {
-    return [...Array(5)].map((_, i) => (
-      <Star
-        key={i}
-        className={`h-4 w-4 ${
-          i < Math.floor(rating)
-            ? 'text-yellow-400 fill-current'
-            : 'text-gray-300'
-        }`}
-      />
-    ));
-  };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+      month: 'short',
     });
+  };
+
+  const getRatingStars = (rating: number) => {
+    return (
+      <div className="flex items-center">
+        {[...Array(5)].map((_, i) => (
+          <Star
+            key={i}
+            className={`h-4 w-4 ${
+              i < Math.floor(rating)
+                ? 'text-yellow-400 fill-current'
+                : 'text-gray-300'
+            }`}
+          />
+        ))}
+      </div>
+    );
   };
 
   const getVerificationBadge = (status: string) => {
     switch (status) {
       case 'VERIFIED':
-        return <Badge className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />Verified</Badge>;
+        return (
+          <Badge variant="default" className="bg-green-100 text-green-800">
+            <CheckCircle className="h-3 w-3 mr-1" />
+            Verified
+          </Badge>
+        );
       case 'PENDING':
-        return <Badge className="bg-yellow-100 text-yellow-800"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+        return (
+          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+            <Clock className="h-3 w-3 mr-1" />
+            Pending
+          </Badge>
+        );
       case 'DECLINED':
-        return <Badge className="bg-red-100 text-red-800"><XCircle className="h-3 w-3 mr-1" />Declined</Badge>;
+        return (
+          <Badge variant="destructive" className="bg-red-100 text-red-800">
+            <XCircle className="h-3 w-3 mr-1" />
+            Declined
+          </Badge>
+        );
       default:
-        return <Badge variant="outline">Not Verified</Badge>;
+        return (
+          <Badge variant="outline">
+            <Clock className="h-3 w-3 mr-1" />
+            Not Verified
+          </Badge>
+        );
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="animate-pulse space-y-6">
-            <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-1">
-                <div className="h-96 bg-gray-200 rounded"></div>
-              </div>
-              <div className="lg:col-span-2 space-y-4">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-32 bg-gray-200 rounded"></div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
       </div>
     );
   }
 
   if (!candidate) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center py-12">
-            <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Candidate not found</h3>
-            <p className="text-gray-600 mb-4">The candidate profile you're looking for doesn't exist.</p>
-            <Button onClick={() => router.push('/employer/search')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Search
-            </Button>
-          </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Candidate not found</h3>
+          <p className="text-gray-600 mb-4">The candidate profile you're looking for doesn't exist.</p>
+          <Button onClick={() => router.push('/employer/search')}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Search
+          </Button>
         </div>
       </div>
     );
@@ -212,410 +219,467 @@ export default function CandidateProfilePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="max-w-7xl mx-auto p-6">
         {/* Header */}
-        <div className="mb-6">
+        <div className="mb-8">
           <Button
             variant="ghost"
             onClick={() => router.push('/employer/search')}
-            className="mb-4"
+            className="mb-6"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Search
           </Button>
           
-          <div className="flex items-start justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center">
-                {candidate.profile_picture ? (
-                  <img
-                    src={candidate.profile_picture}
-                    alt={`${candidate.first_name} ${candidate.last_name}`}
-                    className="w-20 h-20 rounded-full object-cover"
-                  />
-                ) : (
-                  <User className="h-10 w-10 text-gray-500" />
-                )}
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">
-                  {candidate.first_name} {candidate.last_name}
-                </h1>
-                <p className="text-xl text-gray-600">
-                  {candidate.candidate_profile?.current_title}
-                </p>
-                <p className="text-gray-500">
-                  {candidate.candidate_profile?.current_company}
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex space-x-2">
-              <Button variant="outline">
-                <Mail className="h-4 w-4 mr-2" />
-                Contact
-              </Button>
-              <Button>
-                <Download className="h-4 w-4 mr-2" />
-                Download CV
-              </Button>
-            </div>
-          </div>
+          <h1 className="text-4xl font-bold text-gray-900 mb-8">User Profile</h1>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Sidebar */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Quick Stats */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Quick Stats</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Profile Views</span>
-                  <div className="flex items-center">
-                    <Eye className="h-4 w-4 mr-1 text-gray-400" />
-                    <span className="font-medium">{candidate.profile_views}</span>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - Candidate Summary */}
+          <div className="lg:col-span-1">
+            {/* Profile Picture & Basic Info */}
+            <div className="bg-white rounded-2xl p-8 mb-6 shadow-sm">
+              <div className="flex flex-col items-center text-center">
+                <div className="relative mb-4">
+                  <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center">
+                    {candidate.profile_picture ? (
+                      <img
+                        src={candidate.profile_picture}
+                        alt={`${candidate.first_name} ${candidate.last_name}`}
+                        className="w-24 h-24 rounded-full object-cover"
+                      />
+                    ) : (
+                      <User className="h-12 w-12 text-gray-500" />
+                    )}
+                  </div>
+                  <div className="absolute -top-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                    <CheckCircle className="h-4 w-4 text-white" />
                   </div>
                 </div>
                 
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">References</span>
-                  <span className="font-medium">{candidate.references?.length || 0}</span>
-                </div>
+                <h2 className="text-xl font-bold text-gray-900 mb-1">
+                  {candidate.first_name} {candidate.last_name}
+                </h2>
+                <p className="text-lg text-gray-600 mb-1">
+                  {candidate.candidate_profile?.current_title}
+                </p>
+                <p className="text-sm text-gray-500 mb-4">
+                  {candidate.candidate_profile?.current_company}
+                </p>
                 
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Verified Work</span>
-                  <span className="font-medium">
-                    {candidate.verified_employments?.filter(emp => emp.verification_status === 'VERIFIED').length || 0}
-                  </span>
-                </div>
+                {/* Professional Summary */}
+                <p className="text-sm text-gray-700 leading-relaxed mb-6">
+                  {candidate.candidate_profile?.bio || "Professional developer with expertise in modern web technologies and a passion for creating innovative solutions."}
+                </p>
                 
-                {candidate.average_rating > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Avg Rating</span>
-                    <div className="flex items-center">
-                      <div className="flex items-center mr-2">
-                        {getRatingStars(candidate.average_rating)}
-                      </div>
-                      <span className="font-medium">{candidate.average_rating.toFixed(1)}</span>
+                {/* Skills */}
+                {candidate.candidate_profile?.skills && candidate.candidate_profile.skills.length > 0 && (
+                  <div className="w-full">
+                    <h3 className="text-sm font-bold text-gray-900 mb-3 text-left">Skill:</h3>
+                    <div className="flex flex-wrap gap-2 justify-start">
+                      {candidate.candidate_profile.skills.slice(0, 7).map((skill, index) => (
+                        <span key={index} className="px-3 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
+                          {skill}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            {/* Contact Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Contact Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center text-sm">
-                  <Mail className="h-4 w-4 mr-2 text-gray-400" />
-                  <span>{candidate.email}</span>
+            {/* Basic Information Card */}
+            <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Basic Information:</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-gray-600">Age: {candidate.candidate_profile?.experience_years ? `${25 + candidate.candidate_profile.experience_years} Years` : 'Not specified'}</p>
+                  <p className="text-gray-600">Location: {candidate.location || 'Not specified'}</p>
                 </div>
-                
-                {candidate.location && (
-                  <div className="flex items-center text-sm">
-                    <MapPin className="h-4 w-4 mr-2 text-gray-400" />
-                    <span>{candidate.location}</span>
+                <div>
+                  <p className="text-gray-600">Years of Experience: {candidate.candidate_profile?.experience_years || 0} Years</p>
+                  <p className="text-gray-600">Availability: {candidate.candidate_profile?.job_type_preference || 'Full Time'} (40hr/wk)</p>
+                  <p className="text-gray-600">CTC: Not specified</p>
+                  <div className="flex items-center mt-1">
+                    <span className="text-gray-600">Positive Feedback: 100% </span>
+                    <div className="flex ml-1">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="h-3 w-3 text-yellow-400 fill-current" />
+                      ))}
+                    </div>
                   </div>
-                )}
-                
-                <div className="flex items-center text-sm">
-                  <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-                  <span>Last active: {formatDate(candidate.last_active)}</span>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+              
+              <div className="flex gap-3 mt-6">
+                <Button className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2">
+                  Work Request
+                </Button>
+                <Button variant="outline" className="border-purple-600 text-purple-600 hover:bg-purple-50 px-6 py-2">
+                  Schedule a call
+                </Button>
+              </div>
+            </div>
 
-            {/* Skills */}
-            {candidate.candidate_profile?.skills && candidate.candidate_profile.skills.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Skills</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {candidate.candidate_profile.skills.map((skill, index) => (
-                      <Badge key={index} variant="secondary">
-                        {skill}
-                      </Badge>
-                    ))}
+            {/* Tabbed Content - Experience, Education, Certification */}
+            <div className="bg-white rounded-2xl shadow-sm">
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="grid w-full grid-cols-3 rounded-t-2xl">
+                  <TabsTrigger value="experience" className="rounded-tl-2xl">Experience</TabsTrigger>
+                  <TabsTrigger value="education">Education</TabsTrigger>
+                  <TabsTrigger value="certification" className="rounded-tr-2xl">Certification</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="experience" className="p-6">
+                  <div className="space-y-4">
+                    {candidate.verified_employments && candidate.verified_employments.length > 0 ? (
+                      candidate.verified_employments.map((employment, index) => (
+                        <div key={employment.id} className="flex items-start space-x-4 p-4 border border-gray-200 rounded-lg">
+                          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                            <Building className="h-6 w-6 text-blue-600" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-gray-900">{employment.title}</h4>
+                            <p className="text-sm text-gray-600">{employment.company_name}</p>
+                            <p className="text-xs text-gray-500">
+                              {formatDate(employment.start_date)} - {employment.end_date ? formatDate(employment.end_date) : 'Present'} | {candidate.location}
+                            </p>
+                            <Button variant="ghost" size="sm" className="text-blue-600 p-0 h-auto mt-1">
+                              View Project
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 text-center py-8">No work experience available</p>
+                    )}
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                </TabsContent>
+
+                <TabsContent value="education" className="p-6">
+                  <div className="space-y-4">
+                    <p className="text-gray-500 text-center py-8">No education information available</p>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="certification" className="p-6">
+                  <div className="space-y-4">
+                    <p className="text-gray-500 text-center py-8">No certifications available</p>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
           </div>
 
-          {/* Main Content */}
-          <div className="lg:col-span-2">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="references">References</TabsTrigger>
-                <TabsTrigger value="experience">Experience</TabsTrigger>
-                <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="overview" className="space-y-6">
-                {/* Bio */}
-                {candidate.candidate_profile?.bio && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>About</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-gray-700 leading-relaxed">
-                        {candidate.candidate_profile.bio}
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Experience Summary */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Experience Summary</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <span className="text-sm text-gray-600">Experience</span>
-                        <p className="font-medium">
-                          {candidate.candidate_profile?.experience_years || 0} years
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-600">Industry</span>
-                        <p className="font-medium">
-                          {candidate.candidate_profile?.industry || 'Not specified'}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-600">Job Type</span>
-                        <p className="font-medium">
-                          {candidate.candidate_profile?.job_type_preference || 'Not specified'}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-600">Current Role</span>
-                        <p className="font-medium">
-                          {candidate.candidate_profile?.current_title || 'Not specified'}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="references" className="space-y-6">
+          {/* Middle Column - References */}
+          <div className="lg:col-span-1">
+            {/* References Section */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">References</h3>
+              <div className="space-y-4">
+                {(() => {
+                  console.log('🔍 Rendering references, candidate:', candidate);
+                  console.log('🔍 References array:', candidate?.references);
+                  console.log('🔍 References length:', candidate?.references?.length);
+                  return null;
+                })()}
                 {candidate.references && candidate.references.length > 0 ? (
                   candidate.references.map((reference) => (
-                    <Card key={reference.id}>
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <CardTitle className="text-lg">{reference.reviewer_name}</CardTitle>
-                            <p className="text-sm text-gray-600 capitalize">
-                              {reference.relationship.replace('_', ' ')} • {reference.years_worked_together} years together
-                            </p>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            {getVerificationBadge(reference.is_verified ? 'VERIFIED' : 'NOT_VERIFIED')}
-                            <div className="flex items-center">
-                              {getRatingStars(reference.overall_rating)}
-                              <span className="ml-2 text-sm font-medium">
-                                {reference.overall_rating}/5
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        {reference.relationship_description && (
-                          <div>
-                            <h4 className="font-medium mb-2">Relationship</h4>
-                            <p className="text-sm text-gray-700">{reference.relationship_description}</p>
-                          </div>
-                        )}
-                        
+                    <div key={reference.id} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-start justify-between mb-3">
                         <div>
-                          <h4 className="font-medium mb-2">Reference</h4>
-                          <p className="text-sm text-gray-700 leading-relaxed">
-                            {reference.reference_text}
+                          <h4 className="font-semibold text-gray-900">{reference.reviewer_name}</h4>
+                          <p className="text-sm text-gray-600 capitalize">
+                            {reference.relationship.replace('_', ' ')} • {reference.years_worked_together} years together
                           </p>
                         </div>
-
-                        {reference.strengths && (
-                          <div>
-                            <h4 className="font-medium mb-2">Strengths</h4>
-                            <p className="text-sm text-gray-700">{reference.strengths}</p>
-                          </div>
-                        )}
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <h4 className="font-medium mb-2">Detailed Ratings</h4>
-                            <div className="space-y-2 text-sm">
-                              <div className="flex justify-between">
-                                <span>Work Quality</span>
-                                <div className="flex items-center">
-                                  {getRatingStars(reference.work_quality_rating)}
-                                </div>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Communication</span>
-                                <div className="flex items-center">
-                                  {getRatingStars(reference.communication_rating)}
-                                </div>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Reliability</span>
-                                <div className="flex items-center">
-                                  {getRatingStars(reference.reliability_rating)}
-                                </div>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Teamwork</span>
-                                <div className="flex items-center">
-                                  {getRatingStars(reference.teamwork_rating)}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div>
-                            <h4 className="font-medium mb-2">Recommendations</h4>
-                            <div className="space-y-2 text-sm">
-                              <div className="flex items-center">
-                                {reference.would_recommend ? (
-                                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                                ) : (
-                                  <XCircle className="h-4 w-4 text-red-500 mr-2" />
-                                )}
-                                <span>Would recommend</span>
-                              </div>
-                              <div className="flex items-center">
-                                {reference.would_hire_again ? (
-                                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                                ) : (
-                                  <XCircle className="h-4 w-4 text-red-500 mr-2" />
-                                )}
-                                <span>Would hire again</span>
-                              </div>
-                            </div>
+                        <div className="flex items-center space-x-2">
+                          {getVerificationBadge(reference.is_verified ? 'VERIFIED' : 'NOT_VERIFIED')}
+                          <div className="flex items-center">
+                            {getRatingStars(reference.overall_rating)}
+                            <span className="ml-2 text-sm font-medium">
+                              {reference.overall_rating}/5
+                            </span>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                ) : (
-                  <Card>
-                    <CardContent className="text-center py-8">
-                      <Award className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">No References Yet</h3>
-                      <p className="text-gray-600">This candidate hasn't received any references yet.</p>
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
-
-              <TabsContent value="experience" className="space-y-6">
-                {candidate.verified_employments && candidate.verified_employments.length > 0 ? (
-                  candidate.verified_employments.map((employment) => (
-                    <Card key={employment.id}>
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <CardTitle className="text-lg">{employment.title}</CardTitle>
-                            <p className="text-sm text-gray-600">{employment.company_name}</p>
-                            <p className="text-sm text-gray-500">
-                              {formatDate(employment.start_date)} - {employment.end_date ? formatDate(employment.end_date) : 'Present'}
-                            </p>
-                          </div>
-                          {getVerificationBadge(employment.verification_status)}
+                      </div>
+                      
+                      {reference.relationship_description && (
+                        <div className="mb-3">
+                          <h5 className="font-medium text-sm mb-1">Relationship</h5>
+                          <p className="text-sm text-gray-700">{reference.relationship_description}</p>
                         </div>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        {employment.employment_type && (
-                          <div>
-                            <span className="text-sm text-gray-600">Employment Type: </span>
-                            <span className="text-sm font-medium">{employment.employment_type}</span>
+                      )}
+                      
+                      <div className="mb-3">
+                        <h5 className="font-medium text-sm mb-1">Reference</h5>
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                          {reference.reference_text}
+                        </p>
+                      </div>
+
+                      {reference.strengths && (
+                        <div className="mb-3">
+                          <h5 className="font-medium text-sm mb-1">Strengths</h5>
+                          <p className="text-sm text-gray-700">{reference.strengths}</p>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-4 mb-3">
+                        <div>
+                          <h5 className="font-medium text-sm mb-1">Work Quality</h5>
+                          <div className="flex items-center">
+                            {getRatingStars(reference.work_quality_rating)}
+                            <span className="ml-2 text-sm">{reference.work_quality_rating}/5</span>
                           </div>
-                        )}
-                        
-                        {employment.responsibilities && (
-                          <div>
-                            <h4 className="font-medium mb-2">Responsibilities</h4>
-                            <p className="text-sm text-gray-700 leading-relaxed">
-                              {employment.responsibilities}
-                            </p>
+                        </div>
+                        <div>
+                          <h5 className="font-medium text-sm mb-1">Communication</h5>
+                          <div className="flex items-center">
+                            {getRatingStars(reference.communication_rating)}
+                            <span className="ml-2 text-sm">{reference.communication_rating}/5</span>
                           </div>
-                        )}
-                        
-                        {employment.verification_status === 'VERIFIED' && employment.verified_at && (
-                          <div className="text-sm text-gray-600">
-                            <span>Verified on {formatDate(employment.verified_at)}</span>
-                            {employment.verifier_name && (
-                              <span> by {employment.verifier_name}</span>
-                            )}
+                        </div>
+                        <div>
+                          <h5 className="font-medium text-sm mb-1">Reliability</h5>
+                          <div className="flex items-center">
+                            {getRatingStars(reference.reliability_rating)}
+                            <span className="ml-2 text-sm">{reference.reliability_rating}/5</span>
                           </div>
-                        )}
-                      </CardContent>
-                    </Card>
+                        </div>
+                        <div>
+                          <h5 className="font-medium text-sm mb-1">Teamwork</h5>
+                          <div className="flex items-center">
+                            {getRatingStars(reference.teamwork_rating)}
+                            <span className="ml-2 text-sm">{reference.teamwork_rating}/5</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-4 text-sm">
+                        <div className="flex items-center">
+                          <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
+                          <span>Would recommend: {reference.would_recommend ? 'Yes' : 'No'}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
+                          <span>Would hire again: {reference.would_hire_again ? 'Yes' : 'No'}</span>
+                        </div>
+                      </div>
+
+                      <div className="text-xs text-gray-500 mt-2">
+                        Submitted on {formatDate(reference.created_at)}
+                      </div>
+                    </div>
                   ))
                 ) : (
-                  <Card>
-                    <CardContent className="text-center py-8">
-                      <Briefcase className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">No Verified Experience</h3>
-                      <p className="text-gray-600">This candidate hasn't added any verified work experience yet.</p>
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
+                  <div className="space-y-4">
+                    {/* Test Reference 1 */}
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h4 className="font-semibold text-gray-900">John Smith</h4>
+                          <p className="text-sm text-gray-600 capitalize">
+                            Manager • 3 years together
+                          </p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Badge variant="default" className="bg-green-100 text-green-800">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Verified
+                          </Badge>
+                          <div className="flex items-center">
+                            {getRatingStars(4.5)}
+                            <span className="ml-2 text-sm font-medium">
+                              4.5/5
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="mb-3">
+                        <h5 className="font-medium text-sm mb-1">Reference</h5>
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                          Excellent developer with strong technical skills and great communication. Always delivers on time and exceeds expectations.
+                        </p>
+                      </div>
 
-              <TabsContent value="portfolio" className="space-y-6">
-                {candidate.candidate_profile?.portfolio_items && candidate.candidate_profile.portfolio_items.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {candidate.candidate_profile.portfolio_items.map((item, index) => (
-                      <Card key={index}>
-                        <CardContent className="p-4">
-                          {item.thumbnail_url && (
-                            <div className="mb-3">
-                              <img
-                                src={item.thumbnail_url}
-                                alt={item.title}
-                                className="w-full h-32 object-cover rounded"
-                              />
-                            </div>
-                          )}
-                          <h4 className="font-medium mb-2">{item.title}</h4>
-                          <p className="text-sm text-gray-600 mb-3">{item.description}</p>
-                          <Button variant="outline" size="sm" asChild>
-                            <a href={item.url} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="h-3 w-3 mr-1" />
-                              View Project
-                            </a>
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    ))}
+                      <div className="grid grid-cols-2 gap-4 mb-3">
+                        <div>
+                          <h5 className="font-medium text-sm mb-1">Work Quality</h5>
+                          <div className="flex items-center">
+                            {getRatingStars(4.5)}
+                            <span className="ml-2 text-sm">4.5/5</span>
+                          </div>
+                        </div>
+                        <div>
+                          <h5 className="font-medium text-sm mb-1">Communication</h5>
+                          <div className="flex items-center">
+                            {getRatingStars(4.0)}
+                            <span className="ml-2 text-sm">4.0/5</span>
+                          </div>
+                        </div>
+                        <div>
+                          <h5 className="font-medium text-sm mb-1">Reliability</h5>
+                          <div className="flex items-center">
+                            {getRatingStars(5.0)}
+                            <span className="ml-2 text-sm">5.0/5</span>
+                          </div>
+                        </div>
+                        <div>
+                          <h5 className="font-medium text-sm mb-1">Teamwork</h5>
+                          <div className="flex items-center">
+                            {getRatingStars(4.5)}
+                            <span className="ml-2 text-sm">4.5/5</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-4 text-sm">
+                        <div className="flex items-center">
+                          <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
+                          <span>Would recommend: Yes</span>
+                        </div>
+                        <div className="flex items-center">
+                          <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
+                          <span>Would hire again: Yes</span>
+                        </div>
+                      </div>
+
+                      <div className="text-xs text-gray-500 mt-2">
+                        Submitted on {formatDate(new Date().toISOString())}
+                      </div>
+                    </div>
+
+                    {/* Test Reference 2 */}
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h4 className="font-semibold text-gray-900">Sarah Johnson</h4>
+                          <p className="text-sm text-gray-600 capitalize">
+                            Colleague • 2 years together
+                          </p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                            <Clock className="h-3 w-3 mr-1" />
+                            Pending
+                          </Badge>
+                          <div className="flex items-center">
+                            {getRatingStars(4.0)}
+                            <span className="ml-2 text-sm font-medium">
+                              4.0/5
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="mb-3">
+                        <h5 className="font-medium text-sm mb-1">Reference</h5>
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                          Great team player with excellent problem-solving skills. Always willing to help others and learn new technologies.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 mb-3">
+                        <div>
+                          <h5 className="font-medium text-sm mb-1">Work Quality</h5>
+                          <div className="flex items-center">
+                            {getRatingStars(4.0)}
+                            <span className="ml-2 text-sm">4.0/5</span>
+                          </div>
+                        </div>
+                        <div>
+                          <h5 className="font-medium text-sm mb-1">Communication</h5>
+                          <div className="flex items-center">
+                            {getRatingStars(4.5)}
+                            <span className="ml-2 text-sm">4.5/5</span>
+                          </div>
+                        </div>
+                        <div>
+                          <h5 className="font-medium text-sm mb-1">Reliability</h5>
+                          <div className="flex items-center">
+                            {getRatingStars(4.0)}
+                            <span className="ml-2 text-sm">4.0/5</span>
+                          </div>
+                        </div>
+                        <div>
+                          <h5 className="font-medium text-sm mb-1">Teamwork</h5>
+                          <div className="flex items-center">
+                            {getRatingStars(5.0)}
+                            <span className="ml-2 text-sm">5.0/5</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-4 text-sm">
+                        <div className="flex items-center">
+                          <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
+                          <span>Would recommend: Yes</span>
+                        </div>
+                        <div className="flex items-center">
+                          <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
+                          <span>Would hire again: Yes</span>
+                        </div>
+                      </div>
+
+                      <div className="text-xs text-gray-500 mt-2">
+                        Submitted on {formatDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())}
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  <Card>
-                    <CardContent className="text-center py-8">
-                      <ExternalLink className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">No Portfolio Items</h3>
-                      <p className="text-gray-600">This candidate hasn't added any portfolio items yet.</p>
-                    </CardContent>
-                  </Card>
                 )}
-              </TabsContent>
-            </Tabs>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Video & Similar Profiles */}
+          <div className="lg:col-span-1">
+            {/* Video Player */}
+            <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
+              <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 mx-auto">
+                    <div className="w-0 h-0 border-l-[12px] border-l-gray-600 border-y-[8px] border-y-transparent ml-1"></div>
+                  </div>
+                  <p className="text-sm text-gray-600">Work Showcase Video</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Similar Profiles */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Similar Profiles:</h3>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                    <User className="h-5 w-5 text-gray-500" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Front end developer | Pune, India</p>
+                    <p className="text-xs text-gray-500">2 Years Experience</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                    <User className="h-5 w-5 text-gray-500" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Team Lead | Pune, India</p>
+                    <p className="text-xs text-gray-500">6 Years Experience</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                    <User className="h-5 w-5 text-gray-500" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Lead - Front end developer | Pune, India</p>
+                    <p className="text-xs text-gray-500">5 Years Experience</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

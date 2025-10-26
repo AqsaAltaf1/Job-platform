@@ -44,8 +44,8 @@ export default function GoogleCallbackPage() {
         // Exchange code for access token
         const tokenResponse = await googleAuth.exchangeCodeForToken(code, state);
         
-        if (!tokenResponse.success) {
-          throw new Error(tokenResponse.error || 'Failed to exchange code for token');
+        if (!tokenResponse.access_token) {
+          throw new Error('Failed to exchange code for token');
         }
 
         setMessage('Authenticating with Google...');
@@ -67,14 +67,21 @@ export default function GoogleCallbackPage() {
         }
 
         setStatus('success');
-        setMessage(authResponse.isNewUser ? 'Account created successfully!' : 'Login successful!');
+        setMessage('Login successful!');
 
         // Show success toast
-        showToast.success(authResponse.isNewUser ? 'Account created and logged in successfully!' : 'Logged in successfully!');
+        showToast.success('Logged in successfully!');
 
         // Redirect after a short delay
         setTimeout(() => {
-          const redirectPath = authResponse.user?.role === 'super_admin' ? '/admin' : '/candidate/dashboard';
+          let redirectPath = "/dashboard";
+          if (authResponse.user?.role === 'super_admin') {
+            redirectPath = '/admin';
+          } else if (authResponse.user?.role === 'employer' || (authResponse.user?.role as any) === 'team_member') {
+            redirectPath = '/employer/dashboard';
+          } else if (authResponse.user?.role === 'candidate') {
+            redirectPath = '/candidate/dashboard';
+          }
           router.push(redirectPath);
         }, 2000);
 

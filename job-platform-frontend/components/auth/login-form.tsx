@@ -32,8 +32,15 @@ export function LoginForm() {
 
     if (result.success) {
       showToast.success(toastMessages.loginSuccess);
-      // Redirect super_admin to /admin, others to /candidate/dashboard
-      const redirectPath = result.user?.role === "super_admin" ? "/admin" : "/candidate/dashboard";
+      // Redirect based on user role
+      let redirectPath = "/dashboard";
+      if (result.user?.role === "super_admin") {
+        redirectPath = "/admin";
+      } else if (result.user?.role === "employer" || (result.user?.role as any) === "team_member") {
+        redirectPath = "/employer/dashboard";
+      } else if (result.user?.role === "candidate") {
+        redirectPath = "/candidate/dashboard";
+      }
       router.push(redirectPath)
     } else {
       const errorMessage = result.error || toastMessages.loginError;

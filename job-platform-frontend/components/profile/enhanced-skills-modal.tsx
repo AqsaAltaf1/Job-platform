@@ -203,11 +203,11 @@ export default function EnhancedSkillsModal({ isOpen, onClose, candidateId, onSa
         onSave();
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error || 'Failed to delete skill'}`);
+        showToast.error(errorData.error || 'Failed to delete skill');
       }
     } catch (error) {
       console.error('Error deleting skill:', error);
-      alert('Failed to delete skill');
+      showToast.error('Failed to delete skill');
     } finally {
       setLoading(false);
     }

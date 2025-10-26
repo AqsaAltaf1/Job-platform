@@ -50,6 +50,7 @@ export function Header() {
     { name: "Candidates", href: "/candidates", showForRoles: ["employer", "team_member"] },
     { name: "Pipeline", href: "/employer/kanban", showForRoles: ["employer", "team_member"] },
     { name: "Dashboard", href: "/candidate/dashboard", showForRoles: ["candidate"] },
+    { name: "Employer Dashboard", href: "/employer/dashboard", showForRoles: ["employer", "team_member"] },
     { name: "Pricing", href: "/pricing" },
     { name: "Subscription", href: "/subscription/manage", showForRoles: ["employer", "candidate"] },
   ]

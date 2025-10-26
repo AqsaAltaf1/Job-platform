@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Save, Upload, Image as ImageIcon, X } from 'lucide-react'
+import { showToast } from '@/lib/toast'
 
 interface PortfolioItem {
   id?: string
@@ -92,13 +93,13 @@ export default function PortfolioItemModal({ isOpen, onClose, onSave, item, savi
     if (file) {
       // Validate file type
       if (!file.type.startsWith('image/')) {
-        alert('Please select an image file')
+        showToast.error('Please select an image file')
         return
       }
       
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        alert('Image size should be less than 5MB')
+        showToast.error('Image size should be less than 5MB')
         return
       }
 
@@ -133,11 +134,11 @@ export default function PortfolioItemModal({ isOpen, onClose, onSave, item, savi
           }))
         } else {
           console.error('Failed to upload image')
-          alert('Failed to upload image. Please try again.')
+          showToast.error('Failed to upload image. Please try again.')
         }
       } catch (error) {
         console.error('Error uploading image:', error)
-        alert('Error uploading image. Please try again.')
+        showToast.error('Error uploading image. Please try again.')
       }
     }
   }

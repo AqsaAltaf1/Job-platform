@@ -70,13 +70,13 @@ export default function SkillEvidenceModal({ isOpen, onClose, skillId, skillName
       // Validate file type
       const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'image/jpeg', 'image/png'];
       if (!allowedTypes.includes(file.type)) {
-        alert('Please select a valid file (PDF, DOC, DOCX, TXT, JPG, PNG)');
+        showToast.error('Please select a valid file (PDF, DOC, DOCX, TXT, JPG, PNG)');
         return;
       }
 
       // Validate file size (10MB limit)
       if (file.size > 10 * 1024 * 1024) {
-        alert('File size must be less than 10MB');
+        showToast.error('File size must be less than 10MB');
         return;
       }
 
