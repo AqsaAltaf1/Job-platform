@@ -21,10 +21,10 @@ import {
   Users, 
   FileText,
   TrendingUp,
-  CheckCircle
+  CheckCircle,
+  RefreshCw
 } from "lucide-react"
 import { getApiUrl } from "@/lib/config"
-import { toast } from "sonner"
 import TransparencyDashboard from '@/components/profile/transparency-dashboard'
 
 interface DashboardStats {
@@ -54,6 +54,7 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("overview")
   const [recentJobs, setRecentJobs] = useState<JobWithCompany[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
     profileViews: 0,
     appliedJobs: 0,
@@ -135,10 +136,16 @@ export default function DashboardPage() {
     }
   }, [timeRange])
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (isRefresh = false) => {
     if (!user) return
 
     try {
+      if (isRefresh) {
+        setRefreshing(true)
+      } else {
+        setLoading(true)
+      }
+
       let jobs: JobWithCompany[] = []
 
       if (user.role === "employer") {
@@ -146,7 +153,7 @@ export default function DashboardPage() {
         jobs = await jobsApi.getJobs({ posted_by: user.id })
       } else if (user.role === "candidate") {
         // Load recent published jobs for candidates
-        jobs = await jobsApi.getJobs({ status: "published" })
+        jobs = await jobsApi.getJobs({ status: "active" })
         jobs = jobs.slice(0, 5) // Show only 5 recent jobs
       } else if (user.role === "super_admin") {
         // Load all jobs for super admin
@@ -159,7 +166,12 @@ export default function DashboardPage() {
       console.error("Failed to load dashboard data:", error)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
+  }
+
+  const handleRefresh = async () => {
+    await loadDashboardData(true)
   }
 
   const fetchDashboardStats = async () => {
@@ -167,7 +179,7 @@ export default function DashboardPage() {
       setLoadingStats(true)
       
       // Fetch real data from multiple API endpoints
-      const token = localStorage.getItem('token')
+      const token = localStorage.getItem('jwt_token') || localStorage.getItem('token')
       const headers = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -201,7 +213,10 @@ export default function DashboardPage() {
         rejected: applications.filter((app: any) => app.status === 'rejected').length,
         accepted: applications.filter((app: any) => app.status === 'hired').length,
         interview: applications.filter((app: any) => app.status === 'interview').length,
-        pending: applications.filter((app: any) => ['pending', 'reviewing', 'shortlisted'].includes(app.status)).length
+        pending: applications.filter((app: any) => app.status === 'pending').length,
+        reviewing: applications.filter((app: any) => app.status === 'reviewing').length,
+        shortlisted: applications.filter((app: any) => app.status === 'shortlisted').length,
+        hired: applications.filter((app: any) => app.status === 'hired').length
       }
 
       // Fetch real profile views analytics data based on time range
@@ -233,14 +248,18 @@ export default function DashboardPage() {
         appliedJobs: applications.length,
         invitations: invitations.length,
         profileReviews: reviews,
+        totalJobs: 0, // Not applicable for candidates
+        activeJobs: 0, // Not applicable for candidates
+        totalApplications: applications.length,
+        hiredCandidates: 0, // Not applicable for candidates
         profileViewsData,
+        jobViewsData: [], // Not applicable for candidates
         applicationStatus
       }
       
       setDashboardStats(realStats)
     } catch (error) {
       console.error('Error fetching dashboard stats:', error)
-      toast.error('Failed to load dashboard statistics')
       
       // Set empty data instead of mock data
       const emptyStats: DashboardStats = {
@@ -248,6 +267,10 @@ export default function DashboardPage() {
         appliedJobs: 0,
         invitations: 0,
         profileReviews: 0,
+        totalJobs: 0,
+        activeJobs: 0,
+        totalApplications: 0,
+        hiredCandidates: 0,
         profileViewsData: [
           { month: 'Jan', views: 0 },
           { month: 'Feb', views: 0 },
@@ -256,11 +279,15 @@ export default function DashboardPage() {
           { month: 'May', views: 0 },
           { month: 'Jun', views: 0 }
         ],
+        jobViewsData: [],
         applicationStatus: {
           rejected: 0,
           accepted: 0,
           interview: 0,
-          pending: 0
+          pending: 0,
+          reviewing: 0,
+          shortlisted: 0,
+          hired: 0
         }
       }
       
@@ -282,7 +309,7 @@ export default function DashboardPage() {
         }
       case "employer":
         return {
-          activeJobs: recentJobs.filter((j) => j.status === "published").length,
+          activeJobs: recentJobs.filter((j) => j.status === "active").length,
           totalApplications: 23,
           totalViews: 456,
           totalHired: 5,
@@ -379,12 +406,24 @@ export default function DashboardPage() {
   }
 
   // Show new dashboard design for candidates and employers
-  if (user?.role === "candidate" || user?.role === "employer" || user?.role === "team_member") {
+  if (user?.role === "candidate" || user?.role === "employer" || user?.role === "super_admin") {
     return (
       <AuthGuard>
         <div className="container mx-auto px-4 py-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Dashboard Overview</h1>
+            <div className="flex items-center justify-between mb-2">
+              <h1 className="text-3xl font-bold">Dashboard Overview</h1>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                {refreshing ? 'Updating...' : 'Refresh'}
+              </Button>
+            </div>
             
             {/* Tabs for Candidates */}
             {user?.role === "candidate" && (

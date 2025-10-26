@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,7 +43,8 @@ import {
   Building2,
   Award,
   MessageSquare,
-  RefreshCw
+  RefreshCw,
+  Activity
 } from 'lucide-react';
 import { getApiUrl } from '@/lib/config';
 import Link from 'next/link';
@@ -196,7 +197,7 @@ export default function CandidateDashboard() {
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingWorkHistory, setLoadingWorkHistory] = useState(true);
   const [loadingReferences, setLoadingReferences] = useState(true);
-  const [editingNotes, setEditingNotes] = useState<{ jobId: string; notes: string } | null>(null);
+  const [editingNotes, setEditingNotes] = useState<string | null>(null);
   const [notesText, setNotesText] = useState('');
   const [showRequestReferenceModal, setShowRequestReferenceModal] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<ReferenceTemplate | null>(null);
@@ -1556,134 +1557,16 @@ export default function CandidateDashboard() {
               )}
             </CardContent>
           </Card>
+        </div>
 
-          {/* Saved Jobs Section */}
+        {/* Right Column - Quick Stats */}
+        <div className="space-y-6">
+          
+
+          {/* Recent Activity */}
           <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Heart className="h-5 w-5" />
-                  Saved Jobs
-                </CardTitle>
-                <Link href="/jobs">
-                  <Button variant="outline" size="sm">
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Browse Jobs
-                  </Button>
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {loadingSavedJobs ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
-              ) : savedJobs.length > 0 ? (
-                <div className="space-y-4">
-                  {savedJobs.map((savedJob) => (
-                    <div key={savedJob.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-semibold text-lg">{savedJob.job.title}</h4>
-                            <Badge variant="outline" className="text-xs">
-                              {savedJob.job.job_type}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
-                            <div className="flex items-center gap-1">
-                              <Building2 className="h-4 w-4" />
-                              <span>{savedJob.job.employerProfile.company_name}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <MapPin className="h-4 w-4" />
-                              <span>{savedJob.job.location}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <DollarSign className="h-4 w-4" />
-                              <span>{formatSalary(savedJob.job.salary_min, savedJob.job.salary_max, savedJob.job.salary_currency)}</span>
-                            </div>
-                          </div>
-                          {savedJob.notes && (
-                            <div className="bg-blue-50 rounded p-2 mb-2">
-                              <p className="text-sm text-blue-800">
-                                <strong>Your Notes:</strong> {savedJob.notes}
-                              </p>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Calendar className="h-3 w-3" />
-                            <span>Saved on {new Date(savedJob.saved_at).toLocaleDateString()}</span>
-                            <Clock className="h-3 w-3" />
-                            <span>Posted {new Date(savedJob.job.posted_at).toLocaleDateString()}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="outline" size="sm">
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>Edit Notes</DialogTitle>
-                              </DialogHeader>
-                              <div className="space-y-4">
-                                <div>
-                                  <Label htmlFor="notes">Notes for this job</Label>
-                                  <Textarea
-                                    id="notes"
-                                    placeholder="Add your thoughts about this job..."
-                                    defaultValue={savedJob.notes || ''}
-                                    onChange={(e) => setEditingNotes(prev => ({ jobId: savedJob.job.id, notes: e.target.value }))}
-                                  />
-                                </div>
-                                <div className="flex justify-end gap-2">
-                                  <Button variant="outline" onClick={() => setEditingNotes(null)}>
-                                    Cancel
-                                  </Button>
-                                  <Button onClick={() => editingNotes && updateJobNotes(savedJob.job.id, editingNotes.notes)}>
-                                    Save Notes
-                                  </Button>
-                                </div>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="text-red-600 hover:text-red-700"
-                            onClick={() => unsaveJob(savedJob.job.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                          <Link href={`/jobs/${savedJob.job.id}`}>
-                            <Button size="sm">
-                              <ExternalLink className="h-4 w-4 mr-2" />
-                              View Job
-                            </Button>
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Heart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Saved Jobs Yet</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Save jobs you're interested in to keep track of them
-                  </p>
-                  <Link href="/jobs">
-                    <Button>
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      Browse Jobs
-                    </Button>
-                  </Link>
-                </div>
-              )}
+            <CardContent className="pt-6">
+              <RecentActivity />
             </CardContent>
           </Card>
 
@@ -1697,16 +1580,6 @@ export default function CandidateDashboard() {
             </CardHeader>
             <CardContent>
               <ComprehensiveTransparencyDashboard refreshTrigger={refreshCounter} />
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Right Column - Quick Stats */}
-        <div className="space-y-6">
-          {/* Recent Activity */}
-          <Card>
-            <CardContent className="pt-6">
-              <RecentActivity />
             </CardContent>
           </Card>
         </div>

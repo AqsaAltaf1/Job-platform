@@ -26,7 +26,6 @@ import {
 } from 'lucide-react';
 import { getApiUrl } from '@/lib/config';
 import { useAuth } from '@/lib/auth';
-import { toast } from 'sonner';
 
 interface Candidate {
   id: string;
@@ -126,11 +125,9 @@ export default function CandidateProfilePage() {
         setCandidate(data.candidate);
       } else {
         console.error('Failed to fetch candidate profile');
-        toast.error('Failed to load candidate profile');
       }
     } catch (error) {
       console.error('Error fetching candidate profile:', error);
-      toast.error('Failed to load candidate profile');
     } finally {
       setLoading(false);
     }

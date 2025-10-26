@@ -12,13 +12,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/lib/auth"
 import { Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
-import { showToast, toastMessages } from "@/lib/toast"
+import { toastMessages } from "@/lib/toast"
 import { googleAuth } from "@/lib/google-auth"
 
 export function LoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const { login, loading } = useAuth()
@@ -27,11 +28,12 @@ export function LoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    setSuccess("")
 
     const result = await login(email, password)
 
     if (result.success) {
-      showToast.success(toastMessages.loginSuccess);
+      setSuccess("Login successful! Redirecting...")
       // Redirect based on user role
       let redirectPath = "/dashboard";
       if (result.user?.role === "super_admin") {
@@ -41,17 +43,17 @@ export function LoginForm() {
       } else if (result.user?.role === "candidate") {
         redirectPath = "/candidate/dashboard";
       }
-      router.push(redirectPath)
+      setTimeout(() => router.push(redirectPath), 1000)
     } else {
       const errorMessage = result.error || toastMessages.loginError;
       setError(errorMessage);
-      showToast.error(errorMessage);
     }
   }
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true)
     setError("")
+    setSuccess("")
     
     try {
       // Redirect to Google OAuth
@@ -60,22 +62,39 @@ export function LoginForm() {
       setGoogleLoading(false)
       const errorMessage = error instanceof Error ? error.message : "Google login failed"
       setError(errorMessage)
-      showToast.error(errorMessage)
     }
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto border-0 shadow-none">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold">Sign in to your account</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+    <div>
+      {/* Toast Notifications - Fixed Bottom Right */}
+      {error && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <div className="bg-black text-white px-4 py-3 rounded-lg shadow-lg max-w-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-red-400"></div>
+              <span className="text-sm font-medium">{error}</span>
+            </div>
+          </div>
+        </div>
+      )}
+      {success && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <div className="bg-black text-white px-4 py-3 rounded-lg shadow-lg max-w-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-400"></div>
+              <span className="text-sm font-medium">{success}</span>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <Card className="w-full max-w-md mx-auto border-0 shadow-none">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl font-bold">Sign in to your account</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
 
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -170,5 +189,6 @@ export function LoginForm() {
 
       </CardContent>
     </Card>
+    </div>
   )
 }

@@ -14,7 +14,6 @@ import {
   Globe
 } from 'lucide-react';
 import { getApiUrl } from '@/lib/config';
-import { toast } from 'sonner';
 
 interface ProfileView {
   id: number;
@@ -36,14 +35,18 @@ interface TransparencyData {
   recent_views: ProfileView[];
 }
 
-export default function TransparencyDashboard() {
+interface TransparencyDashboardProps {
+  refreshTrigger?: number;
+}
+
+export default function TransparencyDashboard({ refreshTrigger }: TransparencyDashboardProps) {
   const [data, setData] = useState<TransparencyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchTransparencyData();
-  }, []);
+  }, [refreshTrigger]);
 
   const fetchTransparencyData = async () => {
     try {
@@ -55,13 +58,13 @@ export default function TransparencyDashboard() {
 
       if (response.ok) {
         const result = await response.json();
+        console.log('📊 Transparency data received:', result);
         setData(result.data);
       } else {
         throw new Error('Failed to fetch transparency data');
       }
     } catch (error) {
       console.error('Error fetching transparency data:', error);
-      toast.error('Failed to load profile view data');
     } finally {
       setLoading(false);
     }
@@ -193,7 +196,7 @@ export default function TransparencyDashboard() {
               </button>
               
               {isExpanded && (
-                <div className="border-t bg-gray-50/50">
+                <div className="bg-gray-50/50">
                   {views.map((view) => (
                     <div key={view.id} className="p-3 flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -233,7 +236,7 @@ export default function TransparencyDashboard() {
 
       {/* Recent Views Summary */}
       {data.recent_views.length > 0 && (
-        <div className="pt-4 border-t">
+        <div className="pt-4">
           <h4 className="font-medium text-sm text-muted-foreground mb-3">Recent Views</h4>
           <div className="space-y-2">
             {data.recent_views.slice(0, 5).map((view) => (

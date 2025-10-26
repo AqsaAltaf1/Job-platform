@@ -18,7 +18,6 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { getApiUrl } from '@/lib/config';
-import { toast } from 'sonner';
 
 interface ActivityItem {
   id: string;
@@ -48,13 +47,13 @@ export default function RecentActivity() {
     fetchRecentActivity();
   }, []);
 
-  // Set up polling for live updates (every 45 seconds to avoid too many requests)
+  // Set up polling for live updates (every 15 seconds for better real-time updates)
   useEffect(() => {
     console.log('🔄 Setting up recent activity polling...');
     const interval = setInterval(() => {
       console.log('🔄 Polling recent activity...');
       fetchRecentActivity();
-    }, 45000); // Increased to 45 seconds
+    }, 15000); // Reduced to 15 seconds for better real-time updates
 
     return () => {
       console.log('🔄 Clearing recent activity polling...');
@@ -69,155 +68,96 @@ export default function RecentActivity() {
       } else {
         setLoading(true);
       }
-      // Fetch real activity data from multiple sources
-      const [profileViewsResponse, applicationsResponse, referencesResponse, workHistoryResponse] = await Promise.allSettled([
-        // Fetch profile views
-        fetch(getApiUrl('/references/transparency-data'), {
+      
+      const token = localStorage.getItem('jwt_token') || localStorage.getItem('token');
+      if (!token) {
+        console.error('No authentication token found');
+        return;
+      }
+      
+      // Fetch only notifications for the last 24 hours to avoid duplicates
+      const notificationsResponse = await fetch(getApiUrl('/notifications'), {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
-          }
-        }),
-        // Fetch recent applications
-        fetch(getApiUrl('/candidate/applications'), {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
-          }
-        }),
-        // Fetch references
-        fetch(getApiUrl('/candidate/references'), {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
-          }
-        }),
-        // Fetch work history
-        fetch(getApiUrl('/verified-employment'), {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
-          }
-        })
-      ]);
+          'Authorization': `Bearer ${token}`
+        }
+      });
 
       const activities: ActivityItem[] = [];
 
-      // Process profile views
-      if (profileViewsResponse.status === 'fulfilled' && profileViewsResponse.value.ok) {
-        const profileViewsData = await profileViewsResponse.value.json();
-        if (profileViewsData.success && profileViewsData.data.recent_views) {
-          profileViewsData.data.recent_views.slice(0, 3).forEach((view: any) => {
+      // Process notifications (including profile views) - only last 24 hours
+      if (notificationsResponse.ok) {
+        const notificationsData = await notificationsResponse.json();
+        console.log('🔔 Notifications data:', notificationsData);
+        if (notificationsData.success && notificationsData.notifications) {
+          // Filter for last 24 hours
+          const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+          
+          // Filter for relevant notification types and last 24 hours
+          const recentNotifications = notificationsData.notifications
+            .filter((notification: any) => {
+              const notificationDate = new Date(notification.created_at);
+              return notificationDate >= twentyFourHoursAgo && (
+                notification.type === 'profile_view' || 
+                notification.type === 'reference' ||
+                notification.type === 'work_verified' ||
+                notification.type === 'application_status'
+              );
+            })
+            .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            .slice(0, 10); // Limit to 10 most recent
+
+          recentNotifications.forEach((notification: any) => {
+            let activityType: ActivityItem['type'] = 'profile_view';
+            let title = 'Profile viewed';
+            let description = notification.message;
+
+            if (notification.type === 'reference') {
+              activityType = 'reference_completed';
+              title = 'Reference completed';
+            } else if (notification.type === 'work_verified') {
+              activityType = 'work_verified';
+              title = 'Work history verified';
+            } else if (notification.type === 'application_status') {
+              activityType = 'application_update';
+              title = 'Application updated';
+            }
+
             activities.push({
-              id: `view_${view.id}`,
-              type: 'profile_view',
-              title: 'Profile viewed',
-              description: view.viewer_type === 'anonymous' 
-                ? 'Your profile was viewed by an anonymous user'
-                : `Your profile was viewed by ${view.viewer?.first_name || 'an employer'}`,
-              timestamp: view.viewed_at,
+              id: `notif_${notification.id}`,
+              type: activityType,
+              title,
+              description,
+              timestamp: notification.created_at,
               metadata: {
-                viewer_name: view.viewer?.first_name,
-                viewer_company: view.viewer_company,
-                viewer_type: view.viewer_type
+                viewer_name: notification.data?.viewerName,
+                viewer_company: notification.data?.companyName,
+                viewer_type: notification.data?.viewerType,
+                job_title: notification.data?.jobTitle,
+                company_name: notification.data?.companyName,
+                status: notification.data?.status
               }
             });
+          console.log('🔔 Recent notifications (24h):', recentNotifications);
+          console.log('🔔 Activities created:', activities.length);
+          console.log('🔔 Total notifications received:', notificationsData.notifications.length);
+          console.log('🔔 Profile view notifications:', notificationsData.notifications.filter((n: any) => n.type === 'profile_view').length);
           });
         }
       }
-
-      // Process applications
-      if (applicationsResponse.status === 'fulfilled' && applicationsResponse.value.ok) {
-        const applicationsData = await applicationsResponse.value.json();
-        if (applicationsData.success && applicationsData.data) {
-          applicationsData.data.slice(0, 3).forEach((app: any) => {
-            activities.push({
-              id: `app_${app.id}`,
-              type: 'application_update',
-              title: 'Application status updated',
-              description: `Your application for ${app.job?.title || 'a position'} at ${app.job?.company_name || 'a company'} is ${app.status}`,
-              timestamp: app.updated_at || app.created_at,
-              metadata: {
-                job_title: app.job?.title,
-                company_name: app.job?.company_name,
-                status: app.status
-              }
-            });
-          });
-        }
-      }
-
-      // Process references
-      if (referencesResponse.status === 'fulfilled' && referencesResponse.value.ok) {
-        const referencesData = await referencesResponse.value.json();
-        console.log('📊 References data:', referencesData);
-        if (referencesData.success && referencesData.data) {
-          referencesData.data.slice(0, 2).forEach((ref: any) => {
-            console.log('📊 Reference:', ref);
-            if (ref.status === 'completed') {
-              activities.push({
-                id: `ref_${ref.id}`,
-                type: 'reference_completed',
-                title: 'Reference completed',
-                description: `${ref.reviewer_name} completed your reference request`,
-                timestamp: ref.created_at || ref.updated_at,
-                metadata: {
-                  reference_name: ref.reviewer_name
-                }
-              });
-            }
-          });
-        }
-      }
-
-      // Process work history verification
-      if (workHistoryResponse.status === 'fulfilled' && workHistoryResponse.value.ok) {
-        const workHistoryData = await workHistoryResponse.value.json();
-        if (workHistoryData.success && workHistoryData.data) {
-          workHistoryData.data.slice(0, 3).forEach((work: any) => {
-            if (work.verification_status === 'VERIFIED') {
-              activities.push({
-                id: `work_verified_${work.id}`,
-                type: 'work_verified',
-                title: 'Work history verified',
-                description: `Your employment at ${work.company_name} as ${work.title} was verified`,
-                timestamp: work.verified_at || work.updated_at,
-                metadata: {
-                  company_name: work.company_name,
-                  title: work.title,
-                  verifier_name: work.verifier_name
-                }
-              });
-            } else if (work.verification_status === 'DECLINED') {
-              activities.push({
-                id: `work_declined_${work.id}`,
-                type: 'work_declined',
-                title: 'Work history declined',
-                description: `Verification for ${work.company_name} as ${work.title} was declined`,
-                timestamp: work.updated_at,
-                metadata: {
-                  company_name: work.company_name,
-                  title: work.title,
-                  verifier_name: work.verifier_name
-                }
-              });
-            }
-          });
-        }
-      }
-
-      // Sort activities by timestamp (most recent first)
       activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
       setActivities(activities);
     } catch (error) {
       console.error('Error fetching recent activity:', error);
-      toast.error('Failed to load recent activity');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     console.log('🔄 Manual refresh of recent activity triggered');
-    fetchRecentActivity(true);
+    await fetchRecentActivity(true);
   };
 
   const getActivityIcon = (type: string) => {
@@ -320,7 +260,7 @@ export default function RecentActivity() {
         <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
         <h3 className="text-lg font-semibold mb-2">No Recent Activity</h3>
         <p className="text-muted-foreground">
-          Your recent activity will appear here as you interact with the platform.
+          No activity in the last 24 hours. Your recent profile views, applications, and other activities will appear here.
         </p>
       </div>
     );
@@ -333,6 +273,14 @@ export default function RecentActivity() {
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-medium">Recent Activity</span>
+          <Badge variant="secondary" className="text-xs">
+            Last 24 hours
+          </Badge>
+          {refreshing && (
+            <Badge variant="outline" className="text-xs text-blue-600">
+              Updating...
+            </Badge>
+          )}
         </div>
         <Button
           variant="ghost"
@@ -340,6 +288,7 @@ export default function RecentActivity() {
           onClick={handleRefresh}
           disabled={refreshing}
           className="h-8 w-8 p-0"
+          title="Refresh recent activity"
         >
           <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
         </Button>
@@ -365,7 +314,7 @@ export default function RecentActivity() {
         ))}
         
         {activities.length > 5 && (
-          <div className="pt-2 border-t sticky bottom-0 bg-white">
+          <div className="pt-2 sticky bottom-0 bg-white">
             <p className="text-xs text-muted-foreground text-center">
               {activities.length} total activities
             </p>
