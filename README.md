@@ -35,11 +35,12 @@ Traditional reference checks are slow, subjective and hard to compare. This plat
 .
 ├── job-platform-frontend/   # Next.js app
 ├── job-portal-backend/      # API server
-├── PROJECT.md               # Product vision and roadmap
-├── GOOGLE_OAUTH_SETUP.md
-├── LINKEDIN_SETUP.md
-├── VERIFF_SETUP.md
-└── PRIVACY_CONTROLS_EXPLAINED.md
+└── docs/                    # Setup guides and product plan
+    ├── PROJECT.md
+    ├── GOOGLE_OAUTH_SETUP.md
+    ├── LINKEDIN_SETUP.md
+    ├── VERIFF_SETUP.md
+    └── PRIVACY_CONTROLS_EXPLAINED.md
 ```
 
 ## Getting started
@@ -55,14 +56,14 @@ The app runs at http://localhost:3000. See [ENVIRONMENT_SETUP.md](job-platform-f
 
 ### Third-party setup guides
 
-- [Google OAuth](GOOGLE_OAUTH_SETUP.md)
-- [LinkedIn](LINKEDIN_SETUP.md)
-- [Veriff identity verification](VERIFF_SETUP.md)
-- [Privacy controls](PRIVACY_CONTROLS_EXPLAINED.md)
+- [Google OAuth](docs/GOOGLE_OAUTH_SETUP.md)
+- [LinkedIn](docs/LINKEDIN_SETUP.md)
+- [Veriff identity verification](docs/VERIFF_SETUP.md)
+- [Privacy controls](docs/PRIVACY_CONTROLS_EXPLAINED.md)
 
 ## Roadmap
 
-See [PROJECT.md](PROJECT.md) for the product plan, including ATS integrations and fairness checks.
+See [docs/PROJECT.md](docs/PROJECT.md) for the product plan, including ATS integrations and fairness checks.
 
 ## Author
 
